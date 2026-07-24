@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!--
+      Memory Architect is deliberately dark-only ("dark neon glass" visual identity), so this
+      forces Theme.Material3.Dark rather than DayNight — the game should look the same
+      regardless of the system light/dark setting.
+    -->
+    <style name="Theme.MemoryArchitect" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="colorPrimary">@color/neon_violet</item>
+        <item name="colorOnPrimary">@color/text_primary</item>
+        <item name="colorSecondary">@color/neon_cyan</item>
+        <item name="colorOnSecondary">@color/bg_deep_space</item>
+        <item name="colorSurface">@color/bg_deep_space</item>
+        <item name="colorOnSurface">@color/text_primary</item>
+        <item name="colorOnSurfaceVariant">@color/text_secondary</item>
+        <item name="colorOutline">@color/surface_glass_stroke</item>
+        <item name="android:windowBackground">@color/bg_deep_space</item>
+        <item name="android:statusBarColor">@color/bg_deep_space</item>
+        <item name="android:navigationBarColor">@color/bg_deep_space</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+
+    <style name="Theme.MemoryArchitect.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/bg_deep_space</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.MemoryArchitect</item>
+    </style>
+
+    <!--
+      Shared neon glow treatment for hero text (Home title, gameplay score). Centralized so the
+      shadow attrs aren't duplicated wherever the glow look is needed.
+    -->
+    <style name="TextAppearance.MemoryArchitect.GlowTitle" parent="android:TextAppearance">
+        <item name="android:fontFamily">sans-serif-black</item>
+        <item name="android:shadowColor">#B39D4EFF</item>
+        <item name="android:shadowDx">0</item>
+        <item name="android:shadowDy">0</item>
+        <item name="android:shadowRadius">24</item>
+    </style>
+
+</resources>

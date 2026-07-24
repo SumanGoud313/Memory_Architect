@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="space_xs">4dp</dimen>
+    <dimen name="space_sm">8dp</dimen>
+    <dimen name="space_md">16dp</dimen>
+    <dimen name="space_lg">24dp</dimen>
+    <dimen name="space_xl">32dp</dimen>
+    <dimen name="space_xxl">48dp</dimen>
+
+    <dimen name="corner_radius_card">24dp</dimen>
+    <dimen name="corner_radius_button">28dp</dimen>
+    <dimen name="corner_radius_chip">18dp</dimen>
+
+    <dimen name="glass_stroke_width">1dp</dimen>
+    <dimen name="glass_stroke_width_bright">1.5dp</dimen>
+
+    <dimen name="mode_card_icon_size">52dp</dimen>
+
+    <dimen name="level_card_size">104dp</dimen>
+    <dimen name="level_card_badge_size">52dp</dimen>
+</resources>

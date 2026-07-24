@@ -1,0 +1,26 @@
+package com.suman.memoryarchitect.domain.model
+
+enum class AchievementId {
+    FIRST_STEPS,
+    DEDICATED,
+    CENTURY,
+    SHARP_EYE,
+    PERFECTIONIST,
+    WEEK_STREAK,
+    MONTH_STREAK,
+    RISING_STAR,
+    ARCHITECT,
+    FLAWLESS,
+    GRAND_ARCHITECT,
+    FIRST_PERFECT_ROOM,
+    PERFECT_ROOMS_10,
+    PERFECT_ROOMS_100,
+    LEVEL_25,
+    LEVEL_50,
+    LEVEL_100,
+    TOP_100_DAILY,
+    TOP_10_WEEKLY,
+    MEMORY_MASTER,
+    SPEED_RUNNER,
+    PRECISION_EXPERT,
+}

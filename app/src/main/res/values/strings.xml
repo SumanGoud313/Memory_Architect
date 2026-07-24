@@ -1,0 +1,564 @@
+<resources>
+    <string name="app_name">Memory Architect</string>
+
+    <string name="action_retry">Retry</string>
+    <string name="action_back">Back</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_close">Close</string>
+
+    <string name="no_internet_title">No Internet Connection</string>
+    <string name="no_internet_message">Memory Architect needs an internet connection to fetch levels, sync your progress, and keep play fair for everyone. Reconnect and we\'ll continue automatically.</string>
+
+    <string name="home_title">Memory Architect</string>
+    <string name="home_tagline">Rebuild the scene. Beat the clock. Trust your memory.</string>
+    <string name="home_play">Play</string>
+    <string name="home_play_subtitle">Tap to Begin</string>
+    <string name="home_play_content_description">Play. Tap to begin a new game.</string>
+    <string name="home_profile">Profile</string>
+    <string name="home_settings">Settings</string>
+
+    <string name="profile_daily_reward_title">Daily Rewards</string>
+    <string name="profile_daily_reward_claim">Claim Today\'s Reward</string>
+    <string name="profile_daily_reward_claimed">Come Back Tomorrow</string>
+    <string name="profile_daily_reward_claimed_title">Reward Claimed!</string>
+    <string name="profile_daily_reward_coins_awarded">+%1$d coins</string>
+    <string name="profile_daily_reward_xp_awarded">+%1$d XP</string>
+
+    <string name="settings_title">Settings</string>
+    <string name="settings_account">Account</string>
+    <string name="settings_account_anonymous">Playing anonymously</string>
+    <string name="settings_account_anonymous_subtitle">Sign in with Google to verify your account and keep your progress if you switch devices</string>
+    <string name="settings_account_verified">Verified with Google</string>
+    <string name="settings_account_sign_in_google">Sign in with Google</string>
+    <string name="settings_account_linking">Linking…</string>
+    <string name="settings_account_link_error_already_linked">This Google account is already linked to a different Memory Architect profile.</string>
+    <string name="settings_account_link_error_no_google_account">No Google account was found on this device. Add one in your device\'s Settings, then try again.</string>
+    <string name="settings_account_link_error_unknown">Couldn\'t sign in right now. Check your connection and try again.</string>
+    <string name="settings_account_avatar">Avatar</string>
+    <string name="settings_account_avatar_custom_photo_set">Custom photo set</string>
+    <string name="settings_account_avatar_dialog_title">Choose an avatar</string>
+    <string name="settings_account_avatar_upload_photo">Upload a photo</string>
+    <string name="settings_account_avatar_change_photo">Change photo</string>
+    <string name="settings_account_avatar_upload_error">Couldn\'t upload your photo right now. Check your connection and try again.</string>
+    <string name="settings_account_country">Country</string>
+    <string name="settings_account_country_not_set">Not set</string>
+    <string name="settings_account_country_dialog_title">Choose your country</string>
+    <string name="settings_account_country_clear">No country</string>
+    <string name="settings_sound_and_haptics">Sound &amp; Haptics</string>
+    <string name="settings_mute_all">Mute All</string>
+    <string name="settings_mute_all_subtitle">Silences sound and haptics together</string>
+    <string name="settings_master_volume">Master Volume</string>
+    <string name="settings_music_volume">Music Volume</string>
+    <string name="settings_effects_volume">Effects Volume</string>
+    <string name="settings_haptics">Haptic Feedback</string>
+    <string name="settings_reduce_haptics">Reduce Haptics</string>
+    <string name="settings_reduce_haptics_subtitle">Softer vibration for every cue</string>
+    <string name="settings_how_to_play">How to Play</string>
+    <string name="settings_how_to_play_step_1">The room is shown — study it carefully.</string>
+    <string name="settings_how_to_play_step_2">The movable objects disappear — memorize where they were.</string>
+    <string name="settings_how_to_play_step_3">Drag each object from the tray back to its original spot.</string>
+    <string name="settings_how_to_play_step_4">Tap a placed object to rotate it, or long-press to pick it back up.</string>
+    <string name="settings_how_to_play_step_5">Submit before time runs out to see your score.</string>
+    <string name="settings_reset_progress">Reset Progress</string>
+    <string name="settings_reset_progress_subtitle">Erase local levels, stats, and achievements</string>
+    <string name="settings_reset_progress_dialog_title">Reset all progress?</string>
+    <string name="settings_reset_progress_dialog_message">This erases your local levels, best times, stars, statistics, and achievements. This can\'t be undone.</string>
+    <string name="settings_version">Version %1$s</string>
+
+    <string name="mode_classic_title">Classic</string>
+    <string name="mode_daily_title">Daily Challenge</string>
+    <string name="mode_practice_title">Practice</string>
+    <string name="mode_weekly_title">Weekly Challenge</string>
+
+    <string name="mode_classic_subtitle">Climb the levels, 1 to 100</string>
+    <string name="mode_daily_subtitle">One puzzle, once a day</string>
+    <string name="mode_practice_subtitle">Warm up, no stakes</string>
+    <string name="mode_weekly_subtitle">This week\'s puzzle</string>
+
+    <!-- Same template for Daily and Weekly on purpose - only the coin amount differs. -->
+    <string name="mode_win_reward">Win to get %1$d coins</string>
+    <!-- %1$s is a pre-formatted HH:MM:SS countdown (hours can exceed 24 for the weekly 168h lock). -->
+    <string name="mode_locked_unlocks_in">Unlocks in %1$s</string>
+
+    <string name="mode_select_progress_level">Level %1$d</string>
+    <string name="mode_select_progress_xp">%1$d / %2$d XP</string>
+    <string name="mode_select_progress_streak">%1$d day streak</string>
+
+    <string name="gameplay_loading">Generating level…</string>
+    <string name="gameplay_phase_memorize">Memorize the scene</string>
+    <string name="gameplay_phase_memorize_order">Memorize the order they appear</string>
+    <string name="gameplay_phase_hidden">Get ready…</string>
+    <string name="gameplay_phase_reconstruct">Rebuild the scene</string>
+    <string name="gameplay_finished">Session complete</string>
+
+    <plurals name="gameplay_tray_remaining">
+        <item quantity="one">%1$d object left</item>
+        <item quantity="other">%1$d objects left</item>
+    </plurals>
+    <string name="gameplay_tray_all_placed">All objects placed ✓</string>
+
+    <string name="gameplay_submit_processing">Submitting…</string>
+    <string name="gameplay_submit_ready_description">All objects placed. Submit available.</string>
+    <string name="gameplay_submit_processing_description">Submitting.</string>
+    <plurals name="gameplay_submit_disabled_description">
+        <item quantity="one">Submit disabled. %1$d object remaining.</item>
+        <item quantity="other">Submit disabled. %1$d objects remaining.</item>
+    </plurals>
+    <plurals name="gameplay_submit_incomplete_snackbar">
+        <item quantity="one">You still have %1$d object left.</item>
+        <item quantity="other">You still have %1$d objects left.</item>
+    </plurals>
+
+    <!-- Very small label under each assist button's icon, purely so a player can identify it at
+         a glance - never part of the count/ad badge. -->
+    <string name="gameplay_hint_name">Hint</string>
+    <string name="gameplay_redo_name">Undo</string>
+    <string name="gameplay_rewatch_name">Rewatch Scene</string>
+    <!-- The badge shown in place of a remaining-count once a budget hits zero - the icon itself
+         never changes, only this. -->
+    <string name="gameplay_assist_ad_badge">Ad</string>
+
+    <string name="gameplay_hint_count">Hint · %1$s</string>
+    <string name="gameplay_hint_idle_description">Hint available, %1$d remaining.</string>
+    <string name="gameplay_hint_armed_description">Hint armed. Tap an object in the tray to reveal its location.</string>
+    <string name="gameplay_hint_disabled_description">No hints remaining.</string>
+    <string name="gameplay_hint_none_remaining_snackbar">No hints remaining.</string>
+
+    <string name="gameplay_rewarded_hint_watch_ad">Watch Ad</string>
+    <string name="gameplay_rewarded_hint_watch_ad_description">No hints remaining. Watch a short ad to earn one more hint.</string>
+    <string name="gameplay_rewarded_hint_loading">Loading…</string>
+    <string name="gameplay_rewarded_hint_loading_description">Loading ad.</string>
+    <string name="gameplay_rewarded_hint_no_internet">No internet</string>
+    <string name="gameplay_rewarded_hint_unavailable">Ad unavailable</string>
+    <string name="gameplay_rewarded_hint_show_failed">Couldn\'t show ad</string>
+    <string name="gameplay_rewarded_hint_retry_description">Ad failed. Tap to try again.</string>
+    <string name="gameplay_rewarded_hint_granted_snackbar">You earned 1 hint!</string>
+    <string name="gameplay_rewarded_hint_cancelled_snackbar">Ad closed — no reward earned.</string>
+
+    <string name="gameplay_redo_count">Redo · %1$s</string>
+    <string name="gameplay_redo_enabled_description">Redo available, %1$d remaining. Undoes your last placed object.</string>
+    <string name="gameplay_redo_disabled_description">No redos remaining.</string>
+    <string name="gameplay_redo_nothing_description">Nothing to undo yet.</string>
+    <string name="gameplay_redo_out_of_uses_snackbar">No redos remaining.</string>
+    <string name="gameplay_redo_nothing_to_undo_snackbar">Nothing to undo yet.</string>
+
+    <string name="gameplay_rewarded_redo_watch_ad">Watch Ad</string>
+    <string name="gameplay_rewarded_redo_watch_ad_description">No redos remaining. Watch a short ad to earn one more redo.</string>
+    <string name="gameplay_rewarded_redo_loading">Loading…</string>
+    <string name="gameplay_rewarded_redo_loading_description">Loading ad.</string>
+    <string name="gameplay_rewarded_redo_no_internet">No internet</string>
+    <string name="gameplay_rewarded_redo_unavailable">Ad unavailable</string>
+    <string name="gameplay_rewarded_redo_show_failed">Couldn\'t show ad</string>
+    <string name="gameplay_rewarded_redo_retry_description">Ad failed. Tap to try again.</string>
+    <string name="gameplay_rewarded_redo_granted_snackbar">You earned 1 redo!</string>
+    <string name="gameplay_rewarded_redo_cancelled_snackbar">Ad closed — no reward earned.</string>
+
+    <string name="gameplay_rewatch_scene">Rewatch Scene</string>
+    <string name="gameplay_rewatch_count">Rewatch · %1$s</string>
+    <string name="gameplay_rewatch_free_description">Rewatch available, %1$d remaining. Replays the scene from memory.</string>
+    <string name="gameplay_rewatch_free_disabled_description">No free rewatches remaining. Watch an ad to rewatch again.</string>
+    <string name="gameplay_rewatch_free_denied_snackbar">No free rewatches remaining.</string>
+    <string name="gameplay_rewatch_idle_description">Rewatch the scene. Watch a short ad to see it again.</string>
+    <string name="gameplay_rewatch_loading">Loading…</string>
+    <string name="gameplay_rewatch_loading_description">Loading ad.</string>
+    <string name="gameplay_rewatch_no_internet">No internet</string>
+    <string name="gameplay_rewatch_unavailable">Ad unavailable</string>
+    <string name="gameplay_rewatch_show_failed">Couldn\'t show ad</string>
+    <string name="gameplay_rewatch_retry_description">Ad failed. Tap to try again.</string>
+    <string name="gameplay_rewatch_cancelled_snackbar">Ad closed — no reward earned.</string>
+
+    <string name="gameplay_tutorial_caption_memorize">Memorize the room.</string>
+    <string name="gameplay_tutorial_caption_drag">Drag each object back to its spot.</string>
+    <string name="gameplay_tutorial_caption_submit">Tap Submit when you\'re done.</string>
+    <string name="gameplay_tutorial_caption_success">Great job! Now it\'s your turn.</string>
+    <string name="gameplay_tutorial_success_title">You\'ve got it!</string>
+    <string name="gameplay_tutorial_skip">Skip</string>
+
+    <string name="gameplay_mechanic_intro_got_it">Got it</string>
+    <string name="gameplay_mechanic_intro_rotation_title">Objects can now be rotated</string>
+    <string name="gameplay_mechanic_intro_rotation_description">Tap an object to rotate it 90° at a time. Remember the angle too — you\'ll need to rotate each object back to match before you submit.</string>
+    <string name="gameplay_mechanic_intro_order_title">Placement order now matters</string>
+    <string name="gameplay_mechanic_intro_order_description">Place objects back in the same order they first appeared for full credit.</string>
+    <string name="gameplay_hint_rotation_needed">This object also needs to be rotated</string>
+    <string name="gameplay_rotate_caption">Tap an object to rotate it</string>
+
+    <!-- Anti-Cheat Privacy Shield - see PrivacyShieldOverlay.kt. "hidden" is shown while the app
+         is actually away (backgrounded/Recent Apps/locked); "ready" is shown once it's foregrounded
+         again but before the player has tapped Continue. -->
+    <string name="gameplay_privacy_shield_hidden_title">Gameplay Hidden</string>
+    <string name="gameplay_privacy_shield_hidden_subtitle">Puzzle protected while the game is inactive.</string>
+    <string name="gameplay_privacy_shield_ready_title">Ready to Continue?</string>
+    <string name="gameplay_privacy_shield_ready_subtitle">Your puzzle was safely protected.</string>
+    <string name="gameplay_privacy_shield_continue">Continue</string>
+
+    <string name="gameplay_stars_three">Genius! Perfect Recall!</string>
+    <string name="gameplay_stars_two">Sharp Memory!</string>
+    <string name="gameplay_stars_one">Cleared!</string>
+    <string name="gameplay_submit">Submit</string>
+    <string name="gameplay_submitting">Saving your progress…</string>
+    <string name="gameplay_xp_awarded">+%1$d XP</string>
+    <string name="gameplay_coins_awarded">+%1$d coins</string>
+    <string name="gameplay_combo_bonus">×%1$d Combo!</string>
+    <string name="gameplay_pending_sync">(will sync once you\'re back online)</string>
+    <string name="gameplay_result_accuracy">Accuracy: %1$d%%</string>
+    <string name="gameplay_result_placement_score">Placement: +%1$d</string>
+    <string name="gameplay_result_time_bonus">Time bonus: +%1$d</string>
+    <string name="gameplay_result_combo_bonus_points">Combo bonus: +%1$d</string>
+    <string name="gameplay_continue">Continue</string>
+    <string name="gameplay_level_passed">Level %1$d cleared!</string>
+    <string name="gameplay_level_failed">Level %1$d — try again</string>
+    <string name="gameplay_campaign_complete">Campaign complete! You beat level %1$d</string>
+    <string name="gameplay_cleared_not_perfect">Cleared — replay anytime for a better time</string>
+    <string name="gameplay_back_to_levels">Back to Levels</string>
+    <string name="gameplay_play_again">Play Again</string>
+    <string name="gameplay_next_level">Next Level</string>
+    <string name="gameplay_best_time">Best: %1$s</string>
+    <string name="gameplay_new_best_time">New best: %1$s</string>
+
+    <string name="results_tier_memory_master">Memory Master!</string>
+    <string name="results_tier_perfect">Perfect!</string>
+    <string name="results_tier_great">Great!</string>
+    <string name="results_tier_good_try">Good Try!</string>
+    <string name="results_tier_almost_there">Almost There!</string>
+    <string name="results_new_record">New Record!</string>
+    <string name="results_level_up">Level Up!</string>
+    <string name="results_level_unlocked">Level %1$d Unlocked!</string>
+
+    <string name="achievement_first_steps">First Steps</string>
+    <string name="achievement_dedicated">Dedicated</string>
+    <string name="achievement_century">Century</string>
+    <string name="achievement_sharp_eye">Sharp Eye</string>
+    <string name="achievement_perfectionist">Perfectionist</string>
+    <string name="achievement_week_streak">Week Warrior</string>
+    <string name="achievement_month_streak">Monthly Master</string>
+    <string name="achievement_rising_star">Rising Star</string>
+    <string name="achievement_architect">Architect</string>
+    <string name="achievement_flawless">Flawless</string>
+    <string name="achievement_grand_architect">Grand Architect</string>
+    <string name="achievement_first_perfect_room">First Perfect Room</string>
+    <string name="achievement_perfect_rooms_10">10 Perfect Rooms</string>
+    <string name="achievement_perfect_rooms_100">100 Perfect Rooms</string>
+    <string name="achievement_level_25">Reach Level 25</string>
+    <string name="achievement_level_50">Reach Level 50</string>
+    <string name="achievement_level_100">Reach Level 100</string>
+    <string name="achievement_top_100_daily">Top 100 Daily</string>
+    <string name="achievement_top_10_weekly">Top 10 Weekly</string>
+    <string name="achievement_memory_master">Memory Master</string>
+    <string name="achievement_speed_runner">Speed Runner</string>
+    <string name="achievement_precision_expert">Precision Expert</string>
+
+    <!-- Player Rank tiers - see domain/progression/PlayerRankEngine.kt -->
+    <string name="rank_bronze">Bronze</string>
+    <string name="rank_silver">Silver</string>
+    <string name="rank_gold">Gold</string>
+    <string name="rank_platinum">Platinum</string>
+    <string name="rank_diamond">Diamond</string>
+    <string name="rank_master">Master</string>
+    <string name="rank_grandmaster">Grandmaster</string>
+    <string name="rank_legend">Memory Architect Legend</string>
+
+    <!-- Statistics Dashboard - see ui/screens/statistics/StatisticsScreen.kt -->
+    <string name="statistics_title">Statistics</string>
+    <string name="statistics_section_general">General</string>
+    <string name="statistics_section_performance">Performance</string>
+    <string name="statistics_section_activity">Activity</string>
+    <string name="statistics_section_challenges">Challenges</string>
+    <string name="statistics_section_collection">Collection</string>
+    <string name="statistics_current_level">Current Level</string>
+    <string name="statistics_highest_level">Highest Level</string>
+    <string name="statistics_total_xp">Total XP</string>
+    <string name="statistics_total_score">Total Score</string>
+    <string name="statistics_total_stars">Total Stars</string>
+    <string name="statistics_global_rank">Global Rank</string>
+    <string name="statistics_average_accuracy">Average Accuracy</string>
+    <string name="statistics_best_accuracy">Best Accuracy</string>
+    <string name="statistics_average_completion_time">Average Time</string>
+    <string name="statistics_fastest_completion">Fastest Time</string>
+    <string name="statistics_perfect_games">Perfect Games</string>
+    <string name="statistics_highest_combo">Highest Combo</string>
+    <string name="statistics_total_play_time">Total Play Time</string>
+    <string name="statistics_total_sessions">Total Sessions</string>
+    <string name="statistics_days_played">Days Played</string>
+    <string name="statistics_current_login_streak">Current Login Streak</string>
+    <string name="statistics_longest_login_streak">Longest Login Streak</string>
+    <string name="statistics_daily_challenges_completed">Daily Challenges Won</string>
+    <string name="statistics_weekly_challenges_completed">Weekly Challenges Won</string>
+    <string name="statistics_daily_best_rank">Daily Best Rank</string>
+    <string name="statistics_weekly_best_rank">Weekly Best Rank</string>
+    <string name="statistics_objects_memorized">Objects Memorized</string>
+    <string name="statistics_rooms_completed">Rooms Completed</string>
+    <string name="statistics_themes_unlocked">Themes Unlocked</string>
+    <string name="statistics_achievements_completed">Achievements Completed</string>
+    <string name="statistics_not_ranked">Unranked</string>
+    <string name="statistics_days_suffix">%1$d days</string>
+    <string name="statistics_progress_to_rank">%1$d%% to %2$s</string>
+
+    <!-- Leaderboards - see ui/screens/leaderboard/LeaderboardScreen.kt -->
+    <string name="leaderboard_title">Leaderboards</string>
+    <string name="leaderboard_tab_global">Global</string>
+    <string name="leaderboard_tab_daily">Daily</string>
+    <string name="leaderboard_tab_weekly">Weekly</string>
+    <string name="leaderboard_tab_monthly">Monthly</string>
+    <string name="leaderboard_you">You</string>
+    <string name="leaderboard_verified">Verified player</string>
+    <string name="leaderboard_empty">No entries yet — be the first to set a score!</string>
+    <string name="leaderboard_unavailable">Leaderboards aren\'t available right now. Check your connection and try again.</string>
+    <string name="leaderboard_your_rank">Your rank</string>
+    <string name="profile_rank_label">Rank</string>
+    <string name="profile_view_statistics">Statistics</string>
+    <string name="profile_view_leaderboards">Leaderboards</string>
+
+    <!-- Motivation insight messages - see domain/motivation/MotivationEngine.kt. Deliberately
+         framed around personal improvement, never loss/pressure ("you fell behind," "hurry up"). -->
+    <string name="motivation_new_personal_best">You just set a new personal best!</string>
+    <string name="motivation_climbed_places">You climbed %1$d places on the leaderboard!</string>
+    <string name="motivation_levels_to_next_rank">You\'re only %1$d level away from %2$s.</string>
+    <string name="motivation_levels_to_next_rank_plural">You\'re only %1$d levels away from %2$s.</string>
+    <string name="motivation_accuracy_improved">Your accuracy improved by %1$d%%!</string>
+    <string name="motivation_objects_solved">You\'ve memorized %1$d objects so far!</string>
+    <string name="motivation_top_percent_week">You\'re in the top %1$d%% this week!</string>
+
+    <string name="reward_room_kitchen">Kitchen Room</string>
+    <string name="reward_room_coffee_shop">Coffee Shop Room</string>
+    <string name="reward_room_gaming_room">Gaming Room</string>
+    <string name="reward_room_office">Office Room</string>
+    <string name="reward_room_library">Library Room</string>
+    <string name="reward_room_garden">Garden Room</string>
+    <string name="reward_room_space_station">Space Station Room</string>
+    <string name="reward_palette_ocean">Ocean Palette</string>
+    <string name="reward_palette_forest">Forest Palette</string>
+    <string name="reward_palette_orchid">Orchid Palette</string>
+    <string name="reward_palette_midnight">Midnight Palette</string>
+    <string name="reward_palette_sunset">Sunset Palette</string>
+    <string name="reward_palette_ember">Ember Palette</string>
+    <string name="reward_title_apprentice">Apprentice</string>
+    <string name="reward_title_rising_talent">Rising Talent</string>
+    <string name="reward_title_seasoned_designer">Seasoned Designer</string>
+    <string name="reward_title_master_architect">Master Architect</string>
+    <string name="reward_title_legendary_architect">Legendary Architect</string>
+    <string name="reward_title_grandmaster_architect">Grandmaster Architect</string>
+    <string name="reward_title_eternal_architect">Eternal Architect</string>
+    <string name="reward_badge_bronze_key">Bronze Key</string>
+    <string name="reward_badge_silver_key">Silver Key</string>
+    <string name="reward_badge_gold_key">Gold Key</string>
+    <string name="reward_badge_platinum_key">Platinum Key</string>
+    <string name="reward_badge_diamond_key">Diamond Key</string>
+    <string name="reward_badge_obsidian_key">Obsidian Key</string>
+    <string name="reward_badge_celestial_key">Celestial Key</string>
+    <string name="reward_locked_at_level">Unlocks at Level %1$d</string>
+    <string name="profile_rewards_header">Rewards</string>
+
+    <string name="profile_coins">%1$d coins</string>
+    <string name="profile_xp_progress">%1$d / %2$d XP to next level</string>
+    <string name="profile_streak">%1$d day streak (best: %2$d)</string>
+    <string name="profile_stat_games_played">Games Played</string>
+    <string name="profile_stat_best_score">Best Score</string>
+    <string name="profile_stat_best_accuracy">Best Accuracy</string>
+    <string name="profile_stat_total_score">Total Score</string>
+    <string name="profile_stats_header">Statistics</string>
+    <string name="profile_achievements_header">Achievements</string>
+    <string name="profile_cosmetics_header">Cosmetics</string>
+    <string name="profile_showcase_header">Showcase</string>
+    <string name="profile_shop_header">Shop</string>
+    <string name="profile_collections_header">Collections</string>
+    <string name="profile_lucky_spin_header">Lucky Spin</string>
+
+    <string name="shop_title">Point Shop</string>
+    <string name="shop_owned">Owned</string>
+    <string name="shop_buy_for_coins">Buy · %1$d</string>
+    <string name="shop_error_insufficient_coins">Not enough coins for this item yet - keep playing to earn more.</string>
+    <string name="shop_error_no_connectivity">No internet connection. Please check your connection and try again.</string>
+    <string name="shop_error_already_owned">You already own this item.</string>
+    <string name="shop_error_generic">Something went wrong. Please try again.</string>
+
+    <string name="collections_title">Collections</string>
+    <string name="collections_completion">%1$d / %2$d cosmetics collected</string>
+    <string name="collections_equip">Equip</string>
+    <string name="collections_equipped">Equipped</string>
+    <string name="collections_unequip">Unequip</string>
+    <string name="collections_empty_title">Nothing here yet</string>
+    <string name="collections_empty_body">Earn coins and visit the Shop to start your collection.</string>
+    <string name="collections_empty_cta">Browse Shop</string>
+    <string name="cosmetic_preview_action">Preview</string>
+    <string name="collections_favorite">Favorite</string>
+    <string name="collections_unfavorite">Remove favorite</string>
+    <string name="collections_tab_all">All</string>
+    <string name="collections_tab_favorites">Favorites</string>
+    <string name="collections_tab_recent">Recently Used</string>
+    <string name="collections_recent_empty">Equip something and it\'ll show up here.</string>
+    <string name="collections_favorites_empty">Tap the star on anything you own to favorite it.</string>
+
+    <string name="shop_tab_coin">Coin Shop</string>
+    <string name="shop_tab_premium">Premium Shop</string>
+    <string name="shop_best_value">Best Value</string>
+    <string name="shop_owned_product">Owned</string>
+    <string name="shop_premium_includes">Includes</string>
+    <string name="shop_premium_buy">Buy · %1$s</string>
+    <string name="shop_premium_featured">Featured</string>
+
+    <string name="premium_founders_pack_title">Founder\'s Pack</string>
+    <string name="premium_founders_pack_tagline">A permanent thank-you for early players — retired after launch, never sold again.</string>
+    <string name="premium_starter_bundle_title">Starter Bundle</string>
+    <string name="premium_starter_bundle_tagline">A warm welcome — five pieces to make Memory Architect feel like yours from day one.</string>
+    <string name="premium_royal_collection_title">Royal Collection</string>
+    <string name="premium_royal_collection_tagline">Regal purple and gold, fit for a throne.</string>
+    <string name="premium_cyber_collection_title">Cyber Collection</string>
+    <string name="premium_cyber_collection_tagline">Neon circuits and electric color.</string>
+    <string name="premium_space_collection_title">Space Collection</string>
+    <string name="premium_space_collection_tagline">Deep-space violet and starlight.</string>
+    <string name="premium_nature_collection_title">Nature Collection</string>
+    <string name="premium_nature_collection_tagline">Forest green and quiet calm.</string>
+    <string name="premium_luxury_collection_title">Luxury Collection</string>
+    <string name="premium_luxury_collection_tagline">Onyx black and polished gold.</string>
+
+    <string name="lucky_spin_title">Lucky Spin</string>
+    <string name="lucky_spin_cost">Spin cost: %1$d coins</string>
+    <string name="lucky_spin_action">Spin</string>
+    <string name="lucky_spin_new_item">New item added to your collection!</string>
+    <string name="lucky_spin_duplicate_refund">Already owned - refunded %1$d coins</string>
+
+    <string name="error_no_connectivity">No internet connection. Please check your connection and try again.</string>
+    <string name="error_network">Couldn\'t reach the server. Please try again.</string>
+    <string name="error_server">Something went wrong on our end (code %1$d). Please try again shortly.</string>
+    <string name="error_unknown">Something went wrong. Please try again.</string>
+
+    <string name="object_kettle">Kettle</string>
+    <string name="object_frying_pan">Frying pan</string>
+    <string name="object_cooking_pot">Cooking pot</string>
+    <string name="object_toaster">Toaster</string>
+    <string name="object_coffee_mug">Coffee mug</string>
+    <string name="object_dinner_plate">Dinner plate</string>
+    <string name="object_mixing_bowl">Mixing bowl</string>
+    <string name="object_cutting_board">Cutting board</string>
+    <string name="object_chef_knife">Chef\'s knife</string>
+    <string name="object_whisk">Whisk</string>
+    <string name="object_spatula">Spatula</string>
+    <string name="object_colander">Colander</string>
+    <string name="object_teapot">Teapot</string>
+    <string name="object_spice_jar">Spice jar</string>
+    <string name="object_apple">Apple</string>
+    <string name="object_banana">Banana</string>
+    <string name="object_oven_mitt">Oven mitt</string>
+    <string name="object_blender">Blender</string>
+    <string name="object_pillow">Pillow</string>
+    <string name="object_table_lamp">Table lamp</string>
+    <string name="object_alarm_clock">Alarm clock</string>
+    <string name="object_book">Book</string>
+    <string name="object_picture_frame">Picture frame</string>
+    <string name="object_potted_plant">Potted plant</string>
+    <string name="object_mirror">Mirror</string>
+    <string name="object_jewelry_box">Jewelry box</string>
+    <string name="object_candle">Candle</string>
+    <string name="object_teddy_bear">Teddy bear</string>
+    <string name="object_folded_blanket">Folded blanket</string>
+    <string name="object_slippers">Slippers</string>
+    <string name="object_coat_hanger">Coat hanger</string>
+    <string name="object_perfume_bottle">Perfume bottle</string>
+    <string name="object_laptop">Laptop</string>
+    <string name="object_eyeglasses">Eyeglasses</string>
+    <string name="object_tissue_box">Tissue box</string>
+    <string name="object_flower_vase">Flower vase</string>
+    <string name="object_espresso_machine">Espresso machine</string>
+    <string name="object_latte_cup">Latte cup</string>
+    <string name="object_pastry_croissant">Croissant</string>
+    <string name="object_coffee_bean_bag">Coffee bean bag</string>
+    <string name="object_coffee_grinder">Coffee grinder</string>
+    <string name="object_chalkboard_menu">Chalkboard menu</string>
+    <string name="object_bar_stool">Bar stool</string>
+    <string name="object_pendant_lamp">Pendant lamp</string>
+    <string name="object_milk_frother_pitcher">Milk pitcher</string>
+    <string name="object_tip_jar">Tip jar</string>
+    <string name="object_sugar_shaker">Sugar shaker</string>
+    <string name="object_napkin_holder">Napkin holder</string>
+    <string name="object_gaming_pc_tower">Gaming PC</string>
+    <string name="object_monitor">Monitor</string>
+    <string name="object_gaming_chair">Gaming chair</string>
+    <string name="object_headset">Headset</string>
+    <string name="object_mechanical_keyboard">Mechanical keyboard</string>
+    <string name="object_gaming_mouse">Gaming mouse</string>
+    <string name="object_controller">Controller</string>
+    <string name="object_desk_fan">Desk fan</string>
+    <string name="object_led_strip">LED strip</string>
+    <string name="object_poster">Poster</string>
+    <string name="object_energy_drink_can">Energy drink</string>
+    <string name="object_figurine_collectible">Figurine</string>
+    <string name="object_trophy">Trophy</string>
+    <string name="object_backpack">Backpack</string>
+    <string name="object_desk_lamp">Desk lamp</string>
+    <string name="object_pen_cup">Pen cup</string>
+    <string name="object_stapler">Stapler</string>
+    <string name="object_binder">Binder</string>
+    <string name="object_award_plaque">Award plaque</string>
+    <string name="object_wall_clock">Wall clock</string>
+    <string name="object_calendar">Calendar</string>
+    <string name="object_office_chair">Office chair</string>
+    <string name="object_waste_bin">Waste bin</string>
+    <string name="object_globe">Globe</string>
+    <string name="object_reading_lamp">Reading lamp</string>
+    <string name="object_magnifying_glass">Magnifying glass</string>
+    <string name="object_quill_pen">Quill pen</string>
+    <string name="object_inkwell">Inkwell</string>
+    <string name="object_bookend">Bookend</string>
+    <string name="object_armchair">Armchair</string>
+    <string name="object_hourglass">Hourglass</string>
+    <string name="object_chess_set">Chess set</string>
+    <string name="object_wall_map">Wall map</string>
+    <string name="object_telescope">Telescope</string>
+    <string name="object_leather_journal">Leather journal</string>
+    <string name="object_wax_seal_stamp">Wax seal stamp</string>
+    <string name="object_watering_can">Watering can</string>
+    <string name="object_garden_gnome">Garden gnome</string>
+    <string name="object_flower_pot">Flower pot</string>
+    <string name="object_garden_trowel">Garden trowel</string>
+    <string name="object_bird_bath">Bird bath</string>
+    <string name="object_wheelbarrow">Wheelbarrow</string>
+    <string name="object_gardening_gloves">Gardening gloves</string>
+    <string name="object_sunhat">Sun hat</string>
+    <string name="object_picnic_basket">Picnic basket</string>
+    <string name="object_control_panel">Control panel</string>
+    <string name="object_oxygen_tank">Oxygen tank</string>
+    <string name="object_space_helmet">Space helmet</string>
+    <string name="object_star_chart">Star chart</string>
+    <string name="object_robot_companion">Robot companion</string>
+    <string name="object_food_pouch">Food pouch</string>
+    <string name="object_communicator">Communicator</string>
+    <string name="object_hydroponic_pod">Hydroponic pod</string>
+    <string name="object_space_boots">Space boots</string>
+    <string name="object_satellite_model">Satellite model</string>
+    <string name="object_unknown">Object</string>
+
+    <string name="scene_kitchen">Kitchen</string>
+    <string name="scene_bedroom">Bedroom</string>
+    <string name="scene_coffee_shop">Coffee Shop</string>
+    <string name="scene_gaming_room">Gaming Room</string>
+    <string name="scene_office">Office</string>
+    <string name="scene_library">Library</string>
+    <string name="scene_garden">Garden</string>
+    <string name="scene_space_station">Space Station</string>
+    <string name="scene_unknown">Scene</string>
+
+    <string name="level_select_title">Levels</string>
+    <string name="level_select_subtitle">Clear a level to unlock the next one</string>
+    <string name="level_select_progress">%1$d / %2$d unlocked</string>
+
+    <string name="settings_remove_ads">Remove Ads</string>
+    <string name="remove_ads_title">Remove Ads</string>
+    <string name="remove_ads_headline">Lifetime Remove Ads</string>
+    <string name="remove_ads_subheadline">One-time purchase</string>
+    <string name="remove_ads_benefit_no_banner">No banner ads</string>
+    <string name="remove_ads_benefit_no_interstitial">No interstitial ads</string>
+    <string name="remove_ads_benefit_no_app_open">No app open ads</string>
+    <string name="remove_ads_benefit_keep_rewarded">Keep optional rewarded ads for bonus hints, redos, and rewatches</string>
+    <string name="remove_ads_buy_now">Buy Now</string>
+    <string name="remove_ads_restore_purchase">Restore Purchase</string>
+    <string name="remove_ads_price_loading">Loading price…</string>
+    <string name="remove_ads_purchased_title">You\'re ad-free!</string>
+    <string name="remove_ads_purchased_subtitle">Thanks for supporting Memory Architect — ads are gone for good on this account.</string>
+    <string name="remove_ads_pending_title">Purchase pending</string>
+    <string name="remove_ads_pending_subtitle">Your payment is still processing. Ads will turn off automatically once it completes — no need to buy again.</string>
+    <string name="remove_ads_error_not_ready">The store isn\'t ready yet — please try again in a moment.</string>
+    <string name="remove_ads_error_item_unavailable">This purchase isn\'t available right now.</string>
+    <string name="remove_ads_error_billing_unavailable">Google Play Billing isn\'t available on this device.</string>
+    <string name="remove_ads_error_generic">Purchase couldn\'t be completed. Please try again.</string>
+    <string name="remove_ads_restore_none_found">No previous purchase found for this Google Play account.</string>
+</resources>

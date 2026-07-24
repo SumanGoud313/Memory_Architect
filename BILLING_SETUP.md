@@ -1,0 +1,96 @@
+# Remove Ads (Google Play Billing) setup
+
+This project ships with a complete, production-ready lifetime "Remove Ads" purchase already wired
+in code - see `core/billing/BillingManager.kt`, `BillingManagerImpl.kt`,
+`ui/screens/removeads/RemoveAdsScreen.kt` (Settings → Remove Ads). Like this project's other
+external integrations (`FIREBASE_SETUP.md`, `LEADERBOARD_SETUP.md`), it stays inert until one
+product is created for this app in the **Google Play Console** - nothing else in this project can
+do that step for you, it requires your own Play Console access and (for real, non-test purchases)
+an app that's already been uploaded to at least an internal testing track.
+
+## What you need to create
+
+**Play Console → your app → Monetize → Products → In-app products → Create product**
+
+| Field | Value |
+|---|---|
+| Product ID | `remove_ads_lifetime` (must match exactly - hardcoded in `BillingManagerImpl.REMOVE_ADS_PRODUCT_ID`) |
+| Product type | Managed product (non-consumable) - Play Console calls this an "in-app product," not a subscription |
+| Name | e.g. "Remove Ads (Lifetime)" |
+| Description | e.g. "Removes all ads permanently for this Google Play account." |
+
+## Regional pricing
+
+Set a base price, then let Play Console auto-convert regional prices, or override the ones you
+care about directly. Suggested starting points (all one-time, all the same tier as the ₹299 India
+price):
+
+| Region | Suggested price |
+|---|---|
+| India | ₹299 |
+| United States | US$4.99 |
+| Canada | CA$6.99 |
+| United Kingdom | £3.99 |
+| Eurozone | €4.99 |
+| Australia | A$7.99 |
+| New Zealand | NZ$8.99 |
+| Saudi Arabia | SAR 18.99 |
+| UAE | AED 18.99 |
+| Singapore | SGD 6.98 |
+| Malaysia | MYR 19.99 |
+| Indonesia | IDR 79,000 |
+| Philippines | PHP 249 |
+| Thailand | THB 179 |
+| Vietnam | VND 119,000 |
+| Japan | ¥700 |
+| South Korea | ₩6,500 |
+| Brazil | R$24.90 |
+| Mexico | MXN 89 |
+| South Africa | ZAR 89 |
+
+**Nothing in the app hardcodes any of this.** `BillingManagerImpl` only ever reads
+`ProductDetails.oneTimePurchaseOfferDetails.formattedPrice` - Play's own already-localized price
+string for whichever account/region is actually asking - so every player always sees their own
+currency, sourced entirely from what you configure here.
+
+## Testing before going live
+
+1. Add your own Google account (and any testers') under **Play Console → Setup → License
+   testing** - license testers can "buy" the product with a test payment method that never
+   actually charges.
+2. Upload a signed build to at least the **Internal testing** track (Play Billing purchase flows
+   do not work against a locally-signed debug APK installed via `adb install` outside of a
+   Play-distributed build for a license tester's account - this is a Play Store platform
+   requirement, not a limitation of this app's code).
+3. Install the app **from the Play Store** (internal testing link) on a license-tester account and
+   confirm: Buy Now shows the real localized price, completes a test purchase, ads-removed state
+   persists, and Restore Purchase works after uninstall/reinstall on the same account.
+
+## What already works once the product exists
+
+- **Localized pricing** - read live from Play, never hardcoded (see above).
+- **Purchase flow** - `Buy Now` launches Play's own purchase UI; every supported local payment
+  method (cards, UPI, carrier billing, Google Pay, gift cards, etc.) is Play's to offer, this app
+  never touches payment details.
+- **Acknowledgement** - every granted purchase is acknowledged automatically, so Play never
+  auto-refunds it after 3 days for being unacknowledged.
+- **Automatic restore** - `MemoryArchitectApp.onCreate()` connects to Play Billing and re-queries
+  this account's owned products on every cold start, so a reinstall or a new device signed into
+  the same Google Play account is ad-free again with no action needed. `Restore Purchase` on the
+  Remove Ads screen is the same query, run again explicitly, for the rare case the automatic one
+  missed (e.g. it ran before the device ever came online).
+- **Pending purchases** - a payment method that settles asynchronously (UPI collect, carrier
+  billing) is surfaced as "Purchase pending," not a failure; the entitlement grants itself the
+  moment Play reports it as actually purchased.
+
+## Recommended future hardening (not required to ship)
+
+This app verifies purchases entirely client-side via the official Play Billing Library, which is
+Google's own recommended baseline and what this document's testing steps above confirm. For an
+extra layer of defense against a tampered/rooted client claiming a fake purchase state, the
+next step up is server-side verification via the [Google Play Developer
+API](https://developer.android.com/google/play/billing/security#verify) - a Cloud Function that
+re-checks a purchase token server-side before trusting it, the same shape as this project's
+existing `functions/` Cloud Functions used for leaderboard score re-validation (see
+`LEADERBOARD_SETUP.md`). Worth adding once this ships and gains real revenue to protect; not a
+blocker for an honest first launch.

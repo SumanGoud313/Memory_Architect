@@ -1,0 +1,13 @@
+{
+  "name": "memory-architect-mock-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Dev-only mock backend for Memory Architect. In-memory storage, not for production use.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

@@ -1,0 +1,40 @@
+*.iml
+.gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
+# Per-module Gradle build output
+app/build/
+**/build/
+
+# Kotlin/Gradle/IDE caches
+.kotlin/
+.idea/
+
+# Node (Cloud Functions, mock backend)
+node_modules/
+functions/lib/
+npm-debug.log*
+
+# Packaged/signed output
+*.apk
+*.aab
+
+# Local device-pulled test artifacts (not source)
+*.log
+
+# Claude Code local session state (machine-specific, not shared project config)
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+

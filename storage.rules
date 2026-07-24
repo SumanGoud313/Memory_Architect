@@ -1,0 +1,28 @@
+rules_version = '2';
+
+// Firebase Storage Security Rules for Memory Architect's custom avatar upload.
+// See LEADERBOARD_SETUP.md for how to paste this into the Firebase console (Storage -> Rules tab)
+// and why it's required before AvatarUploadRepository's uploads will succeed.
+//
+// Design mirrors firestore.rules' own principles: a player can only ever write their OWN avatar
+// (path segment must equal request.auth.uid, never a client-supplied value), reads are public
+// (avatars are shown on public leaderboard rows to every player), and every write is bounded by
+// size + content-type - the two checks that matter most for an arbitrary-file-upload endpoint,
+// since unlike a Firestore document there's no field-level shape to validate here.
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // avatars/{uid}/avatar.jpg - always this exact fixed filename per player (see
+    // AvatarUploadRepositoryImpl's doc) - a re-upload overwrites in place, never accumulates.
+    match /avatars/{uid}/{fileName} {
+      allow read: if true; // public - shown on leaderboard rows to every player
+      allow write: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.size < 2 * 1024 * 1024 // 2MB ceiling - client already downscales/compresses well under this
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    // Everything else is denied by default (Storage's implicit deny-all for any path with no
+    // matching rule) - no catch-all "allow" rule exists anywhere in this file on purpose.
+  }
+}

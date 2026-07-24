@@ -1,0 +1,88 @@
+07-22 13:04:31.369 18977 18977 D TimerAudioManager: pause() activeStreamId=8
+07-22 13:04:34.862 18977 18977 D TimerAudioManager: resume() activeStreamId=8
+07-22 13:04:37.390 18977 18977 D TimerAudioManager: stopTimerAudio() called explicitly
+07-22 13:04:37.390 18977 18977 D TimerAudioManager: stop() action=STOP activeStreamId(before)=8
+07-22 13:04:38.121 18977 18977 D TimerAudioManager: updateTimerAudio: phase changed (was=true now=false remainingMs=10985) -> startNormal
+07-22 13:04:38.121 18977 18977 D TimerAudioManager: startNormal(volume=1.0) action=PLAY_NORMAL_FRESH normalSampleId=1 activeStreamId(before)=null
+07-22 13:04:38.121 18977 18977 D TimerAudioManager: playLoop(sampleId=1, volume=1.0) -> streamId=9
+07-22 13:04:38.121 18977 18977 D TimerAudioManager: startNormal -> played, activeStreamId(after)=9
+07-22 13:04:40.067 18977 18977 D TimerAudioManager: stopTimerAudio() called explicitly
+07-22 13:04:40.067 18977 18977 D TimerAudioManager: stop() action=STOP activeStreamId(before)=9
+07-22 13:04:42.784 18977 18977 D TimerAudioManager: stopTimerAudio() called explicitly
+07-22 13:04:42.784 18977 18977 D TimerAudioManager: stop() action=NO_OP activeStreamId(before)=null
+07-22 13:04:55.895 18977 18977 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=PLAY_FINAL_FRESH finalSampleId=2 activeStreamId(before)=null
+07-22 13:04:55.896 18977 18977 D TimerAudioManager: playLoop(sampleId=2, volume=1.0) -> streamId=10
+07-22 13:04:55.896 18977 18977 D TimerAudioManager: crossfadeToFinal -> played fresh, activeStreamId(after)=10
+07-22 13:04:55.996 18977 18977 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=10
+07-22 13:04:56.097 18977 18977 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=10
+07-22 13:04:56.198 18977 18977 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=10
+07-22 13:04:56.298 18977 18977 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=10
+07-22 13:04:56.398 18977 18977 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=10
+07-22 13:04:56.499 18977 18977 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=10
+07-22 13:04:56.600 18977 18977 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=10
+07-22 13:04:56.700 18977 18977 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=10
+07-22 13:04:56.801 18977 18977 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=10
+07-22 13:04:56.901 18977 18977 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=10
+07-22 13:04:57.007 18977 18977 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=10
+07-22 13:04:57.109 18977 18977 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=10
+07-22 13:04:57.210 18977 18977 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=10
+07-22 13:04:57.311 18977 18977 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=10
+07-22 13:04:57.411 18977 18977 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=10
+07-22 13:04:57.512 18977 18977 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=10
+07-22 13:04:57.612 18977 18977 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=10
+07-22 13:04:57.713 18977 18977 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=10
+07-22 13:04:57.814 18977 18977 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=10
+07-22 13:04:57.914 18977 18977 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=10
+07-22 13:04:58.015 18977 18977 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=10
+07-22 13:04:58.118 18977 18977 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=10
+07-22 13:04:58.219 18977 18977 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=10
+07-22 13:04:58.320 18977 18977 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=10
+07-22 13:04:58.420 18977 18977 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=10
+07-22 13:04:58.521 18977 18977 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=10
+07-22 13:04:58.621 18977 18977 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=10
+07-22 13:04:58.726 18977 18977 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=10
+07-22 13:04:58.827 18977 18977 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=10
+07-22 13:04:58.928 18977 18977 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=10
+07-22 13:04:59.033 18977 18977 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=10
+07-22 13:04:59.135 18977 18977 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=10
+07-22 13:04:59.235 18977 18977 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=10
+07-22 13:04:59.337 18977 18977 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=10
+07-22 13:04:59.437 18977 18977 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=10
+07-22 13:04:59.537 18977 18977 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=10
+07-22 13:04:59.638 18977 18977 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=10
+07-22 13:04:59.740 18977 18977 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=10
+07-22 13:04:59.840 18977 18977 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=10
+07-22 13:04:59.941 18977 18977 D TimerAudioManager: updateTimerAudio: remainingMs<=0 -> stop
+07-22 13:04:59.941 18977 18977 D TimerAudioManager: stop() action=STOP activeStreamId(before)=10
+07-22 13:05:00.449 18977 18977 D TimerAudioManager: updateTimerAudio: phase changed (was=false now=true remainingMs=45000) -> startNormal
+07-22 13:05:00.449 18977 18977 D TimerAudioManager: startNormal(volume=1.0) action=PLAY_NORMAL_FRESH normalSampleId=1 activeStreamId(before)=null
+07-22 13:05:00.449 18977 18977 D TimerAudioManager: playLoop(sampleId=1, volume=1.0) -> streamId=11
+07-22 13:05:00.449 18977 18977 D TimerAudioManager: startNormal -> played, activeStreamId(after)=11
+07-22 13:05:03.459 18977 18977 D TimerAudioManager: stopTimerAudio() called explicitly
+07-22 13:05:03.459 18977 18977 D TimerAudioManager: stop() action=STOP activeStreamId(before)=11
+07-22 13:05:51.606 23243 23346 D TimerAudioManager: preload complete: normalSampleId=1 finalSampleId=2
+07-22 13:05:56.262 23243 23243 D TimerAudioManager: updateTimerAudio: phase changed (was=null now=false remainingMs=15000) -> startNormal
+07-22 13:05:56.262 23243 23243 D TimerAudioManager: startNormal(volume=1.0) action=PLAY_NORMAL_FRESH normalSampleId=1 activeStreamId(before)=null
+07-22 13:05:56.263 23243 23243 D TimerAudioManager: playLoop(sampleId=1, volume=1.0) -> streamId=1
+07-22 13:05:56.263 23243 23243 D TimerAudioManager: startNormal -> played, activeStreamId(after)=1
+07-22 13:06:00.432 23243 23243 D TimerAudioManager: stopTimerAudio() called explicitly
+07-22 13:06:00.432 23243 23243 D TimerAudioManager: stop() action=STOP activeStreamId(before)=1
+07-22 13:06:11.677 23243 23243 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=PLAY_FINAL_FRESH finalSampleId=2 activeStreamId(before)=null
+07-22 13:06:11.678 23243 23243 D TimerAudioManager: playLoop(sampleId=2, volume=1.0) -> streamId=2
+07-22 13:06:11.678 23243 23243 D TimerAudioManager: crossfadeToFinal -> played fresh, activeStreamId(after)=2
+07-22 13:06:11.779 23243 23243 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=2
+07-22 13:06:11.879 23243 23243 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=2
+07-22 13:06:11.980 23243 23243 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=2
+07-22 13:06:12.081 23243 23243 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=2
+07-22 13:06:12.181 23243 23243 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=2
+07-22 13:06:12.281 23243 23243 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=2
+07-22 13:06:12.382 23243 23243 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=2
+07-22 13:06:12.483 23243 23243 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=2
+07-22 13:06:12.589 23243 23243 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=2
+07-22 13:06:12.691 23243 23243 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=2
+07-22 13:06:12.791 23243 23243 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=2
+07-22 13:06:12.891 23243 23243 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=2
+07-22 13:06:12.992 23243 23243 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=2
+07-22 13:06:13.093 23243 23243 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=2
+07-22 13:06:13.193 23243 23243 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=2
+07-22 13:06:13.293 23243 23243 D TimerAudioManager: crossfadeToFinal(volume=1.0) action=NO_OP finalSampleId=2 activeStreamId(before)=2

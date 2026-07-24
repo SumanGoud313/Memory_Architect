@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Debug-only: permits cleartext HTTP to the local mock backend (mock-backend/) during
+  development. This source set (src/debug) is never merged into release builds.
+-->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">10.0.2.2</domain>
+        <!-- Dev machine's current Wi-Fi LAN IP - see the comment on BASE_URL in app/build.gradle.kts.
+             This drifts whenever the machine's DHCP lease changes; keep both in sync. -->
+        <domain includeSubdomains="false">192.168.29.120</domain>
+    </domain-config>
+</network-security-config>

@@ -1,0 +1,187 @@
+rules_version = '2';
+
+// Firestore Security Rules for Memory Architect's competitive leaderboard system.
+// See LEADERBOARD_SETUP.md for how to paste this into the Firebase console (Firestore Database ->
+// Rules tab) and why it's required before LeaderboardRepositoryImpl's reads/writes will succeed.
+//
+// Design principles:
+//  - Every player can read the whole leaderboard (it's public, competitive data), but can only
+//    ever write their OWN document - enforced by requiring the document id to equal the
+//    authenticated request's uid (request.auth.uid), never a client-supplied value.
+//  - Every write is a full validated replace (not a partial merge an attacker could use to sneak
+//    one field past validation while leaving stale, still-passing values in the rest of the doc) -
+//    every field's type AND plausible range is checked on every write.
+//  - This is real, meaningful protection (a modified/rooted client, or a raw REST/curl call using
+//    a stolen anonymous auth token, cannot write arbitrary scores or overwrite another player's
+//    entry) but it is NOT a substitute for the Cloud Function in functions/validateScoreSubmission.ts,
+//    which is the only place that can verify a score against the *actual* level seed/scoring
+//    formula server-side. Rules alone can bound "is this a plausible number," never "is this the
+//    number this specific round should have produced."
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // players/{uid} - the Global Leaderboard's source. See LeaderboardRepositoryImpl.submitGlobalStats.
+    match /players/{uid} {
+      allow read: if true; // public leaderboard - anyone (including unauthenticated) can read rankings
+      allow write: if isOwner(uid) && isValidGlobalStats(request.resource.data);
+    }
+
+    // leaderboardDaily/{yyyy-MM-dd}/entries/{uid} and leaderboardWeekly/{yyyy-Www}/entries/{uid}.
+    // Period documents themselves (leaderboardDaily/{date}) are never written directly - only
+    // their entries subcollection - so no rule is needed for the parent document.
+    match /leaderboardDaily/{period}/entries/{uid} {
+      allow read: if true;
+      allow write: if isOwner(uid) && isValidPeriodicEntry(request.resource.data);
+    }
+
+    match /leaderboardWeekly/{period}/entries/{uid} {
+      allow read: if true;
+      allow write: if isOwner(uid) && isValidPeriodicEntry(request.resource.data);
+    }
+
+    // leaderboardMonthly/{yyyy-MM}/entries/{uid} - same shape/reset mechanism as Daily/Weekly above,
+    // keyed by calendar month instead.
+    match /leaderboardMonthly/{period}/entries/{uid} {
+      allow read: if true;
+      allow write: if isOwner(uid) && isValidPeriodicEntry(request.resource.data);
+    }
+
+    // playerProfiles/{uid} and dailyRewards/{uid} - the real, per-player-scoped counterpart to
+    // mock-backend/'s single shared PlayerProfile/dailyReward state (see
+    // FirestoreProgressionRemoteSource's doc for why that mattered). Unlike the leaderboard
+    // collections above, these are **private** - a player's own XP/coins/streak/reward-cycle state
+    // is never something another player should be able to read, only compete on the denormalized
+    // public numbers already exposed via players/{uid}. Read access is required (not just write)
+    // because FirestoreProgressionRemoteSource reads these documents inside the same Firestore
+    // transaction that writes them.
+    match /playerProfiles/{uid} {
+      allow read: if isOwner(uid);
+      allow write: if isOwner(uid) && isValidProfile(request.resource.data);
+    }
+
+    match /dailyRewards/{uid} {
+      allow read: if isOwner(uid);
+      allow write: if isOwner(uid) && isValidDailyReward(request.resource.data);
+    }
+
+    // submissionNonces/{uid}_{nonce} - replay protection for FirestoreProgressionRemoteSource
+    // .submitScore. A doc id is minted once per finished round client-side and reused across any
+    // retry of *that* round; the transaction that grants XP/coins checks-then-writes this doc
+    // atomically (see the class doc), so a duplicated/replayed write can never succeed twice - the
+    // second attempt's transaction.set here is still permitted by this rule (same owner, same
+    // shape), but the transaction itself already threw before reaching it. No client ever needs to
+    // *read* these - only the Admin SDK (Cloud Functions, TTL cleanup) does, and Functions bypass
+    // rules entirely, so no `allow read` exists here on purpose.
+    match /submissionNonces/{nonceId} {
+      allow write: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.createdAtEpochMs is int;
+    }
+
+    // playerCosmetics/{uid} - the Point Shop's owned/equipped state, written by
+    // FirestoreShopRemoteSource.purchase/spin/equip. Private, same reasoning as playerProfiles
+    // above - a player's own cosmetic inventory isn't public leaderboard data.
+    match /playerCosmetics/{uid} {
+      allow read: if isOwner(uid);
+      allow write: if isOwner(uid) && isValidCosmetics(request.resource.data);
+    }
+
+    // purchaseReceipts/{uid}_{nonce} - replay protection for purchase/spin, direct analog of
+    // submissionNonces above. No client ever needs to *read* these - only Cloud Functions
+    // (validatePurchaseReceipt) does, and Functions bypass rules entirely.
+    match /purchaseReceipts/{receiptId} {
+      allow write: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.sku is string
+        && request.resource.data.priceCoins is int && request.resource.data.priceCoins >= 0
+        && request.resource.data.kind in ['PURCHASE', 'SPIN']
+        && request.resource.data.createdAtEpochMs is int;
+    }
+
+    // Everything else is denied by default (Firestore's implicit deny-all for any path with no
+    // matching rule) - no catch-all "allow" rule exists anywhere in this file on purpose.
+
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    function isValidGlobalStats(data) {
+      return data.displayName is string && data.displayName.size() <= 32
+        && data.highestLevel is int && data.highestLevel >= 1 && data.highestLevel <= 100
+        && data.totalStars is int && data.totalStars >= 0 && data.totalStars <= 300
+        && data.totalScore is int && data.totalScore >= 0 && data.totalScore <= 100000000
+        && data.perfectLevels is int && data.perfectLevels >= 0
+        && data.averageAccuracy is number && data.averageAccuracy >= 0 && data.averageAccuracy <= 1
+        && data.averageCompletionTimeMs is int && data.averageCompletionTimeMs >= 0
+        && data.totalObjectsMemorized is int && data.totalObjectsMemorized >= 0
+        && data.totalLevelsCompleted is int && data.totalLevelsCompleted >= 0
+        && data.totalPlayTimeMs is int && data.totalPlayTimeMs >= 0
+        && data.winStreak is int && data.winStreak >= 0
+        && data.longestWinStreak is int && data.longestWinStreak >= 0
+        && data.achievementCount is int && data.achievementCount >= 0
+        && data.updatedAtEpochMs is int
+        && isValidIdentityFields(data);
+    }
+
+    function isValidPeriodicEntry(data) {
+      return data.displayName is string && data.displayName.size() <= 32
+        && data.score is int && data.score >= 0 && data.score <= 5000 // one round's worth, not a lifetime total
+        && data.accuracy is number && data.accuracy >= 0 && data.accuracy <= 1
+        && data.completionTimeMs is int && data.completionTimeMs >= 0 && data.completionTimeMs <= 1800000
+        && data.isPerfectRun is bool
+        && data.submittedAtEpochMs is int
+        && isValidIdentityFields(data);
+    }
+
+    // avatarId/avatarUrl/country/verified/league - denormalized onto every leaderboard doc
+    // (players/{uid} and every periodic entry) by LeaderboardRepositoryImpl.currentIdentityFields.
+    // Mirrors AvatarCatalog.kt's curated id set and League.kt's enum names - keep both in sync if
+    // either changes, the same "mirrors X" convention already used elsewhere in this file/functions.
+    function isValidIdentityFields(data) {
+      return data.avatarId is string
+        && data.avatarId in ['architect_gold', 'compass', 'hourglass', 'key', 'lantern', 'crystal',
+                              'owl', 'fox', 'dragon', 'phoenix', 'star', 'moon', 'comet', 'shield']
+        && (data.avatarUrl == null || (data.avatarUrl is string && data.avatarUrl.size() <= 500))
+        && (data.country == null || (data.country is string && data.country.size() == 2))
+        && data.verified is bool
+        && data.league is string
+        && data.league in ['APPRENTICE', 'JOURNEYMAN', 'ARCHITECT', 'MASTER_ARCHITECT', 'GRANDMASTER'];
+    }
+
+    // Mirrors PlayerProfile.kt's own field shape - see FirestoreProgressionRemoteSource.
+    // updatedAtEpochMs is bounded against request.time (the *server's* clock, not the device's -
+    // the one part of this check a modified client can't lie about) so a captured-and-replayed
+    // write more than 10 minutes stale is rejected here before the submissionNonces check even
+    // runs - defense in depth alongside the nonce, not a replacement for it (the nonce is exact and
+    // permanent; this only bounds how old a *first-time* replay of a captured payload can be).
+    function isValidProfile(data) {
+      return data.xp is int && data.xp >= 0 && data.xp <= 1000000000
+        && data.coins is int && data.coins >= 0 && data.coins <= 1000000000
+        && data.currentStreak is int && data.currentStreak >= 0
+        && data.longestStreak is int && data.longestStreak >= 0
+        && (data.lastPlayedEpochDay == null || data.lastPlayedEpochDay is int)
+        && (data.dailyChallengeWonAtEpochSecond == null || data.dailyChallengeWonAtEpochSecond is int)
+        && (data.weeklyChallengeWonAtEpochSecond == null || data.weeklyChallengeWonAtEpochSecond is int)
+        && data.updatedAtEpochMs is int
+        && data.updatedAtEpochMs > request.time.toMillis() - 600000
+        && data.updatedAtEpochMs < request.time.toMillis() + 600000;
+    }
+
+    // Mirrors DailyRewardCatalog.kt - cycleDay is always 1..7 (the reward table's length).
+    function isValidDailyReward(data) {
+      return data.cycleDay is int && data.cycleDay >= 1 && data.cycleDay <= 7
+        && (data.lastClaimedEpochDay == null || data.lastClaimedEpochDay is int);
+    }
+
+    // Shape/size bounds only - the actual "owned set only grows, no unknown skus, equipped
+    // references only owned skus" invariants need to compare against the *previous* document,
+    // which rules can't cheaply do here (no access to a fetched prior-doc without an extra get()
+    // per write) - that's exactly what functions/src/index.ts's validateCosmeticsWrite re-checks
+    // immediately after, same division of labor as isValidProfile/validateProfileWrite above.
+    function isValidCosmetics(data) {
+      return data.ownedSkus is list && data.ownedSkus.size() <= 200
+        && data.equipped is map && data.equipped.size() <= 20
+        && data.updatedAtEpochMs is int;
+    }
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "955650453441",
+    "project_id": "memory-architect-8a127",
+    "storage_bucket": "memory-architect-8a127.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:955650453441:android:4d16ac6d24c3d8ff34c940",
+        "android_client_info": {
+          "package_name": "com.suman.memoryarchitect"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "955650453441-2bq9l9tc9tkmak4t95061nih4d5d3l5k.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.suman.memoryarchitect",
+            "certificate_hash": "90cc1e70d2994d1201c3dec221e4015189032a2e"
+          }
+        },
+        {
+          "client_id": "955650453441-90dregg2t6430cb5jgt21kebh56bk28u.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBUixZlSFpQaZf4j5JFDgUkzYf8E4zjl-Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "955650453441-90dregg2t6430cb5jgt21kebh56bk28u.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

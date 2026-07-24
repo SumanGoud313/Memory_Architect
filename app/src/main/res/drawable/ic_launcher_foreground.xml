@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A 3x3 memory grid with one "recalled" cell highlighted, the app's core motif. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#F5F5F5"
+        android:pathData="M30,30h14v14h-14zM47,30h14v14h-14zM64,30h14v14h-14zM30,47h14v14h-14zM64,47h14v14h-14zM30,64h14v14h-14zM47,64h14v14h-14zM64,64h14v14h-14z" />
+    <path
+        android:fillColor="#FFC107"
+        android:pathData="M47,47h14v14h-14z" />
+</vector>
