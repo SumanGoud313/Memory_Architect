@@ -7,6 +7,7 @@ import com.suman.memoryarchitect.core.auth.PlayerIdentityManager
 import com.suman.memoryarchitect.domain.model.DailyRewardClaimResult
 import com.suman.memoryarchitect.domain.model.DailyRewardStatus
 import com.suman.memoryarchitect.domain.model.GameMode
+import com.suman.memoryarchitect.domain.model.MemoryJourneyRules
 import com.suman.memoryarchitect.domain.model.PlayerProfile
 import com.suman.memoryarchitect.domain.model.ScoreResult
 import com.suman.memoryarchitect.domain.model.StreakRules
@@ -57,7 +58,14 @@ class FirestoreProgressionRemoteSource @Inject constructor(
         return snapshot.toProfile() ?: PlayerProfile.EMPTY
     }
 
-    override suspend fun submitScore(mode: GameMode, score: ScoreResult, levelSeed: Long, playedOnEpochDay: Long, submissionNonce: String): PlayerProfile {
+    override suspend fun submitScore(
+        mode: GameMode,
+        score: ScoreResult,
+        levelSeed: Long,
+        playedOnEpochDay: Long,
+        submissionNonce: String,
+        newlyUnlockedAchievementCount: Int,
+    ): PlayerProfile {
         val uid = requireUid()
         val docRef = firestore.collection(PROFILES_COLLECTION).document(uid)
         val nonceRef = firestore.collection(SUBMISSION_NONCES_COLLECTION).document(nonceDocId(uid, submissionNonce))
@@ -79,6 +87,7 @@ class FirestoreProgressionRemoteSource @Inject constructor(
                 current.longestStreak,
                 current.streakShields,
             )
+            val journeyPointsAwarded = journeyPointsAwardedFor(score.sceneAccuracy, streakUpdate.milestoneReached, newlyUnlockedAchievementCount)
             val updated = current.copy(
                 xp = current.xp + xpAwarded,
                 coins = current.coins + coinsAwarded,
@@ -88,11 +97,23 @@ class FirestoreProgressionRemoteSource @Inject constructor(
                 lastPlayedEpochDay = playedOnEpochDay,
                 dailyChallengeWonAtEpochSecond = if (mode == GameMode.DAILY_CHALLENGE && won) nowEpochMs / 1000 else current.dailyChallengeWonAtEpochSecond,
                 weeklyChallengeWonAtEpochSecond = if (mode == GameMode.WEEKLY_CHALLENGE && won) nowEpochMs / 1000 else current.weeklyChallengeWonAtEpochSecond,
+                journeyPoints = current.journeyPoints + journeyPointsAwarded,
             )
             transaction.set(nonceRef, mapOf("uid" to uid, "createdAtEpochMs" to nowEpochMs))
             transaction.set(docRef, updated.toFirestoreMap(clock))
             updated
         }.await()
+    }
+
+    /** Mirrors [ProgressionRepositoryImpl]'s own private copy of this same formula - see that
+     * class's doc for why only the achievement-count input is client-trusted. */
+    private fun journeyPointsAwardedFor(sceneAccuracy: Float, streakMilestoneReached: Int?, newlyUnlockedAchievementCount: Int): Long {
+        val rules = MemoryJourneyRules.Default
+        var points = rules.pointsPerLevelCompleted
+        if (sceneAccuracy >= 1f) points += rules.perfectAccuracyBonus
+        if (streakMilestoneReached != null) points += rules.pointsPerStreakMilestone
+        points += rules.pointsPerAchievementUnlocked * newlyUnlockedAchievementCount
+        return points
     }
 
     override suspend fun getDailyRewardStatus(todayEpochDay: Long): DailyRewardStatus {
@@ -176,6 +197,7 @@ class FirestoreProgressionRemoteSource @Inject constructor(
             streakShields = (getLong("streakShields") ?: 0L).toInt(),
             dailyChallengeWonAtEpochSecond = getLong("dailyChallengeWonAtEpochSecond"),
             weeklyChallengeWonAtEpochSecond = getLong("weeklyChallengeWonAtEpochSecond"),
+            journeyPoints = getLong("journeyPoints") ?: 0L,
         )
     }
 
@@ -188,6 +210,7 @@ class FirestoreProgressionRemoteSource @Inject constructor(
         "streakShields" to streakShields,
         "dailyChallengeWonAtEpochSecond" to dailyChallengeWonAtEpochSecond,
         "weeklyChallengeWonAtEpochSecond" to weeklyChallengeWonAtEpochSecond,
+        "journeyPoints" to journeyPoints,
         "updatedAtEpochMs" to clock.millis(),
     )
 

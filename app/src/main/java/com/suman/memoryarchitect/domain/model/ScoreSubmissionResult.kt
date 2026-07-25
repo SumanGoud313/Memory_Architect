@@ -26,4 +26,13 @@ data class ScoreSubmissionResult(
     val streakMilestoneReached: Int? = null,
     val streakShieldGranted: Boolean = false,
     val streakShieldConsumed: Boolean = false,
+    /** How many Memory Journey points this exact round granted - see
+     * [com.suman.memoryarchitect.domain.model.MemoryJourneyRules]. Purely informational (the
+     * persisted [PlayerProfile.journeyPoints] total is what actually matters); `0` for Practice,
+     * which never earns any. */
+    val journeyPointsAwarded: Long = 0L,
+    /** The [com.suman.memoryarchitect.domain.model.MemoryJourneyTierId] just crossed this round,
+     * or null - computed by comparing the pre-round total against [profile.journeyPoints], the
+     * same "only on the real transition" guarantee [streakMilestoneReached] already documents. */
+    val journeyTierReached: MemoryJourneyTierId? = null,
 )

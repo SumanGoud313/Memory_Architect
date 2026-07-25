@@ -15,6 +15,7 @@ data class PlayerProgressCacheEntity(
     val streakShields: Int = 0,
     val dailyChallengeWonAtEpochSecond: Long? = null,
     val weeklyChallengeWonAtEpochSecond: Long? = null,
+    val journeyPoints: Long = 0L,
     val lastSyncedAt: Long,
 ) {
     companion object {

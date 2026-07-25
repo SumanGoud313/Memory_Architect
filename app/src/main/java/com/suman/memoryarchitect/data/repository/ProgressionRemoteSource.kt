@@ -45,7 +45,14 @@ interface ProgressionRemoteSource {
      * transaction that grants XP/coins, so a replayed/duplicated call can never grant credit twice.
      * [MockBackendProgressionRemoteSource] ignores it (dev-only, single-shared-profile backend has
      * no per-submission identity to guard). */
-    suspend fun submitScore(mode: GameMode, score: ScoreResult, levelSeed: Long, playedOnEpochDay: Long, submissionNonce: String): PlayerProfile
+    suspend fun submitScore(
+        mode: GameMode,
+        score: ScoreResult,
+        levelSeed: Long,
+        playedOnEpochDay: Long,
+        submissionNonce: String,
+        newlyUnlockedAchievementCount: Int,
+    ): PlayerProfile
 
     suspend fun getDailyRewardStatus(todayEpochDay: Long): DailyRewardStatus
 

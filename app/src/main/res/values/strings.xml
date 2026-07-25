@@ -120,15 +120,25 @@
     <!-- The badge shown in place of a remaining-count once a budget hits zero - the icon itself
          never changes, only this. -->
     <string name="gameplay_assist_ad_badge">Ad</string>
+    <!-- Shown instead of "Ad" once the rewarded-ad budget for this helper is also fully spent for
+         the current level attempt - the control is disabled at that point, not tappable. -->
+    <string name="gameplay_assist_exhausted_badge">—</string>
+    <!-- Small caption under the button name, only while free uses are spent and a rewarded ad can
+         still grant more - %1$d is how many rewarded grants have been redeemed, %2$d the max
+         allowed this level attempt (e.g. "Ad 2/5"). -->
+    <string name="gameplay_reward_progress_caption">Ad %1$d/%2$d</string>
+    <string name="gameplay_reward_exhausted_caption">No ads left</string>
 
     <string name="gameplay_hint_count">Hint · %1$s</string>
     <string name="gameplay_hint_idle_description">Hint available, %1$d remaining.</string>
     <string name="gameplay_hint_armed_description">Hint armed. Tap an object in the tray to reveal its location.</string>
     <string name="gameplay_hint_disabled_description">No hints remaining.</string>
     <string name="gameplay_hint_none_remaining_snackbar">No hints remaining.</string>
+    <string name="gameplay_hint_reward_exhausted_description">No more Hint rewards available for this level.</string>
+    <string name="gameplay_hint_reward_limit_reached_snackbar">No more Hint rewards available for this level.</string>
 
     <string name="gameplay_rewarded_hint_watch_ad">Watch Ad</string>
-    <string name="gameplay_rewarded_hint_watch_ad_description">No hints remaining. Watch a short ad to earn one more hint.</string>
+    <string name="gameplay_rewarded_hint_watch_ad_description">No hints remaining. Watch a short ad to earn one more hint (%1$d left this level).</string>
     <string name="gameplay_rewarded_hint_loading">Loading…</string>
     <string name="gameplay_rewarded_hint_loading_description">Loading ad.</string>
     <string name="gameplay_rewarded_hint_no_internet">No internet</string>
@@ -144,9 +154,11 @@
     <string name="gameplay_redo_nothing_description">Nothing to undo yet.</string>
     <string name="gameplay_redo_out_of_uses_snackbar">No redos remaining.</string>
     <string name="gameplay_redo_nothing_to_undo_snackbar">Nothing to undo yet.</string>
+    <string name="gameplay_redo_reward_exhausted_description">No more Redo rewards available for this level.</string>
+    <string name="gameplay_redo_reward_limit_reached_snackbar">No more Redo rewards available for this level.</string>
 
     <string name="gameplay_rewarded_redo_watch_ad">Watch Ad</string>
-    <string name="gameplay_rewarded_redo_watch_ad_description">No redos remaining. Watch a short ad to earn one more redo.</string>
+    <string name="gameplay_rewarded_redo_watch_ad_description">No redos remaining. Watch a short ad to earn one more redo (%1$d left this level).</string>
     <string name="gameplay_rewarded_redo_loading">Loading…</string>
     <string name="gameplay_rewarded_redo_loading_description">Loading ad.</string>
     <string name="gameplay_rewarded_redo_no_internet">No internet</string>
@@ -162,6 +174,8 @@
     <string name="gameplay_rewatch_free_disabled_description">No free rewatches remaining. Watch an ad to rewatch again.</string>
     <string name="gameplay_rewatch_free_denied_snackbar">No free rewatches remaining.</string>
     <string name="gameplay_rewatch_idle_description">Rewatch the scene. Watch a short ad to see it again.</string>
+    <string name="gameplay_rewatch_reward_exhausted_description">No more Rewatch rewards available for this level.</string>
+    <string name="gameplay_rewatch_reward_limit_reached_snackbar">No more Rewatch rewards available for this level.</string>
     <string name="gameplay_rewatch_loading">Loading…</string>
     <string name="gameplay_rewatch_loading_description">Loading ad.</string>
     <string name="gameplay_rewatch_no_internet">No internet</string>
@@ -401,6 +415,14 @@
         <item quantity="one">%1$d Shield</item>
         <item quantity="other">%1$d Shields</item>
     </plurals>
+
+    <!-- Memory Journey - see domain/progression/MemoryJourneyCatalog.kt -->
+    <string name="memory_journey_header">Memory Journey</string>
+    <string name="memory_journey_unranked">Unranked</string>
+    <string name="memory_journey_points_format">%1$d pts</string>
+    <string name="memory_journey_next_tier">Next: %1$s</string>
+    <string name="memory_journey_max_tier">Highest tier reached</string>
+
     <string name="profile_stat_games_played">Games Played</string>
     <string name="profile_stat_best_score">Best Score</string>
     <string name="profile_stat_best_accuracy">Best Accuracy</string>
@@ -445,6 +467,8 @@
     <string name="shop_premium_includes">Includes</string>
     <string name="shop_premium_buy">Buy · %1$s</string>
     <string name="shop_premium_featured">Featured</string>
+    <string name="shop_premium_price_loading">Loading price…</string>
+    <string name="shop_premium_price_load_failed">Price unavailable</string>
 
     <string name="premium_founders_pack_title">Founder\'s Pack</string>
     <string name="premium_founders_pack_tagline">A permanent thank-you for early players — retired after launch, never sold again.</string>
@@ -602,6 +626,7 @@
     <string name="remove_ads_buy_now">Buy Now</string>
     <string name="remove_ads_restore_purchase">Restore Purchase</string>
     <string name="remove_ads_price_loading">Loading price…</string>
+    <string name="remove_ads_price_load_failed">Price unavailable</string>
     <string name="remove_ads_purchased_title">You\'re ad-free!</string>
     <string name="remove_ads_purchased_subtitle">Thanks for supporting Memory Architect — ads are gone for good on this account.</string>
     <string name="remove_ads_pending_title">Purchase pending</string>

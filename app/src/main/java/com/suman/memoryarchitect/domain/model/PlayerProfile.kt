@@ -18,6 +18,11 @@ data class PlayerProfile(
      * lock window this feeds on Mode Select. */
     val dailyChallengeWonAtEpochSecond: Long? = null,
     val weeklyChallengeWonAtEpochSecond: Long? = null,
+    /** Lifetime, never-resetting Memory Journey score - see
+     * [com.suman.memoryarchitect.domain.progression.MemoryJourneyCatalog]'s doc for why this is
+     * a plain accumulating field here rather than a separate repository/collection. Server-
+     * authoritative, same as [xp]/[coins]; only ever increases. */
+    val journeyPoints: Long = 0L,
 ) {
     companion object {
         val EMPTY = PlayerProfile(xp = 0L, coins = 0L, currentStreak = 0, longestStreak = 0, lastPlayedEpochDay = null)

@@ -10,4 +10,10 @@ data class ScoreSubmissionRequestDto(
     val sceneAccuracy: Float,
     val comboCount: Int,
     val playedOnEpochDay: Long,
+    /** How many achievements this exact round newly unlocked (locally evaluated - see
+     * [com.suman.memoryarchitect.domain.model.ScoreSubmissionResult]'s doc) - the one Memory
+     * Journey point source the server can't independently recompute, since achievements are
+     * local-only. Level-completed/perfect-accuracy/streak-milestone bonuses are all recomputed
+     * server-side from the fields already above. */
+    val newlyUnlockedAchievementCount: Int = 0,
 )

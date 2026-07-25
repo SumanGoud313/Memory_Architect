@@ -35,6 +35,11 @@ const MISSION_CATALOG = {
   ],
 };
 
+// Mirrors MemoryJourneyRules.Default (domain/model/MemoryJourneyRules.kt) - a deliberate
+// simplification of the plan doc's "weekly mission set completed" bonus, scaling by period rather
+// than detecting a full set (see that class's doc).
+const JOURNEY_POINTS_BY_PERIOD = { DAILY: 5, WEEKLY: 15, MONTHLY: 50 };
+
 const ALL_DEFINITIONS_BY_ID = Object.fromEntries(Object.values(MISSION_CATALOG).flat().map((def) => [def.id, def]));
 
 function definitionFor(missionId) {
@@ -103,10 +108,12 @@ function claimMissionReward(state, profile, missionId, periodKey, progressCount)
   if (state.claimedKeys[claimKey]) return { error: 'already_claimed' };
 
   const reward = definition.reward || {};
+  const journeyPointsAwarded = JOURNEY_POINTS_BY_PERIOD[periodFor(missionId)] || 0;
   const updatedProfile = {
     ...profile,
     coins: (profile.coins || 0) + (reward.coins || 0),
     xp: (profile.xp || 0) + (reward.xp || 0),
+    journeyPoints: (profile.journeyPoints || 0) + journeyPointsAwarded,
   };
   const updatedInventory = { ...state.inventory };
   Object.entries(reward.inventoryGrants || {}).forEach(([kind, amount]) => {

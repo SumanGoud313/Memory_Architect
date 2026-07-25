@@ -26,6 +26,7 @@ let playerProfile = {
   streakShields: 0,
   dailyChallengeWonAtEpochSecond: null,
   weeklyChallengeWonAtEpochSecond: null,
+  journeyPoints: 0,
 };
 
 let dailyReward = {
@@ -123,12 +124,12 @@ app.get('/v1/profile', (req, res) => {
 });
 
 app.post('/v1/scores/submit', (req, res) => {
-  const { mode, finalScore, comboCount, sceneAccuracy, playedOnEpochDay } = req.body || {};
+  const { mode, finalScore, comboCount, sceneAccuracy, playedOnEpochDay, newlyUnlockedAchievementCount } = req.body || {};
   if (typeof finalScore !== 'number' || typeof playedOnEpochDay !== 'number') {
     res.status(400).json({ error: 'finalScore and playedOnEpochDay are required numbers' });
     return;
   }
-  playerProfile = applyScoreSubmission(playerProfile, mode, finalScore, comboCount, sceneAccuracy, playedOnEpochDay);
+  playerProfile = applyScoreSubmission(playerProfile, mode, finalScore, comboCount, sceneAccuracy, playedOnEpochDay, newlyUnlockedAchievementCount);
   res.json(playerProfile);
 });
 
@@ -146,6 +147,7 @@ app.post('/v1/profile/reset', (req, res) => {
     streakShields: 0,
     dailyChallengeWonAtEpochSecond: null,
     weeklyChallengeWonAtEpochSecond: null,
+    journeyPoints: 0,
   };
   dailyReward = { cycleDay: 0, lastClaimedEpochDay: null };
   playerCosmetics = { ownedSkus: [], equipped: {} };

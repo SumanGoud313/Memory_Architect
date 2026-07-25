@@ -215,7 +215,13 @@ class MissionRepositoryImplTest {
             missionId = targetId.name,
             coinsAwarded = definition.reward.coins,
             xpAwarded = definition.reward.xp,
-            profile = PlayerProfileDto(xp = definition.reward.xp, coins = definition.reward.coins, currentStreak = 0, longestStreak = 0, lastPlayedEpochDay = null),
+            profile = PlayerProfileDto(
+                xp = definition.reward.xp, coins = definition.reward.coins, currentStreak = 0, longestStreak = 0, lastPlayedEpochDay = null,
+                // The real point value is computed server-side (mock-backend/missions.js, not
+                // exercised by this JVM test) - this stands in for whatever it returns, so this
+                // test only verifies MissionRepositoryImpl propagates/caches it, same as coins/xp.
+                journeyPoints = 5L,
+            ),
             inventory = InventoryDto(),
         )
         val repository = buildRepository(
@@ -230,6 +236,7 @@ class MissionRepositoryImplTest {
 
         assertTrue(result is Outcome.Success)
         assertEquals(definition.reward.coins, playerProgressDao.get()?.coins)
+        assertEquals(5L, playerProgressDao.get()?.journeyPoints)
         val afterClaim = repository.getActiveMissions(day).first { it.definition.id == targetId }
         assertTrue(afterClaim.claimed)
     }

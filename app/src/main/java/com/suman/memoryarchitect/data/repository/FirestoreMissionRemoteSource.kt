@@ -6,8 +6,10 @@ import com.google.firebase.firestore.firestore
 import com.suman.memoryarchitect.core.auth.PlayerIdentityManager
 import com.suman.memoryarchitect.domain.model.Inventory
 import com.suman.memoryarchitect.domain.model.InventoryItemKind
+import com.suman.memoryarchitect.domain.model.MemoryJourneyRules
 import com.suman.memoryarchitect.domain.model.MissionClaimResult
 import com.suman.memoryarchitect.domain.model.MissionId
+import com.suman.memoryarchitect.domain.model.MissionPeriod
 import com.suman.memoryarchitect.domain.model.PlayerProfile
 import com.suman.memoryarchitect.domain.progression.MissionCatalog
 import kotlinx.coroutines.tasks.await
@@ -70,6 +72,7 @@ class FirestoreMissionRemoteSource @Inject constructor(
             val updatedProfile = currentProfile.copy(
                 xp = currentProfile.xp + definition.reward.xp,
                 coins = currentProfile.coins + definition.reward.coins,
+                journeyPoints = currentProfile.journeyPoints + journeyPointsForClaim(definition.period),
             )
 
             val currentQuantities = transaction.get(inventoryRef).toQuantities().toMutableMap()
@@ -102,6 +105,18 @@ class FirestoreMissionRemoteSource @Inject constructor(
         ?: throw IllegalStateException("FirestoreMissionRemoteSource used with no signed-in player - callers must gate on FirebaseAvailability + a resolved uid via MissionRepositoryImpl.activeRemoteSource first")
 
     private fun claimKeyFor(missionId: MissionId, periodKey: Long): String = "${missionId.name}_$periodKey"
+
+    /** A deliberate simplification of the plan doc's "weekly mission set completed" bonus -
+     * see [MemoryJourneyRules]'s doc for why this scales by period rather than detecting a full
+     * set. */
+    private fun journeyPointsForClaim(period: MissionPeriod): Long {
+        val rules = MemoryJourneyRules.Default
+        return when (period) {
+            MissionPeriod.DAILY -> rules.pointsPerDailyMissionClaimed
+            MissionPeriod.WEEKLY -> rules.pointsPerWeeklyMissionClaimed
+            MissionPeriod.MONTHLY -> rules.pointsPerMonthlyMissionClaimed
+        }
+    }
 
     private fun DocumentSnapshot.toClaimedKeys(): Map<String, Long> {
         if (!exists()) return emptyMap()
@@ -140,6 +155,7 @@ class FirestoreMissionRemoteSource @Inject constructor(
             streakShields = (getLong("streakShields") ?: 0L).toInt(),
             dailyChallengeWonAtEpochSecond = getLong("dailyChallengeWonAtEpochSecond"),
             weeklyChallengeWonAtEpochSecond = getLong("weeklyChallengeWonAtEpochSecond"),
+            journeyPoints = getLong("journeyPoints") ?: 0L,
         )
     }
 
@@ -152,6 +168,7 @@ class FirestoreMissionRemoteSource @Inject constructor(
         "streakShields" to streakShields,
         "dailyChallengeWonAtEpochSecond" to dailyChallengeWonAtEpochSecond,
         "weeklyChallengeWonAtEpochSecond" to weeklyChallengeWonAtEpochSecond,
+        "journeyPoints" to journeyPoints,
         "updatedAtEpochMs" to clock.millis(),
     )
 

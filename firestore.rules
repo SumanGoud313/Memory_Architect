@@ -186,6 +186,10 @@ service cloud.firestore {
         && (data.lastPlayedEpochDay == null || data.lastPlayedEpochDay is int)
         && (data.dailyChallengeWonAtEpochSecond == null || data.dailyChallengeWonAtEpochSecond is int)
         && (data.weeklyChallengeWonAtEpochSecond == null || data.weeklyChallengeWonAtEpochSecond is int)
+        // Mirrors MemoryJourneyCatalog.kt's top tier threshold with generous headroom - bounds
+        // shape/range only, same division of labor as streakShields above (validateProfileWrite
+        // is what checks this only ever moves by one plausible write's worth of points).
+        && data.journeyPoints is int && data.journeyPoints >= 0 && data.journeyPoints <= 1000000000
         && data.updatedAtEpochMs is int
         && data.updatedAtEpochMs > request.time.toMillis() - 600000
         && data.updatedAtEpochMs < request.time.toMillis() + 600000;

@@ -38,6 +38,7 @@ class MockBackendMissionRemoteSource @Inject constructor(
             streakShields = response.profile.streakShields,
             dailyChallengeWonAtEpochSecond = response.profile.dailyChallengeWonAtEpochSecond,
             weeklyChallengeWonAtEpochSecond = response.profile.weeklyChallengeWonAtEpochSecond,
+            journeyPoints = response.profile.journeyPoints,
         )
         return MissionClaimResult(
             missionId = missionId,

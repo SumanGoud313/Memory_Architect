@@ -271,6 +271,53 @@ class ProgressionRepositoryImplTest {
     }
 
     @Test
+    fun `submitScore failure computes journey points including the achievement-unlock bonus`() = runTest {
+        val repository = buildRepository(api = FakeProgressionApi(error = IOException("offline")))
+
+        // sampleScore's 0.8 accuracy is not perfect and playedOnEpochDay 1 (streak=1) is not a
+        // milestone - isolates the level-completed base (10) plus this round's one newly-unlocked
+        // achievement (FIRST_STEPS, 25) from the other two journey point sources.
+        val result = repository.submitScore(GameMode.CLASSIC, levelSeed = 1L, score = sampleScore, playedOnEpochDay = 1L, submissionNonce = "nonce-1")
+
+        val submission = (result as Outcome.Success).data
+        assertEquals(1, submission.newlyUnlockedAchievements.size)
+        assertEquals(35L, submission.journeyPointsAwarded)
+        assertEquals(35L, submission.profile.journeyPoints)
+    }
+
+    @Test
+    fun `submitScore failure computes a perfect-accuracy journey points bonus`() = runTest {
+        val repository = buildRepository(api = FakeProgressionApi(error = IOException("offline")))
+        val perfectScore = sampleScore.copy(sceneAccuracy = 1f)
+
+        val result = repository.submitScore(GameMode.CLASSIC, levelSeed = 1L, score = perfectScore, playedOnEpochDay = 1L, submissionNonce = "nonce-1")
+
+        // 10 (level completed) + 5 (perfect accuracy) + 25 per achievement this exact perfect
+        // round newly unlocks (a perfect score can satisfy more than one at once, e.g. FIRST_STEPS
+        // and an accuracy-gated achievement together) - no streak milestone on a first-ever play.
+        val submission = (result as Outcome.Success).data
+        val expectedPoints = 10L + 5L + 25L * submission.newlyUnlockedAchievements.size
+        assertEquals(expectedPoints, submission.journeyPointsAwarded)
+    }
+
+    @Test
+    fun `submitScore failure computes a streak-milestone journey points bonus once achievements are already unlocked`() = runTest {
+        val repository = buildRepository(api = FakeProgressionApi(error = IOException("offline")))
+
+        // Three consecutive days extends the streak to 3 (the first milestone) - round 1 already
+        // exhausts the achievement-unlock bonus (see the achievement-only test above), isolating
+        // round 3's journey points to exactly the level-completed base plus the milestone bonus.
+        repository.submitScore(GameMode.CLASSIC, levelSeed = 1L, score = sampleScore, playedOnEpochDay = 1L, submissionNonce = "nonce-1")
+        repository.submitScore(GameMode.CLASSIC, levelSeed = 2L, score = sampleScore, playedOnEpochDay = 2L, submissionNonce = "nonce-2")
+        val third = repository.submitScore(GameMode.CLASSIC, levelSeed = 3L, score = sampleScore, playedOnEpochDay = 3L, submissionNonce = "nonce-3")
+
+        val submission = (third as Outcome.Success).data
+        assertEquals(3, submission.streakMilestoneReached)
+        assertEquals(0, submission.newlyUnlockedAchievements.size)
+        assertEquals(40L, submission.journeyPointsAwarded)
+    }
+
+    @Test
     fun `submitScore maps a duplicate-submission-nonce rejection to a routine 409, not a pending retry`() = runTest {
         val pendingDao = FakePendingScoreSubmissionDao()
         val repository = buildRepository(

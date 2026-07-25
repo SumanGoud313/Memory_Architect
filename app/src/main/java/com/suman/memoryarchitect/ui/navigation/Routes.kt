@@ -31,6 +31,11 @@ sealed interface Route {
     @Serializable
     data object Rewards : Route
 
+    /** The full Memory Journey tier showcase - reached via a Profile button, alongside
+     * Achievements/Rewards. See `MemoryJourneyBar.kt`'s doc for the slim Profile-embedded version. */
+    @Serializable
+    data object MemoryJourney : Route
+
     @Serializable
     data object RemoveAds : Route
 

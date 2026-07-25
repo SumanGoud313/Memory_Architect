@@ -25,11 +25,20 @@ class MockBackendProgressionRemoteSource @Inject constructor(
 
     override suspend fun getProfile(): PlayerProfile = api.getProfile().toDomain()
 
-    override suspend fun submitScore(mode: GameMode, score: ScoreResult, levelSeed: Long, playedOnEpochDay: Long, submissionNonce: String): PlayerProfile {
+    override suspend fun submitScore(
+        mode: GameMode,
+        score: ScoreResult,
+        levelSeed: Long,
+        playedOnEpochDay: Long,
+        submissionNonce: String,
+        newlyUnlockedAchievementCount: Int,
+    ): PlayerProfile {
         // submissionNonce is intentionally unused here - this dev-only backend has no per-submission
         // replay protection (see ProgressionRemoteSource's doc), same as its single-shared-profile
         // design has no per-player identity at all.
-        val request = ScoreSubmissionRequestDto(mode.name, levelSeed, score.finalScore, score.sceneAccuracy, score.comboCount, playedOnEpochDay)
+        val request = ScoreSubmissionRequestDto(
+            mode.name, levelSeed, score.finalScore, score.sceneAccuracy, score.comboCount, playedOnEpochDay, newlyUnlockedAchievementCount,
+        )
         return api.submitScore(request).toDomain()
     }
 
@@ -52,5 +61,6 @@ class MockBackendProgressionRemoteSource @Inject constructor(
         streakShields = streakShields,
         dailyChallengeWonAtEpochSecond = dailyChallengeWonAtEpochSecond,
         weeklyChallengeWonAtEpochSecond = weeklyChallengeWonAtEpochSecond,
+        journeyPoints = journeyPoints,
     )
 }

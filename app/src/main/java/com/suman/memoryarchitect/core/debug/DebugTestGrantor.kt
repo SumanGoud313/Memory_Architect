@@ -148,6 +148,7 @@ class DebugTestGrantor @Inject constructor(
             streakShields = (getLong("streakShields") ?: 0L).toInt(),
             dailyChallengeWonAtEpochSecond = getLong("dailyChallengeWonAtEpochSecond"),
             weeklyChallengeWonAtEpochSecond = getLong("weeklyChallengeWonAtEpochSecond"),
+            journeyPoints = getLong("journeyPoints") ?: 0L,
         )
     }
 

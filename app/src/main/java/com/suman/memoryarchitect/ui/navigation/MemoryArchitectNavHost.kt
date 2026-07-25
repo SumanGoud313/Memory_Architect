@@ -31,6 +31,7 @@ import com.suman.memoryarchitect.ui.screens.levelselect.LevelSelectScreen
 import com.suman.memoryarchitect.ui.screens.missions.MissionsScreen
 import com.suman.memoryarchitect.ui.screens.modeselect.ModeSelectScreen
 import com.suman.memoryarchitect.ui.screens.profile.AchievementsScreen
+import com.suman.memoryarchitect.ui.screens.profile.MemoryJourneyScreen
 import com.suman.memoryarchitect.ui.screens.profile.ProfileScreen
 import com.suman.memoryarchitect.ui.screens.profile.RewardsScreen
 import com.suman.memoryarchitect.ui.screens.removeads.RemoveAdsScreen
@@ -115,6 +116,7 @@ fun MemoryArchitectNavHost(
                 onOpenLeaderboard = { navController.navigate(Route.Leaderboard) },
                 onOpenAchievements = { navController.navigate(Route.Achievements) },
                 onOpenRewards = { navController.navigate(Route.Rewards) },
+                onOpenMemoryJourney = { navController.navigate(Route.MemoryJourney) },
             )
         }
         composable<Route.Statistics>(enterTransition = NavAnimations.fadeEnter, exitTransition = NavAnimations.fadeExit) {
@@ -132,6 +134,10 @@ fun MemoryArchitectNavHost(
         composable<Route.Rewards>(enterTransition = NavAnimations.fadeEnter, exitTransition = NavAnimations.fadeExit) {
             TrackScreenView("rewards", MusicTrack.HOME)
             RewardsScreen(onBack = { navController.popBackStack() })
+        }
+        composable<Route.MemoryJourney>(enterTransition = NavAnimations.fadeEnter, exitTransition = NavAnimations.fadeExit) {
+            TrackScreenView("memory_journey", MusicTrack.HOME)
+            MemoryJourneyScreen(onBack = { navController.popBackStack() })
         }
         composable<Route.Settings>(enterTransition = NavAnimations.fadeEnter, exitTransition = NavAnimations.fadeExit) {
             // Every non-gameplay screen shares MusicTrack.HOME on purpose - see MusicTrack's doc.

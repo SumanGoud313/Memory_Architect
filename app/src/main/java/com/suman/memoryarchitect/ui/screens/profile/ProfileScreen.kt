@@ -52,6 +52,7 @@ import com.suman.memoryarchitect.core.common.toDisplayTitle
 import com.suman.memoryarchitect.domain.model.CosmeticCategory
 import com.suman.memoryarchitect.domain.model.CosmeticId
 import com.suman.memoryarchitect.domain.model.DailyRewardClaimResult
+import com.suman.memoryarchitect.domain.progression.MemoryJourneyCatalog
 import com.suman.memoryarchitect.feature.profile.AccountViewModel
 import com.suman.memoryarchitect.feature.profile.ProfileUiState
 import com.suman.memoryarchitect.feature.profile.ProfileViewModel
@@ -81,6 +82,7 @@ fun ProfileScreen(
     onOpenLeaderboard: () -> Unit,
     onOpenAchievements: () -> Unit,
     onOpenRewards: () -> Unit,
+    onOpenMemoryJourney: () -> Unit,
     viewModel: ProfileViewModel = hiltViewModel(),
     accountViewModel: AccountViewModel = hiltViewModel(),
 ) {
@@ -121,6 +123,7 @@ fun ProfileScreen(
                 onOpenLeaderboard = onOpenLeaderboard,
                 onOpenAchievements = onOpenAchievements,
                 onOpenRewards = onOpenRewards,
+                onOpenMemoryJourney = onOpenMemoryJourney,
             )
         }
 
@@ -139,6 +142,7 @@ private fun ProfileContent(
     onOpenLeaderboard: () -> Unit,
     onOpenAchievements: () -> Unit,
     onOpenRewards: () -> Unit,
+    onOpenMemoryJourney: () -> Unit,
 ) {
     val context = LocalContext.current
     // The Achievements/Rewards row is the new bottom-most interactive content on this screen -
@@ -226,6 +230,11 @@ private fun ProfileContent(
         StreakMilestoneTimeline(
             currentStreak = state.profile.currentStreak,
             modifier = Modifier.fillMaxWidth().padding(top = 20.dp).staggeredReveal(1),
+        )
+
+        MemoryJourneyBar(
+            standing = MemoryJourneyCatalog.standingFor(state.profile.journeyPoints),
+            modifier = Modifier.fillMaxWidth().padding(top = 16.dp).staggeredReveal(1),
         )
 
         Text(
@@ -324,6 +333,12 @@ private fun ProfileContent(
                 onClick = onOpenRewards,
                 modifier = Modifier.weight(1f),
                 horizontalPadding = 12.dp,
+            )
+            OutlineButton(
+                text = stringResource(R.string.memory_journey_header),
+                onClick = onOpenMemoryJourney,
+                modifier = Modifier.weight(1f),
+                horizontalPadding = 8.dp,
             )
         }
     }

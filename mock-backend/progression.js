@@ -15,6 +15,23 @@ const STREAK_MILESTONE_DAYS = [3, 7, 14, 30, 60, 90, 180, 365];
 const STREAK_SHIELD_MILESTONE_DAYS = [7, 30, 90, 365];
 const MAX_STORED_STREAK_SHIELDS = 3;
 
+// Mirrors MemoryJourneyRules.Default (domain/model/MemoryJourneyRules.kt).
+const JOURNEY_POINTS_PER_LEVEL_COMPLETED = 10;
+const JOURNEY_PERFECT_ACCURACY_BONUS = 5;
+const JOURNEY_POINTS_PER_ACHIEVEMENT_UNLOCKED = 25;
+const JOURNEY_POINTS_PER_STREAK_MILESTONE = 30;
+
+// Mirrors ProgressionRepositoryImpl/FirestoreProgressionRemoteSource's own copy of this same
+// formula - only newlyUnlockedAchievementCount is client-trusted (achievements are local-only),
+// the other three sources are recomputed here from fields already available server-side.
+function journeyPointsAwardedFor(sceneAccuracy, streakMilestoneReached, newlyUnlockedAchievementCount) {
+  let points = JOURNEY_POINTS_PER_LEVEL_COMPLETED;
+  if ((sceneAccuracy || 0) >= 1) points += JOURNEY_PERFECT_ACCURACY_BONUS;
+  if (streakMilestoneReached !== null && streakMilestoneReached !== undefined) points += JOURNEY_POINTS_PER_STREAK_MILESTONE;
+  points += JOURNEY_POINTS_PER_ACHIEVEMENT_UNLOCKED * (newlyUnlockedAchievementCount || 0);
+  return points;
+}
+
 // Mirrors StreakCalculator.updateStreak (domain/progression/StreakCalculator.kt) - including the
 // Streak Shield auto-consume (a one-day gap with at least one shield banked extends the streak
 // instead of resetting it) and milestone-shield-grant logic, not just the plain streak length.
@@ -76,7 +93,7 @@ function coinsAwardedFor(mode, finalScore, comboCount, sceneAccuracy) {
 // A win locks that mode's card client-side for a fixed window (24h daily / 168h weekly - see
 // GameModeDisplay.kt's challengeLockDurationSeconds()). Stamped here with the server's own clock
 // so it's the authoritative value the client's optimistic local guess gets reconciled against.
-function applyScoreSubmission(profile, mode, finalScore, comboCount, sceneAccuracy, playedOnEpochDay) {
+function applyScoreSubmission(profile, mode, finalScore, comboCount, sceneAccuracy, playedOnEpochDay, newlyUnlockedAchievementCount) {
   const xpAwarded = finalScore * XP_PER_SCORE_POINT;
   const coinsAwarded = coinsAwardedFor(mode, finalScore, comboCount, sceneAccuracy);
   const streakUpdate = updateStreak(
@@ -86,6 +103,7 @@ function applyScoreSubmission(profile, mode, finalScore, comboCount, sceneAccura
     profile.longestStreak,
     profile.streakShields,
   );
+  const journeyPointsAwarded = journeyPointsAwardedFor(sceneAccuracy, streakUpdate.milestoneReached, newlyUnlockedAchievementCount);
   const won = isChallengeWin(mode, sceneAccuracy);
   const nowEpochSecond = Math.floor(Date.now() / 1000);
   return {
@@ -97,6 +115,7 @@ function applyScoreSubmission(profile, mode, finalScore, comboCount, sceneAccura
     lastPlayedEpochDay: playedOnEpochDay,
     dailyChallengeWonAtEpochSecond: mode === 'DAILY_CHALLENGE' && won ? nowEpochSecond : (profile.dailyChallengeWonAtEpochSecond ?? null),
     weeklyChallengeWonAtEpochSecond: mode === 'WEEKLY_CHALLENGE' && won ? nowEpochSecond : (profile.weeklyChallengeWonAtEpochSecond ?? null),
+    journeyPoints: (profile.journeyPoints || 0) + journeyPointsAwarded,
   };
 }
 

@@ -63,6 +63,12 @@ const MAX_PLAUSIBLE_COINS_GAIN_PER_WRITE = 2_000;
 const MAX_PLAUSIBLE_SHIELD_GAIN_PER_WRITE = 1;
 const MAX_PLAUSIBLE_SHIELD_LOSS_PER_WRITE = 1;
 
+// Mirrors MemoryJourneyRules.Default (domain/model/MemoryJourneyRules.kt) - a generous ceiling
+// above the single largest per-write grant that table can produce (a perfect Classic round that
+// also crosses a streak milestone and unlocks a couple of achievements, or a Monthly mission
+// claim), well below the account-wide bound firestore.rules enforces.
+const MAX_PLAUSIBLE_JOURNEY_POINTS_GAIN_PER_WRITE = 500;
+
 // A legitimate decrease now exists (a Point Shop purchase/spin, see FirestoreShopRemoteSource.kt)
 // - this bounds it the same generous-ceiling way MAX_PLAUSIBLE_COINS_GAIN_PER_WRITE already bounds
 // increases, well above the priciest single catalog item/spin cost (see shopCatalog.ts) but far
@@ -156,6 +162,16 @@ export const validateProfileWrite = onDocumentWritten("playerProfiles/{uid}", as
         problems.push(`streakShields increased implausibly (${previousShields} -> ${data.streakShields})`);
       } else if (-shieldDelta > MAX_PLAUSIBLE_SHIELD_LOSS_PER_WRITE) {
         problems.push(`streakShields decreased implausibly (${previousShields} -> ${data.streakShields})`);
+      }
+    }
+
+    // journeyPoints is lifetime-cumulative, like xp/coins above - it should only ever go up.
+    const previousJourneyPoints = before.data()?.journeyPoints ?? 0;
+    if (typeof data?.journeyPoints === "number") {
+      if (data.journeyPoints < previousJourneyPoints) {
+        problems.push(`journeyPoints decreased (${previousJourneyPoints} -> ${data.journeyPoints})`);
+      } else if (data.journeyPoints - previousJourneyPoints > MAX_PLAUSIBLE_JOURNEY_POINTS_GAIN_PER_WRITE) {
+        problems.push(`journeyPoints increased implausibly (${previousJourneyPoints} -> ${data.journeyPoints})`);
       }
     }
   }

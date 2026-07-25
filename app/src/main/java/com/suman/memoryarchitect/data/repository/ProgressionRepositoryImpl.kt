@@ -20,6 +20,7 @@ import com.suman.memoryarchitect.domain.model.AppError
 import com.suman.memoryarchitect.domain.model.DailyRewardClaimResult
 import com.suman.memoryarchitect.domain.model.DailyRewardStatus
 import com.suman.memoryarchitect.domain.model.GameMode
+import com.suman.memoryarchitect.domain.model.MemoryJourneyRules
 import com.suman.memoryarchitect.domain.model.Outcome
 import com.suman.memoryarchitect.domain.model.PlayerProfile
 import com.suman.memoryarchitect.domain.model.PlayerStatistics
@@ -28,6 +29,7 @@ import com.suman.memoryarchitect.domain.model.RewardId
 import com.suman.memoryarchitect.domain.model.ScoreResult
 import com.suman.memoryarchitect.domain.model.ScoreSubmissionResult
 import com.suman.memoryarchitect.domain.progression.LevelCampaignRules
+import com.suman.memoryarchitect.domain.progression.MemoryJourneyCatalog
 import com.suman.memoryarchitect.domain.progression.ProgressionRules
 import com.suman.memoryarchitect.domain.progression.RewardEvaluator
 import com.suman.memoryarchitect.domain.progression.StreakCalculator
@@ -177,9 +179,12 @@ class ProgressionRepositoryImpl @Inject constructor(
         val updatedStatistics = updateStatistics(mode, score, playedOnEpochDay, timeTakenMs)
         val newlyUnlocked = evaluateAndPersistAchievements(optimisticProfile, updatedStatistics, playedOnEpochDay)
         val newlyUnlockedRewards = evaluateAndPersistRewards(xpCurve.levelForXp(optimisticProfile.xp), playedOnEpochDay)
+        val journeyPointsAwarded = journeyPointsAwardedFor(score.sceneAccuracy, streakUpdate.milestoneReached, newlyUnlocked.size)
+        val finalOptimisticProfile = optimisticProfile.copy(journeyPoints = cachedProfile.journeyPoints + journeyPointsAwarded)
+        val previousJourneyTierId = MemoryJourneyCatalog.tierFor(cachedProfile.journeyPoints)?.id
 
         try {
-            val serverProfile = activeRemoteSource().submitScore(mode, score, levelSeed, playedOnEpochDay, submissionNonce)
+            val serverProfile = activeRemoteSource().submitScore(mode, score, levelSeed, playedOnEpochDay, submissionNonce, newlyUnlocked.size)
             progressDao.upsert(serverProfile.toCacheEntity())
             Outcome.Success(
                 ScoreSubmissionResult(
@@ -187,6 +192,8 @@ class ProgressionRepositoryImpl @Inject constructor(
                     streakMilestoneReached = streakUpdate.milestoneReached,
                     streakShieldGranted = streakUpdate.shieldGranted,
                     streakShieldConsumed = streakUpdate.shieldConsumed,
+                    journeyPointsAwarded = serverProfile.journeyPoints - cachedProfile.journeyPoints,
+                    journeyTierReached = MemoryJourneyCatalog.tierFor(serverProfile.journeyPoints)?.id?.takeIf { it != previousJourneyTierId },
                 ),
             )
         } catch (cancellation: CancellationException) {
@@ -200,7 +207,7 @@ class ProgressionRepositoryImpl @Inject constructor(
             // wrongly claw back credit for a round that did, in fact, count.
             Outcome.Error(AppError.Server(code = 409, message = duplicate.message))
         } catch (failure: Throwable) {
-            progressDao.upsert(optimisticProfile.toCacheEntity())
+            progressDao.upsert(finalOptimisticProfile.toCacheEntity())
             pendingDao.insert(
                 PendingScoreSubmissionEntity(
                     mode = mode.name,
@@ -214,13 +221,28 @@ class ProgressionRepositoryImpl @Inject constructor(
             )
             Outcome.Success(
                 ScoreSubmissionResult(
-                    optimisticProfile, xpAwarded, coinsAwarded, leveledUp, isPendingSync = true, updatedStatistics, newlyUnlocked, newlyUnlockedRewards,
+                    finalOptimisticProfile, xpAwarded, coinsAwarded, leveledUp, isPendingSync = true, updatedStatistics, newlyUnlocked, newlyUnlockedRewards,
                     streakMilestoneReached = streakUpdate.milestoneReached,
                     streakShieldGranted = streakUpdate.shieldGranted,
                     streakShieldConsumed = streakUpdate.shieldConsumed,
+                    journeyPointsAwarded = journeyPointsAwarded,
+                    journeyTierReached = MemoryJourneyCatalog.tierFor(finalOptimisticProfile.journeyPoints)?.id?.takeIf { it != previousJourneyTierId },
                 ),
             )
         }
+    }
+
+    /** Mirrors `applyScoreSubmission` in mock-backend/progression.js's own copy - a round only
+     * ever reaches here having already passed (see [submitScore]'s "no partial credit" doc), so
+     * [MemoryJourneyRules.pointsPerLevelCompleted] always applies; the other three sources are
+     * each conditional on this exact round/streak-update actually having triggered them. */
+    private fun journeyPointsAwardedFor(sceneAccuracy: Float, streakMilestoneReached: Int?, newlyUnlockedAchievementCount: Int): Long {
+        val rules = MemoryJourneyRules.Default
+        var points = rules.pointsPerLevelCompleted
+        if (sceneAccuracy >= 1f) points += rules.perfectAccuracyBonus
+        if (streakMilestoneReached != null) points += rules.pointsPerStreakMilestone
+        points += rules.pointsPerAchievementUnlocked * newlyUnlockedAchievementCount
+        return points
     }
 
     /** Mirrors `applyScoreSubmission` in mock-backend/progression.js so client and server agree.
@@ -356,6 +378,7 @@ class ProgressionRepositoryImpl @Inject constructor(
         streakShields = streakShields,
         dailyChallengeWonAtEpochSecond = dailyChallengeWonAtEpochSecond,
         weeklyChallengeWonAtEpochSecond = weeklyChallengeWonAtEpochSecond,
+        journeyPoints = journeyPoints,
         lastSyncedAt = System.currentTimeMillis(),
     )
 
@@ -368,6 +391,7 @@ class ProgressionRepositoryImpl @Inject constructor(
         streakShields = streakShields,
         dailyChallengeWonAtEpochSecond = dailyChallengeWonAtEpochSecond,
         weeklyChallengeWonAtEpochSecond = weeklyChallengeWonAtEpochSecond,
+        journeyPoints = journeyPoints,
     )
 
     private fun PlayerStatistics.toCacheEntity() = StatisticsCacheEntity(

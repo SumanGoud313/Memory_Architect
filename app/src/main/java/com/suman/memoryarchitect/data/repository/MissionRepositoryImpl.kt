@@ -141,6 +141,7 @@ class MissionRepositoryImpl @Inject constructor(
         streakShields = streakShields,
         dailyChallengeWonAtEpochSecond = dailyChallengeWonAtEpochSecond,
         weeklyChallengeWonAtEpochSecond = weeklyChallengeWonAtEpochSecond,
+        journeyPoints = journeyPoints,
         lastSyncedAt = System.currentTimeMillis(),
     )
 }
