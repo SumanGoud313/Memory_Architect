@@ -4,6 +4,7 @@ const express = require('express');
 const { TIER_INDEX, computeConstraints, generateLevel } = require('./generation');
 const { applyScoreSubmission, canClaimDailyReward, nextDailyRewardCycleDay, claimDailyReward } = require('./progression');
 const { purchaseCosmetic, spinLuckySpin, equipCosmetic, unequipCosmetic } = require('./shop');
+const { claimMissionReward, consumeInventoryItem } = require('./missions');
 
 const PORT = process.env.PORT || 4000;
 const app = express();
@@ -22,6 +23,7 @@ let playerProfile = {
   currentStreak: 0,
   longestStreak: 0,
   lastPlayedEpochDay: null,
+  streakShields: 0,
   dailyChallengeWonAtEpochSecond: null,
   weeklyChallengeWonAtEpochSecond: null,
 };
@@ -34,6 +36,11 @@ let dailyReward = {
 let playerCosmetics = {
   ownedSkus: [],
   equipped: {},
+};
+
+let missionState = {
+  claimedKeys: {},
+  inventory: {},
 };
 
 function requestLogger(req, res, next) {
@@ -136,11 +143,13 @@ app.post('/v1/profile/reset', (req, res) => {
     currentStreak: 0,
     longestStreak: 0,
     lastPlayedEpochDay: null,
+    streakShields: 0,
     dailyChallengeWonAtEpochSecond: null,
     weeklyChallengeWonAtEpochSecond: null,
   };
   dailyReward = { cycleDay: 0, lastClaimedEpochDay: null };
   playerCosmetics = { ownedSkus: [], equipped: {} };
+  missionState = { claimedKeys: {}, inventory: {} };
   res.json(playerProfile);
 });
 
@@ -241,7 +250,59 @@ app.post('/v1/rewards/daily/claim', (req, res) => {
   const result = claimDailyReward(dailyReward, playerProfile, claimedOnEpochDay);
   playerProfile = result.profile;
   dailyReward = result.state;
-  res.json({ cycleDay: result.state.cycleDay, coinsAwarded: result.coinsAwarded, xpAwarded: result.xpAwarded, profile: playerProfile });
+  res.json({
+    cycleDay: result.state.cycleDay,
+    coinsAwarded: result.coinsAwarded,
+    xpAwarded: result.xpAwarded,
+    profile: playerProfile,
+    shieldAwarded: result.shieldAwarded,
+  });
+});
+
+app.get('/v1/inventory', (req, res) => {
+  res.json({ quantities: missionState.inventory });
+});
+
+app.post('/v1/missions/claim', (req, res) => {
+  const { missionId, periodKey, progressCount } = req.body || {};
+  if (typeof missionId !== 'string' || typeof periodKey !== 'number' || typeof progressCount !== 'number') {
+    res.status(400).json({ error: 'missionId, periodKey and progressCount are required' });
+    return;
+  }
+  const result = claimMissionReward(missionState, playerProfile, missionId, periodKey, progressCount);
+  if (result.error === 'already_claimed') {
+    res.status(409).json({ error: result.error });
+    return;
+  }
+  if (result.error) {
+    res.status(400).json({ error: result.error });
+    return;
+  }
+  playerProfile = result.profile;
+  missionState = result.state;
+  res.json({
+    missionId,
+    coinsAwarded: result.coinsAwarded,
+    xpAwarded: result.xpAwarded,
+    inventoryGrants: result.inventoryGrants,
+    profile: playerProfile,
+    inventory: { quantities: missionState.inventory },
+  });
+});
+
+app.post('/v1/inventory/consume', (req, res) => {
+  const { kind, quantity } = req.body || {};
+  if (typeof kind !== 'string' || typeof quantity !== 'number') {
+    res.status(400).json({ error: 'kind and quantity are required' });
+    return;
+  }
+  const result = consumeInventoryItem(missionState, kind, quantity);
+  if (result.error) {
+    res.status(409).json({ error: result.error });
+    return;
+  }
+  missionState = result.state;
+  res.json({ quantities: missionState.inventory });
 });
 
 app.listen(PORT, () => {

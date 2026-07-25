@@ -4,12 +4,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.suman.memoryarchitect.domain.model.CosmeticCategory
 import com.suman.memoryarchitect.domain.model.CosmeticId
+import com.suman.memoryarchitect.domain.model.MissionEvent
 import com.suman.memoryarchitect.domain.model.Outcome
 import com.suman.memoryarchitect.domain.usecase.EquipCosmeticUseCase
 import com.suman.memoryarchitect.domain.usecase.GetEquippedCosmeticsUseCase
 import com.suman.memoryarchitect.domain.usecase.GetFavoriteCosmeticsUseCase
 import com.suman.memoryarchitect.domain.usecase.GetOwnedCosmeticsUseCase
 import com.suman.memoryarchitect.domain.usecase.GetRecentlyUsedCosmeticsUseCase
+import com.suman.memoryarchitect.domain.usecase.RecordMissionEventUseCase
 import com.suman.memoryarchitect.domain.usecase.ToggleFavoriteCosmeticUseCase
 import com.suman.memoryarchitect.domain.usecase.UnequipCosmeticUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -33,6 +35,7 @@ class CollectionsViewModel @Inject constructor(
     private val getFavoriteCosmetics: GetFavoriteCosmeticsUseCase,
     private val getRecentlyUsedCosmetics: GetRecentlyUsedCosmeticsUseCase,
     private val toggleFavoriteCosmetic: ToggleFavoriteCosmeticUseCase,
+    private val recordMissionEvent: RecordMissionEventUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<CollectionsUiState>(CollectionsUiState.Loading)
@@ -75,11 +78,14 @@ class CollectionsViewModel @Inject constructor(
             val outcome = equipCosmetic(category, id)
             val latest = _uiState.value as? CollectionsUiState.Content ?: return@launch
             _uiState.value = when (outcome) {
-                is Outcome.Success -> latest.copy(
-                    equipped = latest.equipped + (category to id),
-                    equippingId = null,
-                    recentlyUsedIds = runCatching { getRecentlyUsedCosmetics() }.getOrDefault(latest.recentlyUsedIds),
-                )
+                is Outcome.Success -> {
+                    recordMissionEvent(MissionEvent.CosmeticEquipped)
+                    latest.copy(
+                        equipped = latest.equipped + (category to id),
+                        equippingId = null,
+                        recentlyUsedIds = runCatching { getRecentlyUsedCosmetics() }.getOrDefault(latest.recentlyUsedIds),
+                    )
+                }
                 is Outcome.Error -> latest.copy(equippingId = null)
             }
         }

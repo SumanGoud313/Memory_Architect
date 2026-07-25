@@ -5,8 +5,10 @@ import androidx.room.Room
 import com.suman.memoryarchitect.core.database.AppDatabase
 import com.suman.memoryarchitect.core.database.EquippedCosmeticDao
 import com.suman.memoryarchitect.core.database.HintUsageDao
+import com.suman.memoryarchitect.core.database.InventoryItemDao
 import com.suman.memoryarchitect.core.database.LevelBestTimeDao
 import com.suman.memoryarchitect.core.database.LevelCampaignProgressDao
+import com.suman.memoryarchitect.core.database.MissionProgressDao
 import com.suman.memoryarchitect.core.database.OwnedCosmeticDao
 import com.suman.memoryarchitect.core.database.PendingScoreSubmissionDao
 import com.suman.memoryarchitect.core.database.PlayerProgressDao
@@ -77,4 +79,10 @@ object DatabaseModule {
 
     @Provides
     fun provideEquippedCosmeticDao(database: AppDatabase): EquippedCosmeticDao = database.equippedCosmeticDao()
+
+    @Provides
+    fun provideMissionProgressDao(database: AppDatabase): MissionProgressDao = database.missionProgressDao()
+
+    @Provides
+    fun provideInventoryItemDao(database: AppDatabase): InventoryItemDao = database.inventoryItemDao()
 }

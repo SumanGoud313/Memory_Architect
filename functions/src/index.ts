@@ -26,6 +26,7 @@ import { logger } from "firebase-functions";
 import { google } from "googleapis";
 import { SHOP_CATALOG_PRICES, SPIN_COST_COINS } from "./shopCatalog";
 import { PREMIUM_GRANTED_SKUS, PREMIUM_PRODUCT_GRANTS } from "./premiumCatalog";
+import { activeMissionIds, definitionFor, periodFor, MAX_MISSION_INVENTORY_GRANT_PER_KIND } from "./missions";
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -54,6 +55,13 @@ const MIN_RESUBMISSION_INTERVAL_MS = 3_000; // reject writes from the same playe
 // in one forged write.
 const MAX_PLAUSIBLE_XP_GAIN_PER_WRITE = 5_000;
 const MAX_PLAUSIBLE_COINS_GAIN_PER_WRITE = 2_000;
+
+// Mirrors StreakRules.Default (domain/model/StreakRules.kt) - exactly one Streak Shield can ever
+// be granted (a streak-milestone crossing or a Daily Reward bonus day) or consumed (covering one
+// missed day) per single submitScore/claimDailyReward write - never both in the same write, and
+// never more than one of either.
+const MAX_PLAUSIBLE_SHIELD_GAIN_PER_WRITE = 1;
+const MAX_PLAUSIBLE_SHIELD_LOSS_PER_WRITE = 1;
 
 // A legitimate decrease now exists (a Point Shop purchase/spin, see FirestoreShopRemoteSource.kt)
 // - this bounds it the same generous-ceiling way MAX_PLAUSIBLE_COINS_GAIN_PER_WRITE already bounds
@@ -139,6 +147,16 @@ export const validateProfileWrite = onDocumentWritten("playerProfiles/{uid}", as
       }
     } else if (typeof data?.coins === "number" && data.coins - previousCoins > MAX_PLAUSIBLE_COINS_GAIN_PER_WRITE) {
       problems.push(`coins increased implausibly (${previousCoins} -> ${data.coins})`);
+    }
+
+    const previousShields = before.data()?.streakShields ?? 0;
+    if (typeof data?.streakShields === "number") {
+      const shieldDelta = data.streakShields - previousShields;
+      if (shieldDelta > MAX_PLAUSIBLE_SHIELD_GAIN_PER_WRITE) {
+        problems.push(`streakShields increased implausibly (${previousShields} -> ${data.streakShields})`);
+      } else if (-shieldDelta > MAX_PLAUSIBLE_SHIELD_LOSS_PER_WRITE) {
+        problems.push(`streakShields decreased implausibly (${previousShields} -> ${data.streakShields})`);
+      }
     }
   }
 
@@ -447,6 +465,107 @@ export const validateCosmeticsWrite = onDocumentWritten("playerCosmetics/{uid}",
 
   if (problems.length > 0) {
     logger.warn(`Reverting invalid playerCosmetics/${uid} write: ${problems.join(", ")}`);
+    if (before?.exists) {
+      await after.ref.set(before.data()!);
+    } else {
+      await after.ref.delete();
+    }
+  }
+});
+
+/** Re-validates every `missionClaims/{uid}` write - the double-claim guard
+ * FirestoreMissionRemoteSource.claimMissionReward writes alongside the coin/xp/inventory grant.
+ * Independent of validateProfileWrite/validateInventoryWrite's plausibility bounds below: this
+ * checks that each newly-added claim key actually names a mission that was part of *that period's*
+ * deterministic rotation (see missions.ts's activeMissionIds, recomputed here from scratch rather
+ * than trusted), so a forged claim for a mission that was never active can't pair with a
+ * plausible-looking profile/inventory increase to look legitimate. */
+export const validateMissionClaims = onDocumentWritten("missionClaims/{uid}", async (event) => {
+  const after = event.data?.after;
+  if (!after?.exists) return;
+
+  const data = after.data();
+  const uid = event.params.uid;
+  const problems: string[] = [];
+
+  const claimedKeys: Record<string, unknown> = typeof data?.claimedKeys === "object" && data?.claimedKeys !== null ? data.claimedKeys : {};
+  const before = event.data?.before;
+  const previousKeys: Record<string, unknown> = before?.exists && typeof before.data()?.claimedKeys === "object" ? before.data()!.claimedKeys : {};
+
+  // Claims are append-only, exactly like playerCosmetics.ownedSkus can only ever grow.
+  const missingKeys = Object.keys(previousKeys).filter((key) => !(key in claimedKeys));
+  if (missingKeys.length > 0) {
+    problems.push(`claimedKeys shrank: lost ${missingKeys.join(", ")}`);
+  }
+
+  const newKeys = Object.keys(claimedKeys).filter((key) => !(key in previousKeys));
+  if (newKeys.length > 1) {
+    problems.push("more than one new mission claimed in a single write");
+  }
+  for (const key of newKeys) {
+    const separatorIndex = key.lastIndexOf("_");
+    const missionId = key.slice(0, separatorIndex);
+    const periodKey = Number(key.slice(separatorIndex + 1));
+    const definition = definitionFor(missionId);
+    const period = periodFor(missionId);
+    if (!definition || !period || Number.isNaN(periodKey)) {
+      problems.push(`malformed claim key: ${key}`);
+      continue;
+    }
+    if (!activeMissionIds(period, periodKey).includes(missionId)) {
+      problems.push(`${missionId} was never active for period ${periodKey}`);
+    }
+  }
+
+  if (await isRateLimited(uid, "missionClaims")) {
+    problems.push("resubmitted faster than the allowed interval");
+  }
+
+  if (problems.length > 0) {
+    logger.warn(`Reverting invalid missionClaims/${uid} write: ${problems.join(", ")}`);
+    if (before?.exists) {
+      await after.ref.set(before.data()!);
+    } else {
+      await after.ref.delete();
+    }
+  }
+});
+
+/** Re-validates every `inventory/{uid}` write - written by both
+ * FirestoreMissionRemoteSource.claimMissionReward (a grant) and .consumeInventoryItem (a spend).
+ * A spend is unbounded here (consuming your own already-owned items can't create value out of
+ * nothing); only an *increase* is bounded, the same "plausibility, not full re-derivation" the
+ * profile/cosmetics validators above already apply. */
+export const validateInventoryWrite = onDocumentWritten("inventory/{uid}", async (event) => {
+  const after = event.data?.after;
+  if (!after?.exists) return;
+
+  const data = after.data();
+  const uid = event.params.uid;
+  const problems: string[] = [];
+
+  const quantities: Record<string, unknown> = typeof data?.quantities === "object" && data?.quantities !== null ? data.quantities : {};
+  const before = event.data?.before;
+  const previousQuantities: Record<string, unknown> =
+    before?.exists && typeof before.data()?.quantities === "object" ? before.data()!.quantities : {};
+
+  for (const [kind, value] of Object.entries(quantities)) {
+    if (typeof value !== "number" || value < 0) {
+      problems.push(`invalid quantity for ${kind}`);
+      continue;
+    }
+    const previous = typeof previousQuantities[kind] === "number" ? (previousQuantities[kind] as number) : 0;
+    if (value - previous > MAX_MISSION_INVENTORY_GRANT_PER_KIND) {
+      problems.push(`${kind} increased implausibly (${previous} -> ${value})`);
+    }
+  }
+
+  if (await isRateLimited(uid, "inventory")) {
+    problems.push("resubmitted faster than the allowed interval");
+  }
+
+  if (problems.length > 0) {
+    logger.warn(`Reverting invalid inventory/${uid} write: ${problems.join(", ")}`);
     if (before?.exists) {
       await after.ref.set(before.data()!);
     } else {

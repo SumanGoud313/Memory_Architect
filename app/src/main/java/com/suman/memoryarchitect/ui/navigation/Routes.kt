@@ -34,19 +34,28 @@ sealed interface Route {
     @Serializable
     data object RemoveAds : Route
 
+    /** The cosmetics hub - Shop/Collections as tabs within one screen (Shop selected by default),
+     * reached via the round "Cosmetics" corner button on [com.suman.memoryarchitect.ui.screens.modeselect.ModeSelectScreen].
+     * Shop/Collections no longer have their own routes - see `CosmeticsHubScreen.kt`. Lucky Spin
+     * is its own route again (below) - it moved out of this tab shell onto Mode Select directly. */
     @Serializable
-    data object Shop : Route
+    data object CosmeticsHub : Route
 
-    @Serializable
-    data object Collections : Route
-
+    /** Lucky Spin - its own icon on [com.suman.memoryarchitect.ui.screens.modeselect.ModeSelectScreen],
+     * between Cosmetics and Remove Ads. Not part of [CosmeticsHub]'s tab shell. */
     @Serializable
     data object LuckySpin : Route
 
-    /** The cosmetics hub - Showcase + Shop/Collections/Lucky Spin entry points, reached via the
-     * round "Cosmetics" corner button on [RemoveAds] (moved here from Profile). */
+    /** Today's/this week's/this month's active missions - its own icon on
+     * [com.suman.memoryarchitect.ui.screens.modeselect.ModeSelectScreen], alongside Cosmetics/
+     * Lucky Spin/Remove Ads/Inventory. */
     @Serializable
-    data object CosmeticsHub : Route
+    data object Missions : Route
+
+    /** The permanent home for every earned consumable (Hint/Redo/Rewatch tokens, Lucky Spin
+     * tickets, XP boosts, discount coupons, mystery chests) - its own icon alongside Missions. */
+    @Serializable
+    data object Inventory : Route
 
     /** Debug-build-only - see `SettingsScreen`'s `BuildConfig.DEBUG`-gated entry point, the only
      * place this is ever navigated to from. */

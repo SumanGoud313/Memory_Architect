@@ -40,7 +40,7 @@ class MockBackendProgressionRemoteSource @Inject constructor(
 
     override suspend fun claimDailyReward(claimedOnEpochDay: Long): DailyRewardClaimResult {
         val dto = api.claimDailyReward(ClaimDailyRewardRequestDto(claimedOnEpochDay))
-        return DailyRewardClaimResult(dto.cycleDay, dto.coinsAwarded, dto.xpAwarded, dto.profile.toDomain())
+        return DailyRewardClaimResult(dto.cycleDay, dto.coinsAwarded, dto.xpAwarded, dto.profile.toDomain(), dto.shieldAwarded)
     }
 
     private fun PlayerProfileDto.toDomain() = PlayerProfile(
@@ -49,6 +49,7 @@ class MockBackendProgressionRemoteSource @Inject constructor(
         currentStreak = currentStreak,
         longestStreak = longestStreak,
         lastPlayedEpochDay = lastPlayedEpochDay,
+        streakShields = streakShields,
         dailyChallengeWonAtEpochSecond = dailyChallengeWonAtEpochSecond,
         weeklyChallengeWonAtEpochSecond = weeklyChallengeWonAtEpochSecond,
     )

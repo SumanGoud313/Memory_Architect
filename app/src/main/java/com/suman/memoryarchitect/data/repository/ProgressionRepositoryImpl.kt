@@ -150,11 +150,12 @@ class ProgressionRepositoryImpl @Inject constructor(
         val cachedProfile = progressDao.get()?.toDomain() ?: PlayerProfile.EMPTY
         val xpAwarded = (score.finalScore * ProgressionRules.Default.xpPerScorePoint).roundToLong()
         val coinsAwarded = coinsAwardedFor(mode, score)
-        val (newStreak, newLongestStreak) = streakCalculator.updateStreak(
+        val streakUpdate = streakCalculator.updateStreak(
             cachedProfile.lastPlayedEpochDay,
             playedOnEpochDay,
             cachedProfile.currentStreak,
             cachedProfile.longestStreak,
+            cachedProfile.streakShields,
         )
         val previousLevel = xpCurve.levelForXp(cachedProfile.xp)
         // A guess at what the server will stamp (see mock-backend/progression.js's
@@ -164,8 +165,9 @@ class ProgressionRepositoryImpl @Inject constructor(
         val optimisticProfile = cachedProfile.copy(
             xp = cachedProfile.xp + xpAwarded,
             coins = cachedProfile.coins + coinsAwarded,
-            currentStreak = newStreak,
-            longestStreak = newLongestStreak,
+            currentStreak = streakUpdate.currentStreak,
+            longestStreak = streakUpdate.longestStreak,
+            streakShields = streakUpdate.streakShields,
             lastPlayedEpochDay = playedOnEpochDay,
             dailyChallengeWonAtEpochSecond = if (mode == GameMode.DAILY_CHALLENGE && coinsAwarded > 0) nowEpochSecond else cachedProfile.dailyChallengeWonAtEpochSecond,
             weeklyChallengeWonAtEpochSecond = if (mode == GameMode.WEEKLY_CHALLENGE && coinsAwarded > 0) nowEpochSecond else cachedProfile.weeklyChallengeWonAtEpochSecond,
@@ -180,7 +182,12 @@ class ProgressionRepositoryImpl @Inject constructor(
             val serverProfile = activeRemoteSource().submitScore(mode, score, levelSeed, playedOnEpochDay, submissionNonce)
             progressDao.upsert(serverProfile.toCacheEntity())
             Outcome.Success(
-                ScoreSubmissionResult(serverProfile, xpAwarded, coinsAwarded, leveledUp, isPendingSync = false, updatedStatistics, newlyUnlocked, newlyUnlockedRewards),
+                ScoreSubmissionResult(
+                    serverProfile, xpAwarded, coinsAwarded, leveledUp, isPendingSync = false, updatedStatistics, newlyUnlocked, newlyUnlockedRewards,
+                    streakMilestoneReached = streakUpdate.milestoneReached,
+                    streakShieldGranted = streakUpdate.shieldGranted,
+                    streakShieldConsumed = streakUpdate.shieldConsumed,
+                ),
             )
         } catch (cancellation: CancellationException) {
             throw cancellation
@@ -206,7 +213,12 @@ class ProgressionRepositoryImpl @Inject constructor(
                 ),
             )
             Outcome.Success(
-                ScoreSubmissionResult(optimisticProfile, xpAwarded, coinsAwarded, leveledUp, isPendingSync = true, updatedStatistics, newlyUnlocked, newlyUnlockedRewards),
+                ScoreSubmissionResult(
+                    optimisticProfile, xpAwarded, coinsAwarded, leveledUp, isPendingSync = true, updatedStatistics, newlyUnlocked, newlyUnlockedRewards,
+                    streakMilestoneReached = streakUpdate.milestoneReached,
+                    streakShieldGranted = streakUpdate.shieldGranted,
+                    streakShieldConsumed = streakUpdate.shieldConsumed,
+                ),
             )
         }
     }
@@ -341,6 +353,7 @@ class ProgressionRepositoryImpl @Inject constructor(
         currentStreak = currentStreak,
         longestStreak = longestStreak,
         lastPlayedEpochDay = lastPlayedEpochDay,
+        streakShields = streakShields,
         dailyChallengeWonAtEpochSecond = dailyChallengeWonAtEpochSecond,
         weeklyChallengeWonAtEpochSecond = weeklyChallengeWonAtEpochSecond,
         lastSyncedAt = System.currentTimeMillis(),
@@ -352,6 +365,7 @@ class ProgressionRepositoryImpl @Inject constructor(
         currentStreak = currentStreak,
         longestStreak = longestStreak,
         lastPlayedEpochDay = lastPlayedEpochDay,
+        streakShields = streakShields,
         dailyChallengeWonAtEpochSecond = dailyChallengeWonAtEpochSecond,
         weeklyChallengeWonAtEpochSecond = weeklyChallengeWonAtEpochSecond,
     )

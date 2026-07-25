@@ -11,4 +11,5 @@ data class ClaimDailyRewardResponseDto(
     val coinsAwarded: Long,
     val xpAwarded: Long,
     val profile: PlayerProfileDto,
+    val shieldAwarded: Boolean = false,
 )

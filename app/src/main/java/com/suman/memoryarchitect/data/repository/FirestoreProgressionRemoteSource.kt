@@ -9,6 +9,7 @@ import com.suman.memoryarchitect.domain.model.DailyRewardStatus
 import com.suman.memoryarchitect.domain.model.GameMode
 import com.suman.memoryarchitect.domain.model.PlayerProfile
 import com.suman.memoryarchitect.domain.model.ScoreResult
+import com.suman.memoryarchitect.domain.model.StreakRules
 import com.suman.memoryarchitect.domain.progression.DailyRewardCatalog
 import com.suman.memoryarchitect.domain.progression.ProgressionRules
 import com.suman.memoryarchitect.domain.progression.StreakCalculator
@@ -71,17 +72,19 @@ class FirestoreProgressionRemoteSource @Inject constructor(
             // update, exactly like claimDailyReward's double-claim guard below.
             if (transaction.get(nonceRef).exists()) throw DuplicateSubmissionException()
             val current = transaction.get(docRef).toProfile() ?: PlayerProfile.EMPTY
-            val (newStreak, newLongestStreak) = streakCalculator.updateStreak(
+            val streakUpdate = streakCalculator.updateStreak(
                 current.lastPlayedEpochDay,
                 playedOnEpochDay,
                 current.currentStreak,
                 current.longestStreak,
+                current.streakShields,
             )
             val updated = current.copy(
                 xp = current.xp + xpAwarded,
                 coins = current.coins + coinsAwarded,
-                currentStreak = newStreak,
-                longestStreak = newLongestStreak,
+                currentStreak = streakUpdate.currentStreak,
+                longestStreak = streakUpdate.longestStreak,
+                streakShields = streakUpdate.streakShields,
                 lastPlayedEpochDay = playedOnEpochDay,
                 dailyChallengeWonAtEpochSecond = if (mode == GameMode.DAILY_CHALLENGE && won) nowEpochMs / 1000 else current.dailyChallengeWonAtEpochSecond,
                 weeklyChallengeWonAtEpochSecond = if (mode == GameMode.WEEKLY_CHALLENGE && won) nowEpochMs / 1000 else current.weeklyChallengeWonAtEpochSecond,
@@ -125,10 +128,15 @@ class FirestoreProgressionRemoteSource @Inject constructor(
             val cycleDay = DailyRewardCatalog.nextCycleDay(lastClaimedEpochDay, previousCycleDay, claimedOnEpochDay)
             val entry = DailyRewardCatalog.entryForDay(cycleDay)
             val currentProfile = transaction.get(profileRef).toProfile() ?: PlayerProfile.EMPTY
-            val updatedProfile = currentProfile.copy(coins = currentProfile.coins + entry.coins, xp = currentProfile.xp + entry.xp)
+            val shieldAwarded = entry.bonusShield && currentProfile.streakShields < StreakRules.Default.maxStoredShields
+            val updatedProfile = currentProfile.copy(
+                coins = currentProfile.coins + entry.coins,
+                xp = currentProfile.xp + entry.xp,
+                streakShields = if (shieldAwarded) currentProfile.streakShields + 1 else currentProfile.streakShields,
+            )
             transaction.set(rewardRef, mapOf("cycleDay" to cycleDay, "lastClaimedEpochDay" to claimedOnEpochDay))
             transaction.set(profileRef, updatedProfile.toFirestoreMap(clock))
-            DailyRewardClaimResult(cycleDay, entry.coins, entry.xp, updatedProfile)
+            DailyRewardClaimResult(cycleDay, entry.coins, entry.xp, updatedProfile, shieldAwarded)
         }.await()
     }
 
@@ -165,6 +173,7 @@ class FirestoreProgressionRemoteSource @Inject constructor(
             currentStreak = (getLong("currentStreak") ?: 0L).toInt(),
             longestStreak = (getLong("longestStreak") ?: 0L).toInt(),
             lastPlayedEpochDay = getLong("lastPlayedEpochDay"),
+            streakShields = (getLong("streakShields") ?: 0L).toInt(),
             dailyChallengeWonAtEpochSecond = getLong("dailyChallengeWonAtEpochSecond"),
             weeklyChallengeWonAtEpochSecond = getLong("weeklyChallengeWonAtEpochSecond"),
         )
@@ -176,6 +185,7 @@ class FirestoreProgressionRemoteSource @Inject constructor(
         "currentStreak" to currentStreak,
         "longestStreak" to longestStreak,
         "lastPlayedEpochDay" to lastPlayedEpochDay,
+        "streakShields" to streakShields,
         "dailyChallengeWonAtEpochSecond" to dailyChallengeWonAtEpochSecond,
         "weeklyChallengeWonAtEpochSecond" to weeklyChallengeWonAtEpochSecond,
         "updatedAtEpochMs" to clock.millis(),

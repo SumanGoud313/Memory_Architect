@@ -3,6 +3,7 @@ package com.suman.memoryarchitect.ui.screens.modeselect
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.calculateEndPadding
@@ -15,7 +16,10 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.filled.Casino
+import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -58,6 +62,9 @@ fun ModeSelectScreen(
     onOtherModeSelected: (GameMode, DifficultyTier) -> Unit,
     onOpenRemoveAds: () -> Unit = {},
     onOpenCosmetics: () -> Unit = {},
+    onOpenLuckySpin: () -> Unit = {},
+    onOpenMissions: () -> Unit = {},
+    onOpenInventory: () -> Unit = {},
     viewModel: ModeSelectViewModel = hiltViewModel(),
 ) {
     val particles = rememberParticleFieldState()
@@ -126,34 +133,62 @@ fun ModeSelectScreen(
                 ModeSelectProgressCard(progress = progress, modifier = Modifier.staggeredReveal(modes.size))
             }
 
-            IconGlassButton(
-                icon = Icons.Filled.Palette,
-                contentDescription = stringResource(R.string.profile_cosmetics_header),
-                onClick = onOpenCosmetics,
-                label = stringResource(R.string.profile_cosmetics_header),
+            // One evenly-spaced row (Cosmetics / Lucky Spin / Remove Ads) rather than the old
+            // two-corner-pinned layout - Arrangement.SpaceBetween naturally keeps equal spacing
+            // whether Remove Ads is showing (3 icons) or already owned and hidden (2 icons), with
+            // no extra layout branching needed either way.
+            Row(
                 modifier = Modifier
-                    .align(Alignment.TopStart)
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
                     .padding(
                         start = ScreenHorizontalMargin + systemBarPadding.calculateStartPadding(layoutDirection),
+                        end = ScreenHorizontalMargin + systemBarPadding.calculateEndPadding(layoutDirection),
                         top = systemBarPadding.calculateTopPadding() + TopExtraPadding,
-                    )
-                    .staggeredReveal(0),
-            )
-
-            if (!hasRemovedAds) {
+                    ),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
                 IconGlassButton(
-                    icon = Icons.Filled.Block,
-                    contentDescription = stringResource(R.string.settings_remove_ads),
-                    onClick = onOpenRemoveAds,
-                    label = stringResource(R.string.settings_remove_ads),
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(
-                            end = ScreenHorizontalMargin + systemBarPadding.calculateEndPadding(layoutDirection),
-                            top = systemBarPadding.calculateTopPadding() + TopExtraPadding,
-                        )
-                        .staggeredReveal(0),
+                    icon = Icons.AutoMirrored.Filled.Assignment,
+                    contentDescription = stringResource(R.string.missions_header),
+                    onClick = onOpenMissions,
+                    label = stringResource(R.string.missions_header),
+                    modifier = Modifier.staggeredReveal(0),
                 )
+
+                IconGlassButton(
+                    icon = Icons.Filled.Inventory2,
+                    contentDescription = stringResource(R.string.inventory_header),
+                    onClick = onOpenInventory,
+                    label = stringResource(R.string.inventory_header),
+                    modifier = Modifier.staggeredReveal(0),
+                )
+
+                IconGlassButton(
+                    icon = Icons.Filled.Palette,
+                    contentDescription = stringResource(R.string.profile_cosmetics_header),
+                    onClick = onOpenCosmetics,
+                    label = stringResource(R.string.profile_cosmetics_header),
+                    modifier = Modifier.staggeredReveal(0),
+                )
+
+                IconGlassButton(
+                    icon = Icons.Filled.Casino,
+                    contentDescription = stringResource(R.string.lucky_spin_title),
+                    onClick = onOpenLuckySpin,
+                    label = stringResource(R.string.lucky_spin_title),
+                    modifier = Modifier.staggeredReveal(0),
+                )
+
+                if (!hasRemovedAds) {
+                    IconGlassButton(
+                        icon = Icons.Filled.Block,
+                        contentDescription = stringResource(R.string.settings_remove_ads),
+                        onClick = onOpenRemoveAds,
+                        label = stringResource(R.string.settings_remove_ads),
+                        modifier = Modifier.staggeredReveal(0),
+                    )
+                }
             }
         }
     }

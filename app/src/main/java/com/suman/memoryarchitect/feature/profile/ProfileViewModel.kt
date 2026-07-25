@@ -3,6 +3,7 @@ package com.suman.memoryarchitect.feature.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.suman.memoryarchitect.core.analytics.AnalyticsLogger
+import com.suman.memoryarchitect.core.analytics.logDailyRewardClaimed
 import com.suman.memoryarchitect.core.analytics.setHighestCampaignLevelProperty
 import com.suman.memoryarchitect.core.analytics.setLifetimeCoinsProperty
 import com.suman.memoryarchitect.core.analytics.setLifetimeLevelsCompletedProperty
@@ -18,6 +19,7 @@ import com.suman.memoryarchitect.domain.model.Outcome
 import com.suman.memoryarchitect.domain.model.PlayerProfile
 import com.suman.memoryarchitect.domain.model.PlayerStatistics
 import com.suman.memoryarchitect.domain.model.RewardId
+import com.suman.memoryarchitect.domain.progression.DailyRewardCatalog
 import com.suman.memoryarchitect.domain.progression.MemoryRankCatalog
 import com.suman.memoryarchitect.domain.progression.RewardCatalog
 import com.suman.memoryarchitect.domain.progression.XpCurve
@@ -149,6 +151,8 @@ class ProfileViewModel @Inject constructor(
                     )
                     _claimEvents.emit(result)
                     feedback.onDailyRewardClaimed()
+                    val kind = DailyRewardCatalog.entryForDay(result.cycleDay).kind
+                    analytics.logDailyRewardClaimed(result.cycleDay, kind.name, result.coinsAwarded, result.xpAwarded, result.shieldAwarded)
                 }
                 is Outcome.Error -> {
                     _uiState.value = (_uiState.value as? ProfileUiState.Content)?.copy(isClaimingDailyReward = false) ?: _uiState.value

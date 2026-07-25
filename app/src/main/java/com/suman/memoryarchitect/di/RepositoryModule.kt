@@ -3,10 +3,12 @@ package com.suman.memoryarchitect.di
 import com.suman.memoryarchitect.data.repository.AvatarUploadRepositoryImpl
 import com.suman.memoryarchitect.data.repository.ChallengeRepositoryImpl
 import com.suman.memoryarchitect.data.repository.HintRepositoryImpl
+import com.suman.memoryarchitect.data.repository.InventoryRepositoryImpl
 import com.suman.memoryarchitect.data.repository.LeaderboardRepositoryImpl
 import com.suman.memoryarchitect.data.repository.LevelCampaignRepositoryImpl
 import com.suman.memoryarchitect.data.repository.LevelRepositoryImpl
 import com.suman.memoryarchitect.data.repository.LocalProgressResetRepositoryImpl
+import com.suman.memoryarchitect.data.repository.MissionRepositoryImpl
 import com.suman.memoryarchitect.data.repository.ProgressionRepositoryImpl
 import com.suman.memoryarchitect.data.repository.RedoRepositoryImpl
 import com.suman.memoryarchitect.data.repository.RemoteConfigRepositoryImpl
@@ -15,10 +17,12 @@ import com.suman.memoryarchitect.data.repository.ShopRepositoryImpl
 import com.suman.memoryarchitect.domain.repository.AvatarUploadRepository
 import com.suman.memoryarchitect.domain.repository.ChallengeRepository
 import com.suman.memoryarchitect.domain.repository.HintRepository
+import com.suman.memoryarchitect.domain.repository.InventoryRepository
 import com.suman.memoryarchitect.domain.repository.LeaderboardRepository
 import com.suman.memoryarchitect.domain.repository.LevelCampaignRepository
 import com.suman.memoryarchitect.domain.repository.LevelRepository
 import com.suman.memoryarchitect.domain.repository.LocalProgressResetRepository
+import com.suman.memoryarchitect.domain.repository.MissionRepository
 import com.suman.memoryarchitect.domain.repository.ProgressionRepository
 import com.suman.memoryarchitect.domain.repository.RedoRepository
 import com.suman.memoryarchitect.domain.repository.RemoteConfigRepository
@@ -105,4 +109,16 @@ abstract class RepositoryModule {
     abstract fun bindShopRepository(
         impl: ShopRepositoryImpl,
     ): ShopRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindMissionRepository(
+        impl: MissionRepositoryImpl,
+    ): MissionRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindInventoryRepository(
+        impl: InventoryRepositoryImpl,
+    ): InventoryRepository
 }

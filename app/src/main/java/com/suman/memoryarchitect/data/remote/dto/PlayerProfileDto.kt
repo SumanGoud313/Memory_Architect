@@ -9,6 +9,7 @@ data class PlayerProfileDto(
     val currentStreak: Int,
     val longestStreak: Int,
     val lastPlayedEpochDay: Long?,
+    val streakShields: Int = 0,
     val dailyChallengeWonAtEpochSecond: Long? = null,
     val weeklyChallengeWonAtEpochSecond: Long? = null,
 )

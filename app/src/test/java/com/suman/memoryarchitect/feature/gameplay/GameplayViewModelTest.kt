@@ -24,6 +24,10 @@ import com.suman.memoryarchitect.domain.model.HintReveal
 import com.suman.memoryarchitect.domain.model.LeaderboardResult
 import com.suman.memoryarchitect.domain.model.LeaderboardType
 import com.suman.memoryarchitect.domain.model.LevelCompletionOutcome
+import com.suman.memoryarchitect.domain.model.ActiveMission
+import com.suman.memoryarchitect.domain.model.MissionClaimResult
+import com.suman.memoryarchitect.domain.model.MissionEvent
+import com.suman.memoryarchitect.domain.model.MissionId
 import com.suman.memoryarchitect.domain.model.Outcome
 import com.suman.memoryarchitect.domain.model.PeriodicLeaderboardSubmission
 import com.suman.memoryarchitect.domain.model.PlayerProfile
@@ -35,6 +39,7 @@ import com.suman.memoryarchitect.domain.repository.HintRepository
 import com.suman.memoryarchitect.domain.repository.LeaderboardRepository
 import com.suman.memoryarchitect.domain.repository.LevelCampaignRepository
 import com.suman.memoryarchitect.domain.repository.LevelRepository
+import com.suman.memoryarchitect.domain.repository.MissionRepository
 import com.suman.memoryarchitect.domain.repository.ProgressionRepository
 import com.suman.memoryarchitect.domain.repository.RedoRepository
 import com.suman.memoryarchitect.domain.repository.RewatchRepository
@@ -48,6 +53,7 @@ import com.suman.memoryarchitect.domain.usecase.GrantBonusHintUseCase
 import com.suman.memoryarchitect.domain.usecase.GrantBonusRedoUseCase
 import com.suman.memoryarchitect.domain.usecase.RecordHintUsedUseCase
 import com.suman.memoryarchitect.domain.usecase.RecordLevelCompletionUseCase
+import com.suman.memoryarchitect.domain.usecase.RecordMissionEventUseCase
 import com.suman.memoryarchitect.domain.usecase.RecordRedoUsedUseCase
 import com.suman.memoryarchitect.domain.usecase.RecordRewatchUsedUseCase
 import com.suman.memoryarchitect.domain.usecase.ResetHintUsageUseCase
@@ -208,6 +214,16 @@ private class FakeRewardedAdController(
     }
 }
 
+private class FakeMissionRepository : MissionRepository {
+    val recordedEvents = mutableListOf<MissionEvent>()
+    override suspend fun getActiveMissions(todayEpochDay: Long): List<ActiveMission> = emptyList()
+    override suspend fun recordMissionEvent(event: MissionEvent, todayEpochDay: Long) {
+        recordedEvents += event
+    }
+    override suspend fun claimMissionReward(missionId: MissionId, todayEpochDay: Long): Outcome<MissionClaimResult> =
+        throw UnsupportedOperationException("not used by GameplayViewModelTest")
+}
+
 private class FakeRewatchRepository(initial: Map<Int, Int> = emptyMap()) : RewatchRepository {
     private val usage = initial.toMutableMap()
     override suspend fun getRewatchesUsed(levelNumber: Int): Int = usage[levelNumber] ?: 0
@@ -331,6 +347,7 @@ class GameplayViewModelTest {
         rewardedAdController: RewardedAdController = FakeRewardedAdController(),
         redoRepository: RedoRepository = FakeRedoRepository(),
         rewatchRepository: RewatchRepository = FakeRewatchRepository(),
+        missionRepository: MissionRepository = FakeMissionRepository(),
         levelRepository: FakeLevelRepository = FakeLevelRepository(),
         leaderboardRepository: LeaderboardRepository = FakeLeaderboardRepository(),
         levelNumber: Int = 1,
@@ -363,6 +380,7 @@ class GameplayViewModelTest {
         getRewatchesUsed = GetRewatchesUsedUseCase(rewatchRepository),
         recordRewatchUsed = RecordRewatchUsedUseCase(rewatchRepository),
         resetRewatchUsage = ResetRewatchUsageUseCase(rewatchRepository),
+        recordMissionEvent = RecordMissionEventUseCase(missionRepository, clock),
         clock = clock,
         analytics = analyticsLogger,
         performanceTracer = performanceTracer,

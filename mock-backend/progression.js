@@ -10,20 +10,53 @@ const DAILY_CHALLENGE_WIN_COINS = 200;
 const WEEKLY_CHALLENGE_WIN_COINS = 500;
 const CHALLENGE_WIN_ACCURACY_THRESHOLD = 0.7;
 
-// Mirrors StreakCalculator.updateStreak (domain/progression/StreakCalculator.kt).
-function updateStreak(lastPlayedEpochDay, todayEpochDay, previousCurrentStreak, previousLongestStreak) {
+// Mirrors StreakRules.Default (domain/model/StreakRules.kt).
+const STREAK_MILESTONE_DAYS = [3, 7, 14, 30, 60, 90, 180, 365];
+const STREAK_SHIELD_MILESTONE_DAYS = [7, 30, 90, 365];
+const MAX_STORED_STREAK_SHIELDS = 3;
+
+// Mirrors StreakCalculator.updateStreak (domain/progression/StreakCalculator.kt) - including the
+// Streak Shield auto-consume (a one-day gap with at least one shield banked extends the streak
+// instead of resetting it) and milestone-shield-grant logic, not just the plain streak length.
+function updateStreak(lastPlayedEpochDay, todayEpochDay, previousCurrentStreak, previousLongestStreak, previousStreakShields) {
+  const gapDays = lastPlayedEpochDay === null || lastPlayedEpochDay === undefined ? null : todayEpochDay - lastPlayedEpochDay;
+  let shields = previousStreakShields || 0;
+  let shieldConsumed = false;
   let newCurrent;
+  let isFreshDay;
+
   if (lastPlayedEpochDay === null || lastPlayedEpochDay === undefined) {
     newCurrent = 1;
-  } else if (lastPlayedEpochDay === todayEpochDay) {
+    isFreshDay = true;
+  } else if (gapDays === 0) {
     newCurrent = Math.max(previousCurrentStreak, 1);
-  } else if (lastPlayedEpochDay === todayEpochDay - 1) {
+    isFreshDay = false;
+  } else if (gapDays === 1) {
     newCurrent = previousCurrentStreak + 1;
+    isFreshDay = true;
+  } else if (gapDays === 2 && shields > 0) {
+    shields -= 1;
+    shieldConsumed = true;
+    newCurrent = previousCurrentStreak + 1;
+    isFreshDay = true;
   } else {
     newCurrent = 1;
+    isFreshDay = true;
   }
+
   const newLongest = Math.max(previousLongestStreak, newCurrent);
-  return { currentStreak: newCurrent, longestStreak: newLongest };
+  const milestoneReached = isFreshDay && STREAK_MILESTONE_DAYS.includes(newCurrent) ? newCurrent : null;
+  const shieldGranted = milestoneReached !== null && STREAK_SHIELD_MILESTONE_DAYS.includes(milestoneReached) && shields < MAX_STORED_STREAK_SHIELDS;
+  if (shieldGranted) shields += 1;
+
+  return {
+    currentStreak: newCurrent,
+    longestStreak: newLongest,
+    streakShields: shields,
+    shieldConsumed,
+    shieldGranted,
+    milestoneReached,
+  };
 }
 
 function isChallengeWin(mode, sceneAccuracy) {
@@ -46,19 +79,21 @@ function coinsAwardedFor(mode, finalScore, comboCount, sceneAccuracy) {
 function applyScoreSubmission(profile, mode, finalScore, comboCount, sceneAccuracy, playedOnEpochDay) {
   const xpAwarded = finalScore * XP_PER_SCORE_POINT;
   const coinsAwarded = coinsAwardedFor(mode, finalScore, comboCount, sceneAccuracy);
-  const { currentStreak, longestStreak } = updateStreak(
+  const streakUpdate = updateStreak(
     profile.lastPlayedEpochDay,
     playedOnEpochDay,
     profile.currentStreak,
     profile.longestStreak,
+    profile.streakShields,
   );
   const won = isChallengeWin(mode, sceneAccuracy);
   const nowEpochSecond = Math.floor(Date.now() / 1000);
   return {
     xp: profile.xp + xpAwarded,
     coins: (profile.coins || 0) + coinsAwarded,
-    currentStreak,
-    longestStreak,
+    currentStreak: streakUpdate.currentStreak,
+    longestStreak: streakUpdate.longestStreak,
+    streakShields: streakUpdate.streakShields,
     lastPlayedEpochDay: playedOnEpochDay,
     dailyChallengeWonAtEpochSecond: mode === 'DAILY_CHALLENGE' && won ? nowEpochSecond : (profile.dailyChallengeWonAtEpochSecond ?? null),
     weeklyChallengeWonAtEpochSecond: mode === 'WEEKLY_CHALLENGE' && won ? nowEpochSecond : (profile.weeklyChallengeWonAtEpochSecond ?? null),
@@ -67,7 +102,9 @@ function applyScoreSubmission(profile, mode, finalScore, comboCount, sceneAccura
 
 // Mirrors DailyRewardCatalog (domain/progression/DailyRewardCatalog.kt) -- keep both in sync.
 // Deliberately modest and non-escalating-to-absurd: a full week never demands more than logging
-// in, no currency you'd feel pressured to top up, no "you'll lose it all" framing anywhere.
+// in, no currency you'd feel pressured to top up, no "you'll lose it all" framing anywhere. Day 5
+// is a Mystery Chest (same fixed amount, just revealed only on claim - no server-side randomness
+// to keep in sync); day 7 also grants a Streak Shield, capped by MAX_STORED_STREAK_SHIELDS.
 const DAILY_REWARD_TABLE = [
   { coins: 40, xp: 0 },
   { coins: 60, xp: 0 },
@@ -75,7 +112,7 @@ const DAILY_REWARD_TABLE = [
   { coins: 100, xp: 0 },
   { coins: 130, xp: 30 },
   { coins: 160, xp: 0 },
-  { coins: 250, xp: 75 },
+  { coins: 250, xp: 75, bonusShield: true },
 ];
 
 // A missed day never docks anything already earned -- it just quietly restarts at day 1, the
@@ -94,13 +131,15 @@ function canClaimDailyReward(lastClaimedEpochDay, todayEpochDay) {
 function claimDailyReward(dailyRewardState, profile, todayEpochDay) {
   const cycleDay = nextDailyRewardCycleDay(dailyRewardState.lastClaimedEpochDay, dailyRewardState.cycleDay, todayEpochDay);
   const entry = DAILY_REWARD_TABLE[cycleDay - 1];
+  const shieldAwarded = Boolean(entry.bonusShield) && (profile.streakShields || 0) < MAX_STORED_STREAK_SHIELDS;
   const updatedProfile = {
     ...profile,
     coins: (profile.coins || 0) + entry.coins,
     xp: profile.xp + entry.xp,
+    streakShields: shieldAwarded ? (profile.streakShields || 0) + 1 : (profile.streakShields || 0),
   };
   const updatedState = { cycleDay, lastClaimedEpochDay: todayEpochDay };
-  return { profile: updatedProfile, state: updatedState, coinsAwarded: entry.coins, xpAwarded: entry.xp };
+  return { profile: updatedProfile, state: updatedState, coinsAwarded: entry.coins, xpAwarded: entry.xp, shieldAwarded };
 }
 
 module.exports = {

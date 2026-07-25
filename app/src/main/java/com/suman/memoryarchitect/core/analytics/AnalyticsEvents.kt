@@ -165,6 +165,39 @@ fun AnalyticsLogger.logFrustrationSignal(signalType: String, mode: GameMode, lev
     )
 
 // ===================================================================================
+// Streak & Daily Check-In - see StreakCalculator/DailyRewardCatalog. [milestoneDay] is one of
+// StreakRules.milestoneDays (3/7/14/30/60/90/180/365); [remainingShields] is the player's Streak
+// Shield balance right after the event, so "did the shield economy actually work" (grants vs.
+// consumes vs. players sitting at the cap) is answerable straight from these two events.
+// ===================================================================================
+
+fun AnalyticsLogger.logStreakMilestoneReached(milestoneDay: Int, remainingShields: Int) =
+    logEvent("streak_milestone_reached", mapOf("milestone_day" to milestoneDay, "remaining_shields" to remainingShields))
+
+fun AnalyticsLogger.logStreakShieldEarned(milestoneDay: Int, remainingShields: Int) =
+    logEvent("streak_shield_earned", mapOf("milestone_day" to milestoneDay, "remaining_shields" to remainingShields))
+
+fun AnalyticsLogger.logStreakShieldConsumed(remainingShields: Int) =
+    logEvent("streak_shield_consumed", mapOf("remaining_shields" to remainingShields))
+
+/** [rewardKind] is one of [com.suman.memoryarchitect.domain.model.DailyRewardKind]'s names
+ * ("COINS"/"XP"/"MYSTERY_CHEST"). [shieldAwarded] tags the one cycle day (see
+ * [com.suman.memoryarchitect.domain.progression.DailyRewardCatalog]) that also grants a Streak
+ * Shield, separately from [logStreakShieldEarned]'s milestone-triggered path - the two shield
+ * sources stay distinguishable in analytics even though they land on the same profile field. */
+fun AnalyticsLogger.logDailyRewardClaimed(cycleDay: Int, rewardKind: String, coinsAwarded: Long, xpAwarded: Long, shieldAwarded: Boolean) =
+    logEvent(
+        "daily_reward_claimed",
+        mapOf(
+            "cycle_day" to cycleDay,
+            "reward_kind" to rewardKind,
+            "coins_awarded" to coinsAwarded,
+            "xp_awarded" to xpAwarded,
+            "shield_awarded" to shieldAwarded,
+        ),
+    )
+
+// ===================================================================================
 // Feature usage
 // ===================================================================================
 

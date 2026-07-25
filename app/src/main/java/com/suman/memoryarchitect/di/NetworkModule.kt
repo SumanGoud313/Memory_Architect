@@ -4,6 +4,7 @@ import com.suman.memoryarchitect.BuildConfig
 import com.suman.memoryarchitect.core.network.EmulatorBaseUrlResolver
 import com.suman.memoryarchitect.core.network.SecurityConfig
 import com.suman.memoryarchitect.data.remote.LevelApi
+import com.suman.memoryarchitect.data.remote.MissionApi
 import com.suman.memoryarchitect.data.remote.ProgressionApi
 import com.suman.memoryarchitect.data.remote.RemoteConfigApi
 import com.suman.memoryarchitect.data.remote.ShopApi
@@ -85,4 +86,8 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideShopApi(retrofit: Retrofit): ShopApi = retrofit.create(ShopApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideMissionApi(retrofit: Retrofit): MissionApi = retrofit.create(MissionApi::class.java)
 }

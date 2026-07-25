@@ -16,6 +16,8 @@ import androidx.compose.material.icons.filled.CardGiftcard
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MonetizationOn
+import androidx.compose.material.icons.filled.QuestionMark
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -45,10 +47,12 @@ private fun dayCellStatus(day: Int, cycleDay: Int, canClaimToday: Boolean): DayC
 }
 
 /**
- * A 7-day login-reward calendar + claim button. Every day is shown up front with its exact
- * reward (no mystery-box randomness), a missed day never loses anything already banked — it
- * just quietly restarts the row at day 1 next time (see [DailyRewardCatalog.nextCycleDay]) — and
- * there's no countdown urgency copy anywhere: the claim button is simply enabled or not.
+ * A 7-day login-reward calendar + claim button. Every day is shown up front with its exact reward
+ * *except* the one Mystery Chest day (see [DailyRewardEntry.isMysteryChest]) - its amount is fixed,
+ * never randomized, just hidden until actually claimed for a little anticipation. A missed day
+ * never loses anything already banked — it just quietly restarts the row at day 1 next time (see
+ * [DailyRewardCatalog.nextCycleDay]) — and there's no countdown urgency copy anywhere: the claim
+ * button is simply enabled or not.
  */
 @Composable
 fun DailyRewardCard(
@@ -76,6 +80,8 @@ fun DailyRewardCard(
                     DayCell(
                         day = entry.day,
                         coins = entry.coins,
+                        isMysteryChest = entry.isMysteryChest,
+                        bonusShield = entry.bonusShield,
                         cellStatus = dayCellStatus(entry.day, status.cycleDay, status.canClaimToday),
                         modifier = Modifier.weight(1f),
                     )
@@ -104,8 +110,19 @@ fun DailyRewardCard(
 }
 
 @Composable
-private fun DayCell(day: Int, coins: Long, cellStatus: DayCellStatus, modifier: Modifier = Modifier) {
+private fun DayCell(
+    day: Int,
+    coins: Long,
+    isMysteryChest: Boolean,
+    bonusShield: Boolean,
+    cellStatus: DayCellStatus,
+    modifier: Modifier = Modifier,
+) {
     val shape = RoundedCornerShape(MemoryArchitectRadii.chip)
+    // The Mystery Chest day never reveals its amount ahead of a real claim - only once it's
+    // actually CLAIMED (a past day, already resolved via the claim celebration) does the number
+    // mean anything to show here.
+    val hideAmount = isMysteryChest && cellStatus != DayCellStatus.CLAIMED
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             modifier = Modifier
@@ -123,29 +140,49 @@ private fun DayCell(day: Int, coins: Long, cellStatus: DayCellStatus, modifier: 
                 .graphicsLayer { alpha = if (cellStatus == DayCellStatus.LOCKED) 0.55f else 1f },
             contentAlignment = Alignment.Center,
         ) {
-            when (cellStatus) {
-                DayCellStatus.CLAIMED -> Icon(
+            when {
+                cellStatus == DayCellStatus.CLAIMED -> Icon(
                     Icons.Filled.Check,
                     contentDescription = null,
                     tint = MemoryArchitectColors.accentGold,
                     modifier = Modifier.size(16.dp),
                 )
-                DayCellStatus.CLAIMABLE_TODAY -> Icon(
+                cellStatus == DayCellStatus.CLAIMABLE_TODAY && hideAmount -> Icon(
+                    Icons.Filled.CardGiftcard,
+                    contentDescription = null,
+                    tint = MemoryArchitectColors.bgBase,
+                    modifier = Modifier.size(18.dp),
+                )
+                cellStatus == DayCellStatus.CLAIMABLE_TODAY -> Icon(
                     Icons.Filled.MonetizationOn,
                     contentDescription = null,
                     tint = MemoryArchitectColors.bgBase,
                     modifier = Modifier.size(18.dp),
                 )
-                DayCellStatus.LOCKED -> Icon(
+                hideAmount -> Icon(
+                    Icons.Filled.QuestionMark,
+                    contentDescription = null,
+                    tint = MemoryArchitectColors.textTertiary,
+                    modifier = Modifier.size(14.dp),
+                )
+                else -> Icon(
                     Icons.Filled.Lock,
                     contentDescription = null,
                     tint = MemoryArchitectColors.textTertiary,
                     modifier = Modifier.size(14.dp),
                 )
             }
+            if (bonusShield) {
+                Icon(
+                    Icons.Filled.Shield,
+                    contentDescription = stringResource(R.string.profile_daily_reward_bonus_shield_description),
+                    tint = MemoryArchitectColors.accentSage,
+                    modifier = Modifier.align(Alignment.TopEnd).padding(2.dp).size(11.dp),
+                )
+            }
         }
         Text(
-            text = "$coins",
+            text = if (hideAmount) "?" else "$coins",
             style = MaterialTheme.typography.labelMedium,
             color = if (cellStatus == DayCellStatus.LOCKED) MemoryArchitectColors.textTertiary else MemoryArchitectColors.textSecondary,
             modifier = Modifier.padding(top = 4.dp),

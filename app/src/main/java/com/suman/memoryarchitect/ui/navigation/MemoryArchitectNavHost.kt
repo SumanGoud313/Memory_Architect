@@ -28,16 +28,16 @@ import com.suman.memoryarchitect.ui.screens.gameplay.GameplayScreen
 import com.suman.memoryarchitect.ui.screens.home.HomeScreen
 import com.suman.memoryarchitect.ui.screens.leaderboard.LeaderboardScreen
 import com.suman.memoryarchitect.ui.screens.levelselect.LevelSelectScreen
+import com.suman.memoryarchitect.ui.screens.missions.MissionsScreen
 import com.suman.memoryarchitect.ui.screens.modeselect.ModeSelectScreen
 import com.suman.memoryarchitect.ui.screens.profile.AchievementsScreen
 import com.suman.memoryarchitect.ui.screens.profile.ProfileScreen
 import com.suman.memoryarchitect.ui.screens.profile.RewardsScreen
 import com.suman.memoryarchitect.ui.screens.removeads.RemoveAdsScreen
 import com.suman.memoryarchitect.ui.screens.settings.SettingsScreen
-import com.suman.memoryarchitect.ui.screens.shop.CollectionsScreen
 import com.suman.memoryarchitect.ui.screens.shop.CosmeticsHubScreen
+import com.suman.memoryarchitect.ui.screens.shop.InventoryScreen
 import com.suman.memoryarchitect.ui.screens.shop.LuckySpinScreen
-import com.suman.memoryarchitect.ui.screens.shop.ShopScreen
 import com.suman.memoryarchitect.ui.screens.statistics.StatisticsScreen
 
 /** Compose Navigation graph — replaces `res/navigation/nav_graph.xml`. This composable is
@@ -95,6 +95,9 @@ fun MemoryArchitectNavHost(
                 },
                 onOpenRemoveAds = { navController.navigate(Route.RemoveAds) },
                 onOpenCosmetics = { navController.navigate(Route.CosmeticsHub) },
+                onOpenLuckySpin = { navController.navigate(Route.LuckySpin) },
+                onOpenMissions = { navController.navigate(Route.Missions) },
+                onOpenInventory = { navController.navigate(Route.Inventory) },
             )
         }
         composable<Route.LevelSelect> {
@@ -144,24 +147,19 @@ fun MemoryArchitectNavHost(
         }
         composable<Route.CosmeticsHub>(enterTransition = NavAnimations.fadeEnter, exitTransition = NavAnimations.fadeExit) {
             TrackScreenView("cosmetics_hub", MusicTrack.HOME)
-            CosmeticsHubScreen(
-                onBack = { navController.popBackStack() },
-                onOpenShop = { navController.navigate(Route.Shop) },
-                onOpenCollections = { navController.navigate(Route.Collections) },
-                onOpenLuckySpin = { navController.navigate(Route.LuckySpin) },
-            )
-        }
-        composable<Route.Shop>(enterTransition = NavAnimations.fadeEnter, exitTransition = NavAnimations.fadeExit) {
-            TrackScreenView("shop", MusicTrack.HOME)
-            ShopScreen(onBack = { navController.popBackStack() })
-        }
-        composable<Route.Collections>(enterTransition = NavAnimations.fadeEnter, exitTransition = NavAnimations.fadeExit) {
-            TrackScreenView("collections", MusicTrack.HOME)
-            CollectionsScreen(onBack = { navController.popBackStack() }, onOpenShop = { navController.navigate(Route.Shop) })
+            CosmeticsHubScreen(onBack = { navController.popBackStack() })
         }
         composable<Route.LuckySpin>(enterTransition = NavAnimations.fadeEnter, exitTransition = NavAnimations.fadeExit) {
             TrackScreenView("lucky_spin", MusicTrack.HOME)
             LuckySpinScreen(onBack = { navController.popBackStack() })
+        }
+        composable<Route.Missions>(enterTransition = NavAnimations.fadeEnter, exitTransition = NavAnimations.fadeExit) {
+            TrackScreenView("missions", MusicTrack.HOME)
+            MissionsScreen(onBack = { navController.popBackStack() })
+        }
+        composable<Route.Inventory>(enterTransition = NavAnimations.fadeEnter, exitTransition = NavAnimations.fadeExit) {
+            TrackScreenView("inventory", MusicTrack.HOME)
+            InventoryScreen(onBack = { navController.popBackStack() })
         }
         if (BuildConfig.DEBUG) {
             composable<Route.AnalyticsDashboard>(enterTransition = NavAnimations.fadeEnter, exitTransition = NavAnimations.fadeExit) {

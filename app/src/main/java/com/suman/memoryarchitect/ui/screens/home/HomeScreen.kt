@@ -49,6 +49,7 @@ fun HomeScreen(
 ) {
     val particles = rememberParticleFieldState()
     val hasClaimableReward by dailyRewardBadgeViewModel.hasClaimableReward.collectAsStateWithLifecycle()
+    val currentStreak by dailyRewardBadgeViewModel.currentStreak.collectAsStateWithLifecycle()
     // Fades the surrounding chrome the instant a tap is confirmed, concurrent with the circle's
     // own press/ripple/burst animation, so the whole screen reads as dissolving into the button
     // rather than the button animating alone while everything else sits static.
@@ -70,6 +71,10 @@ fun HomeScreen(
                     contentDescription = stringResource(R.string.home_settings),
                     onClick = onSettings,
                     modifier = Modifier.align(Alignment.CenterEnd).staggeredReveal(0),
+                )
+                HomeStreakChip(
+                    currentStreak = currentStreak,
+                    modifier = Modifier.align(Alignment.TopCenter).staggeredReveal(0),
                 )
             }
         }

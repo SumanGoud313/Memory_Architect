@@ -98,6 +98,25 @@ service cloud.firestore {
         && request.resource.data.createdAtEpochMs is int;
     }
 
+    // inventory/{uid} - the permanent home for earned consumables (Hint/Redo/Rewatch tokens,
+    // Lucky Spin tickets, XP boosts, discount coupons, mystery chests), written by
+    // FirestoreMissionRemoteSource.claimMissionReward/consumeInventoryItem. Private, same
+    // reasoning as playerCosmetics/playerProfiles above.
+    match /inventory/{uid} {
+      allow read: if isOwner(uid);
+      allow write: if isOwner(uid) && isValidInventory(request.resource.data);
+    }
+
+    // missionClaims/{uid} - one claimedKeys map ("{missionId}_{periodKey}" -> epoch-ms claimed),
+    // the double-claim guard for FirestoreMissionRemoteSource.claimMissionReward. No client ever
+    // needs to distinguish individual keys, only check membership, so a flat map (rather than a
+    // subcollection per claim) keeps this to one read+write per claim, same shape playerCosmetics'
+    // ownedSkus uses for an ever-growing, append-only set.
+    match /missionClaims/{uid} {
+      allow read: if isOwner(uid);
+      allow write: if isOwner(uid) && isValidMissionClaims(request.resource.data);
+    }
+
     // Everything else is denied by default (Firestore's implicit deny-all for any path with no
     // matching rule) - no catch-all "allow" rule exists anywhere in this file on purpose.
 
@@ -159,6 +178,11 @@ service cloud.firestore {
         && data.coins is int && data.coins >= 0 && data.coins <= 1000000000
         && data.currentStreak is int && data.currentStreak >= 0
         && data.longestStreak is int && data.longestStreak >= 0
+        // Mirrors StreakRules.Default.maxStoredShields (domain/model/StreakRules.kt) - keep both
+        // in sync. Bounds shape/range only; validateProfileWrite in functions/src/index.ts is what
+        // actually checks this only ever moves by the one shield a single write can plausibly
+        // grant or consume, the same division of labor as xp/coins above.
+        && data.streakShields is int && data.streakShields >= 0 && data.streakShields <= 3
         && (data.lastPlayedEpochDay == null || data.lastPlayedEpochDay is int)
         && (data.dailyChallengeWonAtEpochSecond == null || data.dailyChallengeWonAtEpochSecond is int)
         && (data.weeklyChallengeWonAtEpochSecond == null || data.weeklyChallengeWonAtEpochSecond is int)
@@ -182,6 +206,20 @@ service cloud.firestore {
       return data.ownedSkus is list && data.ownedSkus.size() <= 200
         && data.equipped is map && data.equipped.size() <= 20
         && data.updatedAtEpochMs is int;
+    }
+
+    // Shape/size bounds only - the actual "quantities only change by a plausible per-write amount"
+    // invariant needs the previous document, same division of labor as isValidProfile/
+    // validateProfileWrite: functions/src/missions.ts's validateInventoryWrite re-checks that.
+    function isValidInventory(data) {
+      return data.quantities is map && data.quantities.size() <= 20
+        && data.updatedAtEpochMs is int;
+    }
+
+    // No numeric bounds needed on the map's values (they're epoch-ms timestamps, not economy
+    // values) - just a sane cap on how many distinct claims one player can accumulate.
+    function isValidMissionClaims(data) {
+      return data.claimedKeys is map && data.claimedKeys.size() <= 1000;
     }
   }
 }

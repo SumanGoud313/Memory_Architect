@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.MonetizationOn
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.SportsScore
 import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material.icons.filled.VideogameAsset
@@ -211,7 +212,21 @@ private fun ProfileContent(
                 icon = Icons.Filled.LocalFireDepartment,
                 contentColor = MemoryArchitectColors.accentTerracotta,
             )
+            if (state.profile.streakShields > 0) {
+                PillBadge(
+                    text = context.resources.getQuantityString(
+                        R.plurals.profile_streak_shields, state.profile.streakShields, state.profile.streakShields,
+                    ),
+                    icon = Icons.Filled.Shield,
+                    contentColor = MemoryArchitectColors.accentSage,
+                )
+            }
         }
+
+        StreakMilestoneTimeline(
+            currentStreak = state.profile.currentStreak,
+            modifier = Modifier.fillMaxWidth().padding(top = 20.dp).staggeredReveal(1),
+        )
 
         Text(
             text = stringResource(R.string.settings_account),
@@ -372,6 +387,21 @@ private fun DailyRewardCelebration(result: DailyRewardClaimResult?, modifier: Mo
                         formatter = { context.getString(R.string.profile_daily_reward_xp_awarded, it) },
                         modifier = Modifier.padding(top = 4.dp),
                     )
+                }
+                if (result.shieldAwarded) {
+                    Row(modifier = Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Filled.Shield,
+                            contentDescription = null,
+                            tint = MemoryArchitectColors.accentSage,
+                            modifier = Modifier.padding(end = 6.dp).size(20.dp),
+                        )
+                        Text(
+                            text = stringResource(R.string.profile_daily_reward_shield_awarded),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MemoryArchitectColors.accentSage,
+                        )
+                    }
                 }
             }
         }

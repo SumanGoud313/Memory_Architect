@@ -18,8 +18,10 @@ import androidx.room.RoomDatabase
         RewatchUsageEntity::class,
         OwnedCosmeticEntity::class,
         EquippedCosmeticEntity::class,
+        MissionProgressEntity::class,
+        InventoryItemEntity::class,
     ],
-    version = 15,
+    version = 18,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -36,4 +38,6 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun rewatchUsageDao(): RewatchUsageDao
     abstract fun ownedCosmeticDao(): OwnedCosmeticDao
     abstract fun equippedCosmeticDao(): EquippedCosmeticDao
+    abstract fun missionProgressDao(): MissionProgressDao
+    abstract fun inventoryItemDao(): InventoryItemDao
 }

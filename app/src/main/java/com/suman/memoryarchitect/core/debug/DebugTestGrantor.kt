@@ -145,6 +145,7 @@ class DebugTestGrantor @Inject constructor(
             currentStreak = (getLong("currentStreak") ?: 0L).toInt(),
             longestStreak = (getLong("longestStreak") ?: 0L).toInt(),
             lastPlayedEpochDay = getLong("lastPlayedEpochDay"),
+            streakShields = (getLong("streakShields") ?: 0L).toInt(),
             dailyChallengeWonAtEpochSecond = getLong("dailyChallengeWonAtEpochSecond"),
             weeklyChallengeWonAtEpochSecond = getLong("weeklyChallengeWonAtEpochSecond"),
         )

@@ -8,12 +8,14 @@ import com.suman.memoryarchitect.core.billing.PremiumPurchaseUiState
 import com.suman.memoryarchitect.core.billing.PremiumShopManager
 import com.suman.memoryarchitect.core.debug.DebugTestGrantor
 import com.suman.memoryarchitect.domain.model.CosmeticId
+import com.suman.memoryarchitect.domain.model.MissionEvent
 import com.suman.memoryarchitect.domain.model.Outcome
 import com.suman.memoryarchitect.domain.progression.PremiumShopCatalog
 import com.suman.memoryarchitect.domain.usecase.GetOwnedCosmeticsUseCase
 import com.suman.memoryarchitect.domain.usecase.GetPlayerProfileUseCase
 import com.suman.memoryarchitect.domain.usecase.GetShopCatalogUseCase
 import com.suman.memoryarchitect.domain.usecase.PurchaseCosmeticUseCase
+import com.suman.memoryarchitect.domain.usecase.RecordMissionEventUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,6 +30,7 @@ class ShopViewModel @Inject constructor(
     private val getOwnedCosmetics: GetOwnedCosmeticsUseCase,
     private val getProfile: GetPlayerProfileUseCase,
     private val purchaseCosmetic: PurchaseCosmeticUseCase,
+    private val recordMissionEvent: RecordMissionEventUseCase,
     private val debugTestGrantor: DebugTestGrantor,
     private val billingManager: BillingManager,
     private val premiumShopManager: PremiumShopManager,
@@ -123,6 +126,7 @@ class ShopViewModel @Inject constructor(
                         ownedIds = latest.ownedIds + id,
                         purchasingId = null,
                     )
+                    recordMissionEvent(MissionEvent.CosmeticUnlocked)
                 }
                 is Outcome.Error -> {
                     val latest = _uiState.value as? ShopUiState.Content ?: return@launch

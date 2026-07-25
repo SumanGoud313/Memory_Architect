@@ -3,8 +3,10 @@ package com.suman.memoryarchitect.data.repository
 import com.suman.memoryarchitect.core.common.DispatcherProvider
 import com.suman.memoryarchitect.core.database.EquippedCosmeticDao
 import com.suman.memoryarchitect.core.database.HintUsageDao
+import com.suman.memoryarchitect.core.database.InventoryItemDao
 import com.suman.memoryarchitect.core.database.LevelBestTimeDao
 import com.suman.memoryarchitect.core.database.LevelCampaignProgressDao
+import com.suman.memoryarchitect.core.database.MissionProgressDao
 import com.suman.memoryarchitect.core.database.OwnedCosmeticDao
 import com.suman.memoryarchitect.core.database.PendingScoreSubmissionDao
 import com.suman.memoryarchitect.core.database.PlayerProgressDao
@@ -46,6 +48,8 @@ class LocalProgressResetRepositoryImpl @Inject constructor(
     private val rewatchUsageDao: RewatchUsageDao,
     private val ownedCosmeticDao: OwnedCosmeticDao,
     private val equippedCosmeticDao: EquippedCosmeticDao,
+    private val missionProgressDao: MissionProgressDao,
+    private val inventoryItemDao: InventoryItemDao,
     private val api: ProgressionApi,
     private val dispatchers: DispatcherProvider,
 ) : LocalProgressResetRepository {
@@ -70,5 +74,7 @@ class LocalProgressResetRepositoryImpl @Inject constructor(
         rewatchUsageDao.clearAll()
         ownedCosmeticDao.clearAll()
         equippedCosmeticDao.clearAll()
+        missionProgressDao.clearAll()
+        inventoryItemDao.clearAll()
     }
 }

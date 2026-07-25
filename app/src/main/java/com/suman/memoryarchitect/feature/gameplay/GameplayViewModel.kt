@@ -23,6 +23,9 @@ import com.suman.memoryarchitect.core.analytics.logRebuildStarted
 import com.suman.memoryarchitect.core.analytics.logRedoUsed
 import com.suman.memoryarchitect.core.analytics.logRewatchUsed
 import com.suman.memoryarchitect.core.analytics.logSessionEnded
+import com.suman.memoryarchitect.core.analytics.logStreakMilestoneReached
+import com.suman.memoryarchitect.core.analytics.logStreakShieldConsumed
+import com.suman.memoryarchitect.core.analytics.logStreakShieldEarned
 import com.suman.memoryarchitect.core.analytics.logSubmitPressed
 import com.suman.memoryarchitect.core.analytics.logTimeExpired
 import com.suman.memoryarchitect.core.analytics.trace
@@ -34,6 +37,7 @@ import com.suman.memoryarchitect.domain.model.GameMode
 import com.suman.memoryarchitect.domain.model.GamePhase
 import com.suman.memoryarchitect.domain.model.GlobalLeaderboardStats
 import com.suman.memoryarchitect.domain.model.LevelSpec
+import com.suman.memoryarchitect.domain.model.MissionEvent
 import com.suman.memoryarchitect.domain.model.Outcome
 import com.suman.memoryarchitect.domain.model.PeriodicLeaderboardSubmission
 import com.suman.memoryarchitect.domain.model.PlacedObject
@@ -55,6 +59,7 @@ import com.suman.memoryarchitect.domain.usecase.GrantBonusHintUseCase
 import com.suman.memoryarchitect.domain.usecase.GrantBonusRedoUseCase
 import com.suman.memoryarchitect.domain.usecase.RecordHintUsedUseCase
 import com.suman.memoryarchitect.domain.usecase.RecordLevelCompletionUseCase
+import com.suman.memoryarchitect.domain.usecase.RecordMissionEventUseCase
 import com.suman.memoryarchitect.domain.usecase.RecordRedoUsedUseCase
 import com.suman.memoryarchitect.domain.usecase.RecordRewatchUsedUseCase
 import com.suman.memoryarchitect.domain.usecase.ResetHintUsageUseCase
@@ -111,6 +116,7 @@ class GameplayViewModel @Inject constructor(
     private val getRewatchesUsed: GetRewatchesUsedUseCase,
     private val recordRewatchUsed: RecordRewatchUsedUseCase,
     private val resetRewatchUsage: ResetRewatchUsageUseCase,
+    private val recordMissionEvent: RecordMissionEventUseCase,
     private val clock: Clock,
     private val analytics: AnalyticsLogger,
     private val performanceTracer: PerformanceTracer,
@@ -391,6 +397,7 @@ class GameplayViewModel @Inject constructor(
         hintAdFlow.watch(activity, onBeforeStart = ::pauseTimerForAd, onAfterResolve = ::resumeTimerAfterAd) {
             grantBonusHint(levelNumber)
             _hintState.value = _hintState.value.copy(hintsUsed = (_hintState.value.hintsUsed - 1).coerceAtLeast(0))
+            recordMissionEvent(MissionEvent.RewardedAdWatched)
         }
     }
 
@@ -404,6 +411,7 @@ class GameplayViewModel @Inject constructor(
         redoAdFlow.watch(activity, onBeforeStart = ::pauseTimerForAd, onAfterResolve = ::resumeTimerAfterAd) {
             grantBonusRedo(levelNumber)
             _redoState.value = _redoState.value.copy(redosUsed = (_redoState.value.redosUsed - 1).coerceAtLeast(0))
+            recordMissionEvent(MissionEvent.RewardedAdWatched)
         }
     }
 
@@ -450,6 +458,7 @@ class GameplayViewModel @Inject constructor(
                 analytics.logRewatchUsed(mode, levelNumber)
                 logExcessiveRewatchIfNeeded(_rewatchState.value.rewatchesUsed + 1)
                 recordRewatchUsed(levelNumber)
+                recordMissionEvent(MissionEvent.RewardedAdWatched)
                 replayScene(current)
             }
         }
@@ -635,6 +644,9 @@ class GameplayViewModel @Inject constructor(
             // Practice never awards XP/coins, and there's no async submission step to wait on -
             // every value this event will ever have is already known right here.
             logCompleted(xpAwarded = null, coinsAwarded = null)
+            if (passedThisLevel) {
+                viewModelScope.launch { recordCompletionMissionEvents(MissionEvent.PracticeRoundCompleted, stars, result, coinsAwarded = null) }
+            }
             _uiState.value = GameplayUiState.Finished(result, stars, passed = passedThisLevel)
             return
         }
@@ -681,6 +693,21 @@ class GameplayViewModel @Inject constructor(
             // known, and moving only the analytics call has no effect on the UI state transitions
             // above, which already run at the same point they always have.
             logCompleted(xpAwarded = submission?.xpAwarded, coinsAwarded = submission?.coinsAwarded)
+            if (submission != null) {
+                val modeEvent = when (mode) {
+                    GameMode.CLASSIC -> MissionEvent.LevelCompleted
+                    GameMode.DAILY_CHALLENGE -> MissionEvent.DailyChallengeWon
+                    GameMode.WEEKLY_CHALLENGE -> MissionEvent.WeeklyChallengeWon
+                    GameMode.PRACTICE -> null // unreachable - Practice returns early above
+                }
+                modeEvent?.let { recordCompletionMissionEvents(it, stars, result, submission.coinsAwarded) }
+            }
+            if (submission != null) {
+                val shields = submission.profile.streakShields
+                submission.streakMilestoneReached?.let { analytics.logStreakMilestoneReached(it, shields) }
+                if (submission.streakShieldGranted) analytics.logStreakShieldEarned(requireNotNull(submission.streakMilestoneReached), shields)
+                if (submission.streakShieldConsumed) analytics.logStreakShieldConsumed(shields)
+            }
             _uiState.value = GameplayUiState.Finished(
                 result = result,
                 stars = stars,
@@ -690,6 +717,20 @@ class GameplayViewModel @Inject constructor(
                 levelOutcome = levelOutcome,
             )
         }
+    }
+
+    /** Reuses this round's already-computed completion signals to advance any currently-active
+     * mission whose requirement matches, rather than threading new instrumentation through
+     * gameplay code (see the retention plan's Phase 1 doc) - only ever called once a round is
+     * confirmed passed, mirroring [submitReconstruction]'s own "no partial credit for a failed
+     * attempt" rule for XP/coins/statistics/achievements. [coinsAwarded] is `null` for Practice,
+     * which never earns coins. */
+    private suspend fun recordCompletionMissionEvents(completionEvent: MissionEvent, stars: Int, result: ScoreResult, coinsAwarded: Long?) {
+        recordMissionEvent(completionEvent)
+        recordMissionEvent(MissionEvent.StarsEarned(stars))
+        if (coinsAwarded != null && coinsAwarded > 0) recordMissionEvent(MissionEvent.CoinsEarned(coinsAwarded))
+        if (_hintState.value.hintsUsed == 0) recordMissionEvent(MissionEvent.ZeroHintLevelClear)
+        if (result.sceneAccuracy >= HIGH_ACCURACY_MISSION_THRESHOLD) recordMissionEvent(MissionEvent.HighAccuracyClear)
     }
 
     /** Best-effort push to the shared Firestore leaderboards after a scored round resolves -
@@ -1144,5 +1185,10 @@ class GameplayViewModel @Inject constructor(
         private const val REPEATED_RETRY_THRESHOLD = 3
         private const val REPEATED_FAILURES_THRESHOLD = 3
         private const val LONG_DURATION_RATIO_OF_LIMIT = 0.9
+
+        // Deliberately stricter than ProgressionRules.challengeWinAccuracyThreshold (0.7, "did
+        // this round count at all") - MissionId.HIGH_ACCURACY_CLEAR/FIVE_ZERO_HINT_CLEARS reward a
+        // notably clean clear, not merely a passing one.
+        private const val HIGH_ACCURACY_MISSION_THRESHOLD = 0.95f
     }
 }

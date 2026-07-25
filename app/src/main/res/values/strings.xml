@@ -16,6 +16,7 @@
     <string name="home_play_content_description">Play. Tap to begin a new game.</string>
     <string name="home_profile">Profile</string>
     <string name="home_settings">Settings</string>
+    <string name="home_streak_chip_description">%1$d day streak</string>
 
     <string name="profile_daily_reward_title">Daily Rewards</string>
     <string name="profile_daily_reward_claim">Claim Today\'s Reward</string>
@@ -23,6 +24,8 @@
     <string name="profile_daily_reward_claimed_title">Reward Claimed!</string>
     <string name="profile_daily_reward_coins_awarded">+%1$d coins</string>
     <string name="profile_daily_reward_xp_awarded">+%1$d XP</string>
+    <string name="profile_daily_reward_shield_awarded">+1 Streak Shield</string>
+    <string name="profile_daily_reward_bonus_shield_description">Also grants a Streak Shield</string>
 
     <string name="settings_title">Settings</string>
     <string name="settings_account">Account</string>
@@ -221,6 +224,9 @@
     <string name="results_tier_good_try">Good Try!</string>
     <string name="results_tier_almost_there">Almost There!</string>
     <string name="results_new_record">New Record!</string>
+    <string name="results_streak_milestone">%1$d Day Streak!</string>
+    <string name="results_streak_shield_earned">Streak Shield Earned!</string>
+    <string name="results_streak_shield_consumed">Streak Shield Used</string>
     <string name="results_level_up">Level Up!</string>
     <string name="results_level_unlocked">Level %1$d Unlocked!</string>
 
@@ -246,6 +252,43 @@
     <string name="achievement_memory_master">Memory Master</string>
     <string name="achievement_speed_runner">Speed Runner</string>
     <string name="achievement_precision_expert">Precision Expert</string>
+
+    <!-- Missions - see domain/model/MissionId.kt / domain/progression/MissionCatalog.kt -->
+    <string name="missions_header">Missions</string>
+    <string name="missions_section_daily">Daily</string>
+    <string name="missions_section_weekly">Weekly</string>
+    <string name="missions_section_monthly">Monthly Goal</string>
+    <string name="missions_claim">Claim</string>
+    <string name="missions_claimed">Claimed</string>
+    <string name="missions_progress_format">%1$d / %2$d</string>
+    <string name="mission_clear_two_levels">Clear 2 Levels</string>
+    <string name="mission_clear_practice_round">Complete a Practice Round</string>
+    <string name="mission_win_daily_challenge">Win the Daily Challenge</string>
+    <string name="mission_earn_150_coins">Earn 150 Coins</string>
+    <string name="mission_zero_hint_clear">Clear a Level With No Hints</string>
+    <string name="mission_high_accuracy_clear">Clear a Level With High Accuracy</string>
+    <string name="mission_unlock_a_cosmetic">Unlock a Cosmetic</string>
+    <string name="mission_equip_a_cosmetic">Equip a Cosmetic</string>
+    <string name="mission_watch_a_rewarded_ad">Watch a Rewarded Ad</string>
+    <string name="mission_clear_fifteen_levels">Clear 15 Levels</string>
+    <string name="mission_three_star_ten_times">Earn 30 Stars</string>
+    <string name="mission_win_weekly_challenge">Win the Weekly Challenge</string>
+    <string name="mission_earn_800_coins">Earn 800 Coins</string>
+    <string name="mission_five_zero_hint_clears">Clear 5 Levels With No Hints</string>
+    <string name="mission_clear_forty_levels">Clear 40 Levels</string>
+    <string name="mission_four_weekly_sets">Earn 120 Stars</string>
+    <string name="mission_earn_2500_coins_monthly">Earn 2,500 Coins</string>
+
+    <!-- Inventory - see domain/model/InventoryItemKind.kt -->
+    <string name="inventory_header">Inventory</string>
+    <string name="inventory_empty">Complete missions and daily check-ins to earn tokens, tickets, and boosts.</string>
+    <string name="inventory_hint_token">Hint Token</string>
+    <string name="inventory_redo_token">Redo Token</string>
+    <string name="inventory_rewatch_ticket">Rewatch Ticket</string>
+    <string name="inventory_lucky_spin_ticket">Lucky Spin Ticket</string>
+    <string name="inventory_xp_boost">XP Boost</string>
+    <string name="inventory_discount_coupon">Discount Coupon</string>
+    <string name="inventory_mystery_chest">Mystery Chest</string>
 
     <!-- Player Rank tiers - see domain/progression/PlayerRankEngine.kt -->
     <string name="rank_bronze">Bronze</string>
@@ -351,6 +394,13 @@
     <string name="profile_coins">%1$d coins</string>
     <string name="profile_xp_progress">%1$d / %2$d XP to next level</string>
     <string name="profile_streak">%1$d day streak (best: %2$d)</string>
+    <string name="profile_streak_milestones_header">Streak Milestones</string>
+    <string name="profile_streak_milestone_day">Day %1$d</string>
+    <string name="profile_streak_milestone_shield_description">Grants a Streak Shield</string>
+    <plurals name="profile_streak_shields">
+        <item quantity="one">%1$d Shield</item>
+        <item quantity="other">%1$d Shields</item>
+    </plurals>
     <string name="profile_stat_games_played">Games Played</string>
     <string name="profile_stat_best_score">Best Score</string>
     <string name="profile_stat_best_accuracy">Best Accuracy</string>
