@@ -2,9 +2,10 @@ package com.suman.memoryarchitect.core.auth
 
 import android.util.Log
 import com.google.firebase.Firebase
+import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
-import com.suman.memoryarchitect.core.analytics.FirebaseAvailability
+import com.suman.memoryarchitect.core.analytics.FirebaseAvailabilityProvider
 import com.google.firebase.auth.auth
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -30,7 +31,7 @@ import javax.inject.Singleton
  * this app's other local-only state, even a Room wipe via Settings' Reset Progress, since it's not
  * stored there - un-reinstalling is the only thing that changes it).
  *
- * [uid] is `null` until sign-in completes (or forever, if [FirebaseAvailability.isConfigured] is
+ * [uid] is `null` until sign-in completes (or forever, if [FirebaseAvailabilityProvider.isConfigured] is
  * false or the device is offline on first launch) - every leaderboard call site treats that as
  * "leaderboard temporarily unavailable," never blocks gameplay, exactly the same non-blocking
  * philosophy [com.suman.memoryarchitect.core.analytics.FirebaseRemoteConfigSource] already uses
@@ -52,10 +53,12 @@ interface PlayerIdentityManager {
      * - when *linking* a credential onto an already-existing anonymous user (as opposed to a fresh
      * sign-in), Firebase does not reliably copy the newly-linked provider's profile fields up to
      * the top level, but the linked provider's own `UserInfo` entry inside `providerData` always
-     * has them. Shown only to the player themselves in their own Account section; the *public*
-     * leaderboard display name stays the anonymized `Architect#XXXX` form regardless of
-     * verification (see [com.suman.memoryarchitect.data.repository.LeaderboardRepositoryImpl]'s
-     * `toPlayerDisplayName`) - this is not a channel for real names to reach other players. */
+     * has them. Shown in the player's own Account section *and* on the public leaderboard - every
+     * player reaches gameplay only after signing in with Google (see
+     * [com.suman.memoryarchitect.ui.ConnectivityGate]'s mandatory sign-in gate), so this is the
+     * real name every leaderboard entry shows now (see
+     * [com.suman.memoryarchitect.data.repository.LeaderboardRepositoryImpl]'s
+     * `playerDisplayName`) - no longer anonymized. */
     val displayName: StateFlow<String?>
     val photoUrl: StateFlow<String?>
 
@@ -80,15 +83,24 @@ interface PlayerIdentityManager {
      * Manager (see `feature/settings/AccountUpgradeViewModel.kt`) - this function only performs the
      * Firebase-side link, it has no UI/Credential Manager dependency itself.
      *
-     * Fails (a [Result.failure], never a thrown exception) if this Google account is already linked
-     * to a *different* uid elsewhere (`ERROR_CREDENTIAL_ALREADY_IN_USE`) - the caller must surface
-     * that distinctly from a generic network failure, since silently swallowing it would leave the
-     * player thinking they're verified when they aren't. */
+     * If this Google account is already linked to a *different* uid elsewhere
+     * (`ERROR_CREDENTIAL_ALREADY_IN_USE` - a reinstall, a cleared app, or a second device), this
+     * falls back to [FirebaseAuth.signInWithCredential][com.google.firebase.auth.FirebaseAuth] with
+     * that same credential instead of just failing - that authenticates as the *existing* linked
+     * account, restoring its progress, rather than stranding the player on a fresh, disposable
+     * anonymous identity with no way back to the account they already verified. The current
+     * anonymous identity's own progress (if any - typically none, since this only ever triggers
+     * on a device that hasn't accumulated anything of its own yet) is what's discarded here, never
+     * the linked account's. Only a genuine failure of *that* fallback (offline, malformed token)
+     * still returns [Result.failure] - the caller surfaces that distinctly from a generic network
+     * failure so the player isn't left thinking they're verified when they aren't. */
     suspend fun linkWithGoogle(idToken: String): Result<Unit>
 }
 
 @Singleton
-class PlayerIdentityManagerImpl @Inject constructor() : PlayerIdentityManager {
+class PlayerIdentityManagerImpl @Inject constructor(
+    private val firebaseAvailabilityProvider: FirebaseAvailabilityProvider,
+) : PlayerIdentityManager {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val signInMutex = Mutex()
     private var signInAttempted = false
@@ -109,7 +121,7 @@ class PlayerIdentityManagerImpl @Inject constructor() : PlayerIdentityManager {
         _uid.value ?: withTimeoutOrNull(timeoutMs) { _uid.filterNotNull().first() }
 
     override fun ensureSignedIn() {
-        if (!FirebaseAvailability.isConfigured) return
+        if (!firebaseAvailabilityProvider.isConfigured) return
         if (_uid.value != null || signInAttempted) return
         scope.launch {
             signInMutex.withLock {
@@ -133,11 +145,23 @@ class PlayerIdentityManagerImpl @Inject constructor() : PlayerIdentityManager {
     override suspend fun linkWithGoogle(idToken: String): Result<Unit> {
         val currentUser = Firebase.auth.currentUser
             ?: return Result.failure(IllegalStateException("No signed-in user to upgrade - ensureSignedIn() must complete first"))
+        val credential = GoogleAuthProvider.getCredential(idToken, null)
         return try {
-            val credential = GoogleAuthProvider.getCredential(idToken, null)
             val result = currentUser.linkWithCredential(credential).await()
             applyUser(result.user)
             Result.success(Unit)
+        } catch (collision: FirebaseAuthUserCollisionException) {
+            // This exact credential is already linked to a different (older) uid - see this
+            // function's own doc for why signing in as that account, not just failing, is the
+            // right recovery here.
+            try {
+                val result = Firebase.auth.signInWithCredential(credential).await()
+                applyUser(result.user)
+                Result.success(Unit)
+            } catch (t: Throwable) {
+                Log.w(TAG, "Sign-in fallback after Google account collision failed", t)
+                Result.failure(collision)
+            }
         } catch (t: Throwable) {
             Log.w(TAG, "Google account linking failed", t)
             Result.failure(t)

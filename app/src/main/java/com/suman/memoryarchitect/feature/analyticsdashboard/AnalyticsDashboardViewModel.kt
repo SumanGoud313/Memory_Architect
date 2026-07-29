@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.suman.memoryarchitect.core.analytics.AppLifecycleTracker
 import com.suman.memoryarchitect.core.analytics.FirebaseAvailability
+import com.suman.memoryarchitect.core.analytics.FirebaseAvailabilityProvider
 import com.suman.memoryarchitect.core.analytics.RecentEventsRecorder
 import com.suman.memoryarchitect.core.analytics.RecordedEvent
 import com.google.firebase.Firebase
@@ -43,6 +44,7 @@ data class AnalyticsDashboardUiState(
 class AnalyticsDashboardViewModel @Inject constructor(
     recentEvents: RecentEventsRecorder,
     appLifecycleTracker: AppLifecycleTracker,
+    private val firebaseAvailabilityProvider: FirebaseAvailabilityProvider,
 ) : ViewModel() {
 
     private val firebaseInstallationId = MutableStateFlow("Loading…")
@@ -55,7 +57,7 @@ class AnalyticsDashboardViewModel @Inject constructor(
         val lastLevelEvent = events.firstOrNull { it.name == "level_started" || it.name == "memorize_started" }
         AnalyticsDashboardUiState(
             firebaseInstallationId = installationId,
-            firebaseConfigured = FirebaseAvailability.isConfigured,
+            firebaseConfigured = firebaseAvailabilityProvider.isConfigured,
             performancePluginActive = FirebaseAvailability.isPerformancePluginActive,
             recentEvents = events,
             userProperties = properties,
@@ -67,7 +69,7 @@ class AnalyticsDashboardViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            firebaseInstallationId.value = if (FirebaseAvailability.isConfigured) {
+            firebaseInstallationId.value = if (firebaseAvailabilityProvider.isConfigured) {
                 runCatching { Firebase.installations.id.await() }.getOrDefault("Unavailable")
             } else {
                 "Not configured - see FIREBASE_SETUP.md"

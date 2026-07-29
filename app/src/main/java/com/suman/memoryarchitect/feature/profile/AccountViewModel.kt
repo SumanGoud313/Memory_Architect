@@ -3,6 +3,7 @@ package com.suman.memoryarchitect.feature.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
+import com.suman.memoryarchitect.core.auth.GoogleLinkError
 import com.suman.memoryarchitect.core.auth.PlayerIdentityManager
 import com.suman.memoryarchitect.core.datastore.UserPreferencesDataStore
 import com.suman.memoryarchitect.domain.model.AvatarCatalog
@@ -16,13 +17,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
-/** [NO_GOOGLE_ACCOUNT] covers `NoCredentialException` - the device has no Google account for
- * Credential Manager to offer at all, the single most common reason the sign-in flow appears to
- * silently "do nothing" (an emulator with no account signed in, a work profile that blocks it,
- * etc.) - surfaced distinctly so it reads as "add a Google account to this device" rather than a
- * generic failure. */
-enum class GoogleLinkError { ALREADY_LINKED_ELSEWHERE, NO_GOOGLE_ACCOUNT, UNKNOWN }
 
 /** Backs Profile's Account section - verification status (via [PlayerIdentityManager.isVerified]),
  * the Google Sign-In upgrade flow, curated avatar selection, and the optional self-reported

@@ -10,4 +10,9 @@ enum class MissionPeriod {
     DAILY,
     WEEKLY,
     MONTHLY,
+
+    /** Only ever active alongside a live [com.suman.memoryarchitect.domain.model.LiveEvent] - see
+     * [com.suman.memoryarchitect.domain.progression.MissionCatalog.periodKeyFor]'s doc for why its
+     * `periodKey` is the event's own start epoch rather than an epoch-day bucket. */
+    EVENT,
 }

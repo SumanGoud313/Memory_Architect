@@ -4,6 +4,11 @@ import com.suman.memoryarchitect.domain.model.Inventory
 import com.suman.memoryarchitect.domain.model.InventoryItemKind
 import com.suman.memoryarchitect.domain.model.MissionClaimResult
 import com.suman.memoryarchitect.domain.model.MissionId
+import com.suman.memoryarchitect.domain.model.MissionPeriod
+import com.suman.memoryarchitect.domain.model.MissionRefreshState
+import com.suman.memoryarchitect.domain.model.MissionReward
+import com.suman.memoryarchitect.domain.model.PlayerProfile
+import com.suman.memoryarchitect.domain.progression.MysteryChestReward
 
 /**
  * The server-authoritative half of mission/inventory state - same role [ProgressionRemoteSource]
@@ -35,4 +40,44 @@ interface MissionRemoteSource {
      * both implementations guarantee this the same way [claimMissionReward]/
      * [ProgressionRemoteSource.claimDailyReward] guarantee no double-claim. */
     suspend fun consumeInventoryItem(kind: InventoryItemKind, quantity: Int): Inventory
+
+    /** Atomically consumes one [InventoryItemKind.MYSTERY_CHEST] and grants [reward] - [reward] is
+     * client-rolled (see [MysteryChestOdds]) but every possible value is small and bounded enough
+     * that the server's existing generic coin-gain plausibility check already covers it; see
+     * [MysteryChestOdds]'s own doc for why no dedicated re-derivation is needed the way
+     * [claimMissionReward] has one. Throws [InsufficientInventoryException] if no chest is owned. */
+    suspend fun openMysteryChest(reward: MysteryChestReward): Pair<PlayerProfile, Inventory>
+
+    /** Atomically consumes one [InventoryItemKind.XP_BOOST] and grants [xpGranted] flat XP - see
+     * [com.suman.memoryarchitect.domain.progression.XpBoostRules]. Throws
+     * [InsufficientInventoryException] if no boost is owned. */
+    suspend fun applyXpBoost(xpGranted: Long): Pair<PlayerProfile, Inventory>
+
+    /** See [com.suman.memoryarchitect.domain.repository.MissionRepository.claimCategoryBonus]'s
+     * doc. [coinsAwarded]/[xpAwarded] are [com.suman.memoryarchitect.domain.progression.MissionCategoryBonusCatalog.roll]'s
+     * client-side roll - only re-verified for *plausibility* here ([coinsAwarded] falls within
+     * [com.suman.memoryarchitect.domain.progression.MissionCategoryBonusCatalog.CategoryBonus.coinRange],
+     * [xpAwarded] must equal that same period's fixed [com.suman.memoryarchitect.domain.progression.MissionCategoryBonusCatalog.CategoryBonus.xp]),
+     * never trusted outright; [InventoryItemKind] grants are never sent by the caller at all,
+     * always applied from this class's own copy of that same catalog. Throws
+     * [MissionNotEligibleException] if [period]'s active set (at [periodKey]) isn't fully claimed
+     * yet (or [coinsAwarded]/[xpAwarded] fall outside the configured range), [MissionAlreadyClaimedException]
+     * if this bonus was already granted. */
+    suspend fun claimCategoryBonus(period: MissionPeriod, periodKey: Long, coinsAwarded: Long, xpAwarded: Long): MissionCategoryBonusOutcome
+
+    /** See [com.suman.memoryarchitect.domain.repository.MissionRepository.unlockAllMissionsEarly]'s
+     * doc. Throws [MissionNotEligibleException] if any of the three periods isn't fully claimed
+     * yet, [InsufficientCoinsException] if fewer than 1,000 coins are held. */
+    suspend fun unlockAllMissionsEarly(dailyPeriodKey: Long, weeklyPeriodKey: Long, monthlyPeriodKey: Long): MissionRefreshOutcome
 }
+
+data class MissionCategoryBonusOutcome(
+    val reward: MissionReward,
+    val profile: PlayerProfile,
+    val inventory: Inventory,
+)
+
+data class MissionRefreshOutcome(
+    val profile: PlayerProfile,
+    val refreshState: MissionRefreshState,
+)

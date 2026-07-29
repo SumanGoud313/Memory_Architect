@@ -93,8 +93,11 @@ function coinsAwardedFor(mode, finalScore, comboCount, sceneAccuracy) {
 // A win locks that mode's card client-side for a fixed window (24h daily / 168h weekly - see
 // GameModeDisplay.kt's challengeLockDurationSeconds()). Stamped here with the server's own clock
 // so it's the authoritative value the client's optimistic local guess gets reconciled against.
-function applyScoreSubmission(profile, mode, finalScore, comboCount, sceneAccuracy, playedOnEpochDay, newlyUnlockedAchievementCount) {
-  const xpAwarded = finalScore * XP_PER_SCORE_POINT;
+// awardXp is false only for a repeat clear of an already-completed Classic level - mirrors
+// FirestoreProgressionRemoteSource.kt/ProgressionRepositoryImpl.kt's own handling: coins/streak/
+// achievements/rewards are entirely unaffected, only the xp contribution is zeroed.
+function applyScoreSubmission(profile, mode, finalScore, comboCount, sceneAccuracy, playedOnEpochDay, newlyUnlockedAchievementCount, awardXp = true) {
+  const xpAwarded = awardXp ? finalScore * XP_PER_SCORE_POINT : 0;
   const coinsAwarded = coinsAwardedFor(mode, finalScore, comboCount, sceneAccuracy);
   const streakUpdate = updateStreak(
     profile.lastPlayedEpochDay,
@@ -124,14 +127,15 @@ function applyScoreSubmission(profile, mode, finalScore, comboCount, sceneAccura
 // in, no currency you'd feel pressured to top up, no "you'll lose it all" framing anywhere. Day 5
 // is a Mystery Chest (same fixed amount, just revealed only on claim - no server-side randomness
 // to keep in sync); day 7 also grants a Streak Shield, capped by MAX_STORED_STREAK_SHIELDS.
+// inventoryGrants layer on top of coins/xp the same way bonusShield does - never a substitute.
 const DAILY_REWARD_TABLE = [
   { coins: 40, xp: 0 },
-  { coins: 60, xp: 0 },
+  { coins: 60, xp: 0, inventoryGrants: { HINT_TOKEN: 1 } },
   { coins: 80, xp: 20 },
-  { coins: 100, xp: 0 },
-  { coins: 130, xp: 30 },
-  { coins: 160, xp: 0 },
-  { coins: 250, xp: 75, bonusShield: true },
+  { coins: 100, xp: 0, inventoryGrants: { REDO_TOKEN: 1 } },
+  { coins: 130, xp: 30, inventoryGrants: { MYSTERY_CHEST: 1 } },
+  { coins: 160, xp: 0, inventoryGrants: { REWATCH_TICKET: 1 } },
+  { coins: 250, xp: 75, bonusShield: true, inventoryGrants: { LUCKY_SPIN_TICKET: 1 } },
 ];
 
 // A missed day never docks anything already earned -- it just quietly restarts at day 1, the
@@ -147,7 +151,34 @@ function canClaimDailyReward(lastClaimedEpochDay, todayEpochDay) {
   return lastClaimedEpochDay !== todayEpochDay;
 }
 
-function claimDailyReward(dailyRewardState, profile, todayEpochDay) {
+// Mirrors ReturningPlayerRules.Default (domain/progression/ReturningPlayerRules.kt) - only the
+// threshold this endpoint actually needs to re-validate; SHORT tier never grants anything server
+// side, so its threshold has no mock-backend mirror to keep in sync.
+const RETURNING_PLAYER_MEDIUM_GAP_DAYS = 7;
+
+// Mirrors FirestoreProgressionRemoteSource.claimReturningPlayerGift - independently re-derives
+// eligibility (a real gap, not already claimed today) rather than trusting the client's own
+// GetReturningPlayerWelcomeUseCase check, and always grants exactly one MYSTERY_CHEST, never
+// coins/xp (a welcome-back gift, not a progression reward).
+function claimReturningPlayerGift(giftState, profile, inventory, todayEpochDay) {
+  const gapDays = profile.lastPlayedEpochDay === null || profile.lastPlayedEpochDay === undefined
+    ? null
+    : todayEpochDay - profile.lastPlayedEpochDay;
+  if (gapDays === null || gapDays < RETURNING_PLAYER_MEDIUM_GAP_DAYS) {
+    return { error: 'not_eligible' };
+  }
+  if (giftState.lastClaimedOnEpochDay === todayEpochDay) {
+    return { error: 'already_claimed' };
+  }
+  const updatedInventory = { ...(inventory || {}) };
+  updatedInventory.MYSTERY_CHEST = (updatedInventory.MYSTERY_CHEST || 0) + 1;
+  return {
+    state: { lastClaimedOnEpochDay: todayEpochDay },
+    inventory: updatedInventory,
+  };
+}
+
+function claimDailyReward(dailyRewardState, profile, todayEpochDay, inventory) {
   const cycleDay = nextDailyRewardCycleDay(dailyRewardState.lastClaimedEpochDay, dailyRewardState.cycleDay, todayEpochDay);
   const entry = DAILY_REWARD_TABLE[cycleDay - 1];
   const shieldAwarded = Boolean(entry.bonusShield) && (profile.streakShields || 0) < MAX_STORED_STREAK_SHIELDS;
@@ -158,7 +189,18 @@ function claimDailyReward(dailyRewardState, profile, todayEpochDay) {
     streakShields: shieldAwarded ? (profile.streakShields || 0) + 1 : (profile.streakShields || 0),
   };
   const updatedState = { cycleDay, lastClaimedEpochDay: todayEpochDay };
-  return { profile: updatedProfile, state: updatedState, coinsAwarded: entry.coins, xpAwarded: entry.xp, shieldAwarded };
+  const updatedInventory = { ...(inventory || {}) };
+  Object.entries(entry.inventoryGrants || {}).forEach(([kind, amount]) => {
+    updatedInventory[kind] = (updatedInventory[kind] || 0) + amount;
+  });
+  return {
+    profile: updatedProfile,
+    state: updatedState,
+    coinsAwarded: entry.coins,
+    xpAwarded: entry.xp,
+    shieldAwarded,
+    inventory: updatedInventory,
+  };
 }
 
 module.exports = {
@@ -168,4 +210,5 @@ module.exports = {
   nextDailyRewardCycleDay,
   canClaimDailyReward,
   claimDailyReward,
+  claimReturningPlayerGift,
 };

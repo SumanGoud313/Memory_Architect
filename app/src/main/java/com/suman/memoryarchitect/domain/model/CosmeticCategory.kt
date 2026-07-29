@@ -23,4 +23,18 @@ enum class CosmeticCategory {
     /** A small emblem shown in Profile's Showcase card, same icon-in-circle rendering
      * [STICKER_PACK]/[TROPHY_RELIC] already use. */
     PROFILE_BADGE,
+
+    /** Recolors the room backdrop (a translucent wash) + `LightingOverlay` tint + object
+     * grounding-shadow tint during gameplay - see `ui/theme/RoomSkinVisualCatalog.kt`. Named
+     * ROOM_SKIN, not ROOM_THEME, to stay unambiguous against [RewardKind.ROOM_THEME], an
+     * unrelated free milestone-unlock concept (see this enum's own doc above). Premium-only,
+     * never coin-priced - see `PremiumCatalog.kt`. */
+    ROOM_SKIN,
+
+    /** A paint-transform over every object's existing Canvas art (gold-foil/marble/neon/wood/glass),
+     * applied uniformly regardless of which of the 8 rooms/103 objects a level's generator picked
+     * that round - see `ui/theme/ObjectMaterialVisualCatalog.kt`. Also selects which pickup/
+     * rotate/place sound family plays (see `core/feedback/FeedbackManagerImpl.kt`). Premium-only,
+     * never coin-priced - see `PremiumCatalog.kt`. */
+    OBJECT_MATERIAL,
 }

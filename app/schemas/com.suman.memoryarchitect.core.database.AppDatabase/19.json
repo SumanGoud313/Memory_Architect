@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 19,
-    "identityHash": "194f5f4530ea45b30b28ac954dd99f37",
+    "identityHash": "e5b470cf4bc8786ccb2ad01060496254",
     "entities": [
       {
         "tableName": "remote_config_cache",
@@ -111,7 +111,7 @@
       },
       {
         "tableName": "pending_score_submissions",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`localId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `mode` TEXT NOT NULL, `levelSeed` INTEGER NOT NULL, `finalScore` INTEGER NOT NULL, `sceneAccuracy` REAL NOT NULL, `playedOnEpochDay` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `retryCount` INTEGER NOT NULL, `submissionNonce` TEXT NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`localId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `mode` TEXT NOT NULL, `levelSeed` INTEGER NOT NULL, `finalScore` INTEGER NOT NULL, `sceneAccuracy` REAL NOT NULL, `playedOnEpochDay` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `retryCount` INTEGER NOT NULL, `submissionNonce` TEXT NOT NULL, `comboCount` INTEGER NOT NULL, `newlyUnlockedAchievementCount` INTEGER NOT NULL)",
         "fields": [
           {
             "fieldPath": "localId",
@@ -165,6 +165,18 @@
             "fieldPath": "submissionNonce",
             "columnName": "submissionNonce",
             "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "comboCount",
+            "columnName": "comboCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "newlyUnlockedAchievementCount",
+            "columnName": "newlyUnlockedAchievementCount",
+            "affinity": "INTEGER",
             "notNull": true
           }
         ],
@@ -401,7 +413,7 @@
       },
       {
         "tableName": "hint_usage",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`levelNumber` INTEGER NOT NULL, `hintsUsed` INTEGER NOT NULL, PRIMARY KEY(`levelNumber`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`levelNumber` INTEGER NOT NULL, `hintsUsed` INTEGER NOT NULL, `rewardedHintsUsed` INTEGER NOT NULL, PRIMARY KEY(`levelNumber`))",
         "fields": [
           {
             "fieldPath": "levelNumber",
@@ -412,6 +424,12 @@
           {
             "fieldPath": "hintsUsed",
             "columnName": "hintsUsed",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rewardedHintsUsed",
+            "columnName": "rewardedHintsUsed",
             "affinity": "INTEGER",
             "notNull": true
           }
@@ -425,7 +443,7 @@
       },
       {
         "tableName": "redo_usage",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`levelNumber` INTEGER NOT NULL, `redosUsed` INTEGER NOT NULL, PRIMARY KEY(`levelNumber`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`levelNumber` INTEGER NOT NULL, `redosUsed` INTEGER NOT NULL, `rewardedRedosUsed` INTEGER NOT NULL, PRIMARY KEY(`levelNumber`))",
         "fields": [
           {
             "fieldPath": "levelNumber",
@@ -436,6 +454,12 @@
           {
             "fieldPath": "redosUsed",
             "columnName": "redosUsed",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rewardedRedosUsed",
+            "columnName": "rewardedRedosUsed",
             "affinity": "INTEGER",
             "notNull": true
           }
@@ -449,7 +473,7 @@
       },
       {
         "tableName": "rewatch_usage",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`levelNumber` INTEGER NOT NULL, `rewatchesUsed` INTEGER NOT NULL, PRIMARY KEY(`levelNumber`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`levelNumber` INTEGER NOT NULL, `rewatchesUsed` INTEGER NOT NULL, `rewardedRewatchesUsed` INTEGER NOT NULL, PRIMARY KEY(`levelNumber`))",
         "fields": [
           {
             "fieldPath": "levelNumber",
@@ -460,6 +484,12 @@
           {
             "fieldPath": "rewatchesUsed",
             "columnName": "rewatchesUsed",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rewardedRewatchesUsed",
+            "columnName": "rewardedRewatchesUsed",
             "affinity": "INTEGER",
             "notNull": true
           }
@@ -611,7 +641,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '194f5f4530ea45b30b28ac954dd99f37')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'e5b470cf4bc8786ccb2ad01060496254')"
     ]
   }
 }

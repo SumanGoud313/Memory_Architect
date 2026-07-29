@@ -1,8 +1,10 @@
 package com.suman.memoryarchitect.ui.screens.missions
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -34,8 +36,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.suman.memoryarchitect.R
 import com.suman.memoryarchitect.core.common.toDisplayTitle
+import com.suman.memoryarchitect.core.common.toIcon
 import com.suman.memoryarchitect.domain.model.ActiveMission
 import com.suman.memoryarchitect.domain.model.MissionRequirementType
+import com.suman.memoryarchitect.domain.model.MissionReward
 import com.suman.memoryarchitect.ui.components.GlassCard
 import com.suman.memoryarchitect.ui.components.LevelProgressBar
 import com.suman.memoryarchitect.ui.components.PrimaryButton
@@ -109,6 +113,10 @@ fun MissionRow(
                         modifier = Modifier.padding(top = 4.dp),
                     )
                 }
+                MissionRewardChips(
+                    reward = mission.definition.reward,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
             }
             when {
                 mission.claimed -> Unit
@@ -124,5 +132,55 @@ fun MissionRow(
                 else -> Unit
             }
         }
+    }
+}
+
+/** What claiming this mission grants - always shown (before and after claiming) so a player never
+ * has to guess what a mission is worth. [MissionReward] can carry any combination of coins/xp/
+ * inventory grants at once (see its doc), hence [FlowRow] rather than a fixed-width [Row] - a
+ * Monthly mission's reward line can run longer than a Daily's. */
+@Composable
+private fun MissionRewardChips(reward: MissionReward, modifier: Modifier = Modifier) {
+    FlowRow(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        if (reward.coins > 0) {
+            RewardChip(
+                icon = Icons.Filled.MonetizationOn,
+                text = stringResource(R.string.missions_reward_coins_format, reward.coins),
+            )
+        }
+        if (reward.xp > 0) {
+            RewardChip(
+                icon = Icons.Filled.Star,
+                text = stringResource(R.string.missions_reward_xp_format, reward.xp),
+            )
+        }
+        reward.inventoryGrants.forEach { (kind, count) ->
+            RewardChip(
+                icon = kind.toIcon(),
+                text = stringResource(R.string.missions_reward_item_format, kind.toDisplayTitle(LocalContext.current), count),
+            )
+        }
+    }
+}
+
+@Composable
+private fun RewardChip(icon: ImageVector, text: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MemoryArchitectColors.accentGold,
+            modifier = Modifier.size(14.dp),
+        )
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+            color = MemoryArchitectColors.textSecondary,
+            modifier = Modifier.padding(start = 4.dp),
+        )
     }
 }

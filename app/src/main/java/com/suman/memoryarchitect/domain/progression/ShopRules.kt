@@ -8,16 +8,16 @@ import com.suman.memoryarchitect.domain.model.CosmeticRarity
  * runtime). */
 data class ShopRules(
     val priceBandMin: Map<CosmeticRarity, Long> = mapOf(
-        CosmeticRarity.COMMON to 150L,
-        CosmeticRarity.RARE to 400L,
-        CosmeticRarity.EPIC to 900L,
-        CosmeticRarity.LEGENDARY to 2000L,
+        CosmeticRarity.COMMON to 500L,
+        CosmeticRarity.RARE to 900L,
+        CosmeticRarity.EPIC to 1800L,
+        CosmeticRarity.LEGENDARY to 3500L,
     ),
     val priceBandMax: Map<CosmeticRarity, Long> = mapOf(
-        CosmeticRarity.COMMON to 300L,
-        CosmeticRarity.RARE to 700L,
-        CosmeticRarity.EPIC to 1500L,
-        CosmeticRarity.LEGENDARY to 3500L,
+        CosmeticRarity.COMMON to 800L,
+        CosmeticRarity.RARE to 1400L,
+        CosmeticRarity.EPIC to 2600L,
+        CosmeticRarity.LEGENDARY to 5500L,
     ),
 ) {
     companion object {

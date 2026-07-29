@@ -13,32 +13,26 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CardGiftcard
-import androidx.compose.material.icons.filled.Diamond
 import androidx.compose.material.icons.filled.MonetizationOn
-import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -46,69 +40,83 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.suman.memoryarchitect.BuildConfig
 import com.suman.memoryarchitect.R
-import com.suman.memoryarchitect.core.billing.PremiumPurchaseUiState
+import com.suman.memoryarchitect.core.ads.AdaptiveBannerAd
 import com.suman.memoryarchitect.core.billing.PurchaseUiState
 import com.suman.memoryarchitect.core.billing.toDisplayMessage
+import com.suman.memoryarchitect.domain.model.InventoryItemKind
 import com.suman.memoryarchitect.core.common.toDisplayMessage
 import com.suman.memoryarchitect.core.common.toDisplayName
+import com.suman.memoryarchitect.domain.model.BillingEntitlementKind
 import com.suman.memoryarchitect.domain.model.CosmeticCategory
 import com.suman.memoryarchitect.domain.model.CosmeticDefinition
 import com.suman.memoryarchitect.domain.model.CosmeticRarity
-import com.suman.memoryarchitect.domain.model.PremiumProduct
-import com.suman.memoryarchitect.domain.model.PremiumProductSource
+import com.suman.memoryarchitect.domain.model.BillingCatalogProduct
 import com.suman.memoryarchitect.domain.progression.PremiumShopCatalog
 import com.suman.memoryarchitect.feature.shop.ShopTab
 import com.suman.memoryarchitect.feature.shop.ShopUiState
 import com.suman.memoryarchitect.feature.shop.ShopViewModel
-import com.suman.memoryarchitect.ui.components.AmbientBackground
+import com.suman.memoryarchitect.ui.components.ConfettiBurst
 import com.suman.memoryarchitect.ui.components.GlassCard
 import com.suman.memoryarchitect.ui.components.OutlineButton
 import com.suman.memoryarchitect.ui.components.PillBadge
 import com.suman.memoryarchitect.ui.components.PrimaryButton
-import com.suman.memoryarchitect.ui.components.ScreenHeader
+import com.suman.memoryarchitect.ui.components.confettiBurst
 import com.suman.memoryarchitect.ui.components.rememberParticleFieldState
 import com.suman.memoryarchitect.ui.components.staggeredReveal
 import com.suman.memoryarchitect.ui.theme.MemoryArchitectColors
 import com.suman.memoryarchitect.ui.theme.MemoryArchitectRadii
 
-/** The Shop - reached via Profile's "Shop" button. Two completely separate storefronts under one
- * screen (the redesign's core requirement): the 🪙 Coin Shop (unchanged below - coins only ever buy
- * cosmetics, never score/stars/leaderboard rank/hints/redos/timer, preserving the existing
- * skill-based leaderboard and gameplay untouched by construction) and the 💎 Premium Shop (new -
- * real money only, via Google Play Billing, for [PremiumShopCatalog.products]). The two tabs never
- * share a card layout or a buy action, so a coin item and a real-money bundle can never be
- * mistaken for one another. */
+/** The Shop tab body - reached via the Cosmetics Hub's 🪙 Coin Shop / 💎 Premium Shop tabs (Shop
+ * is the hub's default tab - see `CosmeticsHubScreen.kt`). Two completely separate storefronts
+ * under one screen (the redesign's core requirement): the 🪙 Coin Shop (unchanged below - coins
+ * only ever buy cosmetics, never score/stars/leaderboard rank/hints/redos/timer, preserving the
+ * existing skill-based leaderboard and gameplay untouched by construction) and the 💎 Premium Shop
+ * (real money only, via Google Play Billing, for [PremiumShopCatalog.products]'s cosmetic bundles -
+ * `remove_ads_lifetime` is deliberately never rendered here, see the 2 `.filter` call sites below;
+ * it already has its own entry point on [com.suman.memoryarchitect.ui.screens.modeselect.ModeSelectScreen],
+ * duplicating it here would be redundant). The two tabs never share a card layout or a buy action,
+ * so a coin item and a real-money bundle can never be mistaken for one another.
+ *
+ * No `AmbientBackground`/`ScreenHeader` of its own - the Cosmetics Hub screen owns both, shared
+ * across all 3 of its tabs; this composable keeps its own [hiltViewModel] so switching tabs and
+ * back never refetches. */
 @Composable
-fun ShopScreen(onBack: () -> Unit, viewModel: ShopViewModel = hiltViewModel()) {
+fun ShopScreenBody(viewModel: ShopViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val particles = rememberParticleFieldState()
     val context = LocalContext.current
     var previewDefinition by remember { mutableStateOf<CosmeticDefinition?>(null) }
-    var previewProduct by remember { mutableStateOf<PremiumProduct?>(null) }
+    var previewProduct by remember { mutableStateOf<BillingCatalogProduct?>(null) }
     // Sticker Pack + Trophy & Relic + Profile Badge render together under one heading (see
     // ShopSection below) - the cosmetic audit found these three categories functionally redundant
     // with each other (all are showcase-only glyphs with no other function); grouping them stops
     // presenting that as separate, confusingly-named categories without touching the underlying
     // enum/catalog/owned data at all.
     val showcaseHeader = stringResource(R.string.profile_showcase_header)
+    val particles = rememberParticleFieldState(ambientCount = 0)
 
-    fun launchPremiumPurchase(product: PremiumProduct) {
+    fun launchPremiumPurchase(product: BillingCatalogProduct) {
         val activity = context as? Activity ?: return
-        if (product.source == PremiumProductSource.LEGACY_REMOVE_ADS) {
-            viewModel.buyRemoveAds(activity)
-        } else {
-            viewModel.buyPremiumProduct(activity, product.billingProductId)
+        viewModel.buyProduct(activity, product.billingProductId)
+    }
+
+    // The purchase confirm button doesn't wait for the real async result before dismissing (it
+    // closes its dialog optimistically), so this is the only visible moment a successful real-money
+    // purchase gets - same "reward moment = confetti" language every other grant in this app already
+    // uses (rewarded ads, level unlocks, gameplay object placement).
+    val content = uiState as? ShopUiState.Content
+    LaunchedEffect(content?.purchaseState) {
+        if (content?.purchaseState is PurchaseUiState.Success) {
+            particles.confettiBurst(Offset(400f, 300f))
         }
     }
 
-    AmbientBackground(nearParticles = particles, modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        ConfettiBurst(state = particles, modifier = Modifier.fillMaxSize())
         Column(modifier = Modifier.fillMaxSize()) {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(24.dp).staggeredReveal(0),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp).staggeredReveal(0),
+                horizontalArrangement = Arrangement.End,
             ) {
-                ScreenHeader(title = stringResource(R.string.shop_title), onBack = onBack)
                 val coins = (uiState as? ShopUiState.Content)?.coins
                 if (coins != null) {
                     PillBadge(
@@ -135,15 +143,34 @@ fun ShopScreen(onBack: () -> Unit, viewModel: ShopViewModel = hiltViewModel()) {
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             OutlineButton(text = "DEBUG: +5000 coins", onClick = viewModel::debugGrantCoins, horizontalPadding = 10.dp)
+                            OutlineButton(text = "DEBUG: +1000 XP", onClick = viewModel::debugGrantXp, horizontalPadding = 10.dp)
                             OutlineButton(text = "DEBUG: Unlock all", onClick = viewModel::debugUnlockAll, horizontalPadding = 10.dp)
                             OutlineButton(text = "DEBUG: Lock all", onClick = viewModel::debugLockAll, horizontalPadding = 10.dp)
-                            PremiumShopCatalog.cosmeticBundleProductIds.forEach { productId ->
+                            OutlineButton(text = "DEBUG: Unlock all 100 levels", onClick = viewModel::debugUnlockAllLevels, horizontalPadding = 10.dp)
+                            PremiumShopCatalog.cosmeticCollectionProductIds.forEach { productId ->
                                 OutlineButton(
                                     text = "DEBUG: Grant ${PremiumShopCatalog.requireProduct(productId).let { stringResource(it.titleRes) }}",
                                     onClick = { viewModel.debugGrantPremiumProduct(productId) },
                                     horizontalPadding = 10.dp,
                                 )
                             }
+                            OutlineButton(text = "DEBUG: +5 Hint Tokens", onClick = { viewModel.debugGrantInventoryItem(InventoryItemKind.HINT_TOKEN) }, horizontalPadding = 10.dp)
+                            OutlineButton(text = "DEBUG: +5 Redo Tokens", onClick = { viewModel.debugGrantInventoryItem(InventoryItemKind.REDO_TOKEN) }, horizontalPadding = 10.dp)
+                            OutlineButton(text = "DEBUG: +5 Rewatch Tickets", onClick = { viewModel.debugGrantInventoryItem(InventoryItemKind.REWATCH_TICKET) }, horizontalPadding = 10.dp)
+                            OutlineButton(text = "DEBUG: +5 Lucky Spin Tickets", onClick = { viewModel.debugGrantInventoryItem(InventoryItemKind.LUCKY_SPIN_TICKET) }, horizontalPadding = 10.dp)
+                            OutlineButton(text = "DEBUG: +5 Mystery Chests", onClick = { viewModel.debugGrantInventoryItem(InventoryItemKind.MYSTERY_CHEST) }, horizontalPadding = 10.dp)
+                            OutlineButton(text = "DEBUG: +500 Journey Points", onClick = viewModel::debugGrantJourneyPoints, horizontalPadding = 10.dp)
+                            OutlineButton(text = "DEBUG: +1 Streak Shield", onClick = viewModel::debugGrantStreakShield, horizontalPadding = 10.dp)
+                            OutlineButton(text = "DEBUG: Reset Daily Reward", onClick = viewModel::debugResetDailyReward, horizontalPadding = 10.dp)
+                            OutlineButton(text = "DEBUG: Reset Returning Player", onClick = viewModel::debugResetReturningPlayer, horizontalPadding = 10.dp)
+                            OutlineButton(text = "DEBUG: Trigger notification", onClick = viewModel::debugTriggerNotification, horizontalPadding = 10.dp)
+                            // DebugLiveEventOverride now bypasses each template's own date window
+                            // entirely (see its own doc), so any of the 9 templates previews
+                            // correctly regardless of today's date - no longer limited to whichever
+                            // one's default window happens to cover "now".
+                            OutlineButton(text = "DEBUG: Trigger HALLOWEEN event", onClick = { viewModel.debugTriggerSeasonalEvent("HALLOWEEN") }, horizontalPadding = 10.dp)
+                            OutlineButton(text = "DEBUG: Trigger SUMMER event", onClick = { viewModel.debugTriggerSeasonalEvent("SUMMER") }, horizontalPadding = 10.dp)
+                            OutlineButton(text = "DEBUG: Clear event override", onClick = viewModel::debugClearSeasonalEventOverride, horizontalPadding = 10.dp)
                         }
                     }
                     if (state.errorReason != null) {
@@ -154,29 +181,23 @@ fun ShopScreen(onBack: () -> Unit, viewModel: ShopViewModel = hiltViewModel()) {
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 4.dp),
                         )
                     }
-                    val premiumFailure = (state.premiumPurchaseState as? PremiumPurchaseUiState.Failed)
-                    val removeAdsFailure = (state.removeAdsPurchaseState as? PurchaseUiState.Failed)
-                    if (premiumFailure != null) {
+                    if (state.debugMessage != null) {
                         Text(
-                            text = premiumFailure.reason.toDisplayMessage(context),
-                            color = MemoryArchitectColors.danger,
+                            text = state.debugMessage,
+                            color = MemoryArchitectColors.accentTerracotta,
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 4.dp),
                         )
-                    } else if (removeAdsFailure != null) {
+                    }
+                    val purchaseFailure = state.purchaseState as? PurchaseUiState.Failed
+                    if (purchaseFailure != null) {
                         Text(
-                            text = removeAdsFailure.reason.toDisplayMessage(context),
+                            text = purchaseFailure.reason.toDisplayMessage(context),
                             color = MemoryArchitectColors.danger,
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 4.dp),
                         )
                     }
-
-                    TopBannerRow(
-                        hasRemovedAds = state.hasRemovedAds,
-                        onOpenProduct = { productId -> previewProduct = PremiumShopCatalog.requireProduct(productId) },
-                        modifier = Modifier.fillMaxWidth().padding(top = 4.dp).staggeredReveal(1),
-                    )
 
                     ShopTabRow(
                         selected = state.selectedTab,
@@ -225,34 +246,29 @@ fun ShopScreen(onBack: () -> Unit, viewModel: ShopViewModel = hiltViewModel()) {
                             modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 8.dp),
                             verticalArrangement = Arrangement.spacedBy(16.dp),
                         ) {
-                            PremiumShopCatalog.products.forEachIndexed { index, product ->
-                                val isOwned = when (product.source) {
-                                    PremiumProductSource.LEGACY_REMOVE_ADS -> state.hasRemovedAds
-                                    PremiumProductSource.COSMETIC_BUNDLE -> product.grantedCosmeticIds.isNotEmpty() &&
-                                        state.ownedIds.containsAll(product.grantedCosmeticIds)
-                                }
-                                val price = when (product.source) {
-                                    PremiumProductSource.LEGACY_REMOVE_ADS -> state.removeAdsPrice
-                                    PremiumProductSource.COSMETIC_BUNDLE -> state.premiumPrices[product.billingProductId]?.formattedPrice
-                                }
-                                val isLoading = when (product.source) {
-                                    PremiumProductSource.LEGACY_REMOVE_ADS -> state.removeAdsPurchaseState is PurchaseUiState.Loading
-                                    PremiumProductSource.COSMETIC_BUNDLE ->
-                                        (state.premiumPurchaseState as? PremiumPurchaseUiState.Loading)?.productId == product.billingProductId
-                                }
+                            PremiumShopCatalog.products
+                                .filter { it.entitlement == BillingEntitlementKind.COSMETIC_COLLECTION }
+                                .forEachIndexed { index, product ->
+                                val billingState = state.billingProductStates[product.billingProductId]
+                                val isLoading = (state.purchaseState as? PurchaseUiState.Loading)?.productId == product.billingProductId
                                 PremiumProductCard(
                                     product = product,
-                                    formattedPrice = price,
-                                    isOwned = isOwned,
+                                    formattedPrice = billingState?.formattedPrice,
+                                    priceLoadFailed = state.billingProductsLoadFailed,
+                                    isOwned = billingState?.owned == true,
                                     isLoading = isLoading,
                                     onBuy = { launchPremiumPurchase(product) },
-                                    onOpenDetail = { previewProduct = product },
+                                    onOpenDetail = {
+                                        previewProduct = product
+                                        viewModel.onProductViewed(product.billingProductId)
+                                    },
+                                    onRetryPriceLoad = viewModel::retryBillingPriceLoad,
                                     modifier = Modifier.staggeredReveal(index),
                                 )
                             }
                             OutlineButton(
                                 text = stringResource(R.string.remove_ads_restore_purchase),
-                                onClick = { viewModel.restoreRemoveAdsPurchase(); viewModel.restorePremiumPurchases() },
+                                onClick = viewModel::restorePurchases,
                                 modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 24.dp),
                             )
                         }
@@ -260,6 +276,10 @@ fun ShopScreen(onBack: () -> Unit, viewModel: ShopViewModel = hiltViewModel()) {
                 }
             }
         }
+
+        // Bottom-anchored over both the Coin and Premium sub-tabs alike - see AdaptiveBannerAd's
+        // own doc for why this renders nothing at all for a Remove Ads purchaser.
+        AdaptiveBannerAd(placement = "shop", modifier = Modifier.align(Alignment.BottomCenter))
 
         val preview = previewDefinition
         if (preview != null) {
@@ -278,110 +298,22 @@ fun ShopScreen(onBack: () -> Unit, viewModel: ShopViewModel = hiltViewModel()) {
         val product = previewProduct
         if (product != null) {
             val content = uiState as? ShopUiState.Content
-            val isOwned = when (product.source) {
-                PremiumProductSource.LEGACY_REMOVE_ADS -> content?.hasRemovedAds == true
-                PremiumProductSource.COSMETIC_BUNDLE -> product.grantedCosmeticIds.isNotEmpty() &&
-                    content?.ownedIds?.containsAll(product.grantedCosmeticIds) == true
-            }
-            val price = when (product.source) {
-                PremiumProductSource.LEGACY_REMOVE_ADS -> content?.removeAdsPrice
-                PremiumProductSource.COSMETIC_BUNDLE -> content?.premiumPrices?.get(product.billingProductId)?.formattedPrice
-            }
-            val isLoading = when (product.source) {
-                PremiumProductSource.LEGACY_REMOVE_ADS -> content?.removeAdsPurchaseState is PurchaseUiState.Loading
-                PremiumProductSource.COSMETIC_BUNDLE ->
-                    (content?.premiumPurchaseState as? PremiumPurchaseUiState.Loading)?.productId == product.billingProductId
-            }
+            val billingState = content?.billingProductStates?.get(product.billingProductId)
+            val isLoading = (content?.purchaseState as? PurchaseUiState.Loading)?.productId == product.billingProductId
             PremiumProductDetailDialog(
                 product = product,
-                formattedPrice = price,
-                isOwned = isOwned,
+                formattedPrice = billingState?.formattedPrice,
+                priceLoadFailed = content?.billingProductsLoadFailed == true,
+                isOwned = billingState?.owned == true,
                 isLoading = isLoading,
                 onBuy = { launchPremiumPurchase(product) },
                 onDismiss = { previewProduct = null },
+                onRetryPriceLoad = viewModel::retryBillingPriceLoad,
             )
         }
     }
 }
 
-/** Featured / Remove Ads / Founder's Pack / Starter Bundle promo tiles above the Coin/Premium tabs -
- * every tile opens straight into [PremiumProductDetailDialog] via [onOpenProduct], regardless of
- * which tab is currently selected, so a tap always leads somewhere real rather than just switching
- * tabs. The Remove Ads tile is omitted once already owned - no point advertising an owned product. */
-@Composable
-private fun TopBannerRow(hasRemovedAds: Boolean, onOpenProduct: (String) -> Unit, modifier: Modifier = Modifier) {
-    val featured = remember { PremiumShopCatalog.products.first { it.isBestValue } }
-    LazyRow(modifier = modifier.padding(start = 24.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        item {
-            PromoBanner(
-                title = stringResource(R.string.shop_premium_featured),
-                subtitle = stringResource(featured.titleRes),
-                icon = Icons.Filled.Star,
-                onClick = { onOpenProduct(featured.billingProductId) },
-            )
-        }
-        if (!hasRemovedAds) {
-            item {
-                PromoBanner(
-                    title = stringResource(R.string.remove_ads_headline),
-                    subtitle = stringResource(R.string.remove_ads_subheadline),
-                    icon = Icons.Filled.Shield,
-                    onClick = { onOpenProduct(PremiumShopCatalog.REMOVE_ADS_PRODUCT_ID) },
-                )
-            }
-        }
-        item {
-            PromoBanner(
-                title = stringResource(R.string.premium_founders_pack_title),
-                subtitle = stringResource(R.string.premium_founders_pack_tagline),
-                icon = Icons.Filled.WorkspacePremium,
-                onClick = { onOpenProduct(PremiumShopCatalog.FOUNDERS_PACK_PRODUCT_ID) },
-            )
-        }
-        item {
-            PromoBanner(
-                title = stringResource(R.string.premium_starter_bundle_title),
-                subtitle = stringResource(R.string.premium_starter_bundle_tagline),
-                icon = Icons.Filled.CardGiftcard,
-                onClick = { onOpenProduct(PremiumShopCatalog.STARTER_BUNDLE_PRODUCT_ID) },
-            )
-        }
-        item {
-            PromoBanner(
-                title = stringResource(R.string.shop_tab_premium),
-                subtitle = stringResource(R.string.premium_royal_collection_title) + " · " + stringResource(R.string.premium_luxury_collection_title),
-                icon = Icons.Filled.Diamond,
-                onClick = { onOpenProduct(PremiumShopCatalog.ROYAL_COLLECTION_PRODUCT_ID) },
-            )
-        }
-    }
-}
-
-@Composable
-private fun PromoBanner(title: String, subtitle: String, icon: ImageVector, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    GlassCard(
-        modifier = modifier.width(220.dp).clickable(onClick = onClick),
-        tint = MemoryArchitectColors.accentGold.copy(alpha = 0.12f),
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Icon(imageVector = icon, contentDescription = null, tint = MemoryArchitectColors.accentGold, modifier = Modifier.size(22.dp))
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleSmall,
-                color = MemoryArchitectColors.textPrimary,
-                maxLines = 1,
-                modifier = Modifier.padding(top = 8.dp),
-            )
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MemoryArchitectColors.textSecondary,
-                maxLines = 2,
-                modifier = Modifier.padding(top = 4.dp),
-            )
-        }
-    }
-}
 
 /** 🪙 Coin Shop / 💎 Premium Shop - the redesign's "two completely separate sections" made visible
  * as two tabs, same lightweight chip-row shape [com.suman.memoryarchitect.ui.screens.leaderboard.LeaderboardScreen]'s

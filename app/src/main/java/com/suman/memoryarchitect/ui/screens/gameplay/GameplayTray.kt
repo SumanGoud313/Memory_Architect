@@ -38,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
@@ -50,6 +51,7 @@ import com.suman.memoryarchitect.ui.components.GlassCard
 import com.suman.memoryarchitect.ui.illustration.IdleAnimatedObject
 import com.suman.memoryarchitect.ui.illustration.ObjectArtRegistry
 import com.suman.memoryarchitect.ui.theme.MemoryArchitectColors
+import com.suman.memoryarchitect.ui.theme.ObjectMaterialVisualSpec
 import kotlinx.coroutines.launch
 
 /**
@@ -73,6 +75,8 @@ fun GameplayTray(
     modifier: Modifier = Modifier,
     isHintModeArmed: Boolean = false,
     onHintTargetSelected: (String) -> Unit = {},
+    accentColor: Color = MemoryArchitectColors.accentGold,
+    objectMaterial: ObjectMaterialVisualSpec? = null,
 ) {
     val remainingCount = trayObjectIds.size
     Column(modifier = modifier) {
@@ -101,6 +105,8 @@ fun GameplayTray(
                     onDragCancel = onDragCancel,
                     isHintModeArmed = isHintModeArmed,
                     onHintTargetSelected = onHintTargetSelected,
+                    accentColor = accentColor,
+                    objectMaterial = objectMaterial,
                     modifier = Modifier.animateItem(),
                 )
             }
@@ -119,6 +125,8 @@ private fun TrayChip(
     modifier: Modifier = Modifier,
     isHintModeArmed: Boolean = false,
     onHintTargetSelected: (String) -> Unit = {},
+    accentColor: Color = MemoryArchitectColors.accentGold,
+    objectMaterial: ObjectMaterialVisualSpec? = null,
 ) {
     var coordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
     var isLifting by remember { mutableStateOf(false) }
@@ -137,7 +145,7 @@ private fun TrayChip(
                 modifier = Modifier
                     .size(78.dp)
                     .blur(14.dp)
-                    .background(MemoryArchitectColors.accentGold.copy(alpha = 0.4f), CircleShape),
+                    .background(accentColor.copy(alpha = 0.4f), CircleShape),
             )
         }
         // While hint mode is armed, every chip pulses gently — this can't tell target from
@@ -155,7 +163,7 @@ private fun TrayChip(
                     .size(76.dp)
                     .graphicsLayer { alpha = armedAlpha }
                     .blur(12.dp)
-                    .background(MemoryArchitectColors.accentGold, CircleShape),
+                    .background(accentColor, CircleShape),
             )
         }
         // A placed object never visibly "pops" out of the tray — it fades and shrinks away the
@@ -205,16 +213,16 @@ private fun TrayChip(
                     )
                 },
         ) {
-            IdleAnimatedObject(art = art, modifier = Modifier.fillMaxSize())
+            IdleAnimatedObject(art = art, modifier = Modifier.fillMaxSize().objectMaterialTint(objectMaterial))
         }
     }
 }
 
 /** The floating chip that follows the finger while dragging from tray toward the scene panel. */
 @Composable
-fun TrayDragGhost(objectId: String, modifier: Modifier = Modifier) {
+fun TrayDragGhost(objectId: String, modifier: Modifier = Modifier, objectMaterial: ObjectMaterialVisualSpec? = null) {
     val art = remember(objectId) { ObjectArtRegistry.get(objectId) }
     Box(modifier = modifier.size(68.dp)) {
-        IdleAnimatedObject(art = art, modifier = Modifier.fillMaxSize())
+        IdleAnimatedObject(art = art, modifier = Modifier.fillMaxSize().objectMaterialTint(objectMaterial))
     }
 }

@@ -1,5 +1,10 @@
 package com.suman.memoryarchitect.ui.screens.settings
 
+import android.Manifest
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -22,8 +27,8 @@ import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.GraphicEq
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -38,6 +43,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -52,6 +59,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.suman.memoryarchitect.BuildConfig
 import com.suman.memoryarchitect.R
+import com.suman.memoryarchitect.core.ads.AdaptiveBannerAd
 import com.suman.memoryarchitect.core.feedback.AudioSettings
 import com.suman.memoryarchitect.core.feedback.ui.rememberFeedback
 import com.suman.memoryarchitect.feature.settings.SettingsViewModel
@@ -75,9 +83,22 @@ fun SettingsScreen(
 ) {
     val audioSettings by viewModel.audioSettings.collectAsStateWithLifecycle()
     val isResetting by viewModel.isResetting.collectAsStateWithLifecycle()
+    val streakReminderEnabled by viewModel.streakReminderEnabled.collectAsStateWithLifecycle()
+    val dailyChallengeReminderEnabled by viewModel.dailyChallengeReminderEnabled.collectAsStateWithLifecycle()
     val particles = rememberParticleFieldState()
     var showResetConfirmation by remember { mutableStateOf(false) }
     var showHowToPlay by remember { mutableStateOf(false) }
+
+    // Only relevant on API 33+ (POST_NOTIFICATIONS didn't exist before) - below that, toggling a
+    // reminder on just works once DailyReminderWorker next runs, no prompt needed. Requested only
+    // when the player actually turns a reminder on, never speculatively at screen-open, matching
+    // the "don't re-prompt aggressively" rule from the retention plan's Notifications section.
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    fun requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
 
     AmbientBackground(nearParticles = particles, modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
@@ -107,14 +128,33 @@ fun SettingsScreen(
                     onReduceHapticsToggle = viewModel::setReduceHaptics,
                     modifier = Modifier.staggeredReveal(3),
                 )
+                Text(
+                    text = stringResource(R.string.settings_notifications),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MemoryArchitectColors.textTertiary,
+                    modifier = Modifier.padding(top = 8.dp).staggeredReveal(4),
+                )
+                NotificationsCard(
+                    streakReminderEnabled = streakReminderEnabled,
+                    dailyChallengeReminderEnabled = dailyChallengeReminderEnabled,
+                    onStreakReminderToggle = { enabled ->
+                        viewModel.setStreakReminderEnabled(enabled)
+                        if (enabled) requestNotificationPermissionIfNeeded()
+                    },
+                    onDailyChallengeReminderToggle = { enabled ->
+                        viewModel.setDailyChallengeReminderEnabled(enabled)
+                        if (enabled) requestNotificationPermissionIfNeeded()
+                    },
+                    modifier = Modifier.staggeredReveal(5),
+                )
                 HowToPlayRow(
                     onClick = { showHowToPlay = true },
-                    modifier = Modifier.staggeredReveal(4),
+                    modifier = Modifier.staggeredReveal(6),
                 )
                 ResetProgressRow(
                     isResetting = isResetting,
                     onClick = { showResetConfirmation = true },
-                    modifier = Modifier.staggeredReveal(5),
+                    modifier = Modifier.staggeredReveal(7),
                 )
                 AboutRow(
                     // Debug builds only, and never advertised in the UI - tapping the app name 7
@@ -122,9 +162,14 @@ fun SettingsScreen(
                     // Options) is the only way in, so a tester holding a debug build never
                     // stumbles onto internal analytics data by casually browsing Settings.
                     onSecretUnlock = if (BuildConfig.DEBUG) onOpenAnalyticsDashboard else null,
-                    modifier = Modifier.staggeredReveal(6),
+                    modifier = Modifier.staggeredReveal(8),
                 )
             }
+
+            // Explicitly "optional" per the placement audit (Settings is a low-traffic, low-
+            // dwell-time screen) but included for completeness - see AdaptiveBannerAd's own doc
+            // for why this renders nothing at all for a Remove Ads purchaser.
+            AdaptiveBannerAd(placement = "settings", modifier = Modifier.padding(top = 12.dp))
         }
     }
 
@@ -326,6 +371,41 @@ private fun ToggleRow(
     }
 }
 
+/** Per-category opt-out for [com.suman.memoryarchitect.core.notifications.DailyReminderWorker] -
+ * both default on (matches [com.suman.memoryarchitect.core.datastore.UserPreferencesDataStore]'s
+ * own defaults), independent of whether the OS notification permission is actually granted; a
+ * toggle turned on without that permission simply means [DailyReminderWorker] silently no-ops
+ * until it's granted, rather than this screen blocking on it. */
+@Composable
+private fun NotificationsCard(
+    streakReminderEnabled: Boolean,
+    dailyChallengeReminderEnabled: Boolean,
+    onStreakReminderToggle: (Boolean) -> Unit,
+    onDailyChallengeReminderToggle: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    GlassCard(modifier = modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            ToggleRow(
+                icon = Icons.Filled.Notifications,
+                label = stringResource(R.string.settings_streak_reminder),
+                subtitle = stringResource(R.string.settings_streak_reminder_subtitle),
+                checked = streakReminderEnabled,
+                onToggle = onStreakReminderToggle,
+                modifier = Modifier.padding(16.dp),
+            )
+            ToggleRow(
+                icon = Icons.Filled.Notifications,
+                label = stringResource(R.string.settings_daily_challenge_reminder),
+                subtitle = stringResource(R.string.settings_daily_challenge_reminder_subtitle),
+                checked = dailyChallengeReminderEnabled,
+                onToggle = onDailyChallengeReminderToggle,
+                modifier = Modifier.padding(16.dp),
+            )
+        }
+    }
+}
+
 @Composable
 private fun HowToPlayRow(onClick: () -> Unit, modifier: Modifier = Modifier) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -411,7 +491,17 @@ private fun AboutRow(onSecretUnlock: (() -> Unit)?, modifier: Modifier = Modifie
             ),
     ) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Filled.Info, contentDescription = null, tint = MemoryArchitectColors.textSecondary)
+            // The real app logo (see MainActivity/SplashScreen.kt) rather than a generic Material
+            // info glyph - this row is this app's closest equivalent to an "About" section, so it's
+            // one of the few in-app spots (alongside the splash) the brand mark itself belongs.
+            // No clip() here: the artwork's own rounded-square shape and dark background are
+            // already baked into the image, and at this small a size any additional system clip
+            // would cut into the brain/puzzle-piece marks near the corners.
+            Image(
+                painter = painterResource(R.drawable.memory_architect_logo),
+                contentDescription = null,
+                modifier = Modifier.size(40.dp),
+            )
             Column(modifier = Modifier.padding(start = 14.dp)) {
                 Text(text = stringResource(R.string.app_name), style = MaterialTheme.typography.bodyLarge, color = MemoryArchitectColors.textPrimary)
                 Text(

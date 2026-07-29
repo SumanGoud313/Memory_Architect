@@ -7,7 +7,7 @@ import com.google.firebase.firestore.CollectionReference
 import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.firestore
-import com.suman.memoryarchitect.core.analytics.FirebaseAvailability
+import com.suman.memoryarchitect.core.analytics.FirebaseAvailabilityProvider
 import com.suman.memoryarchitect.core.auth.PlayerIdentityManager
 import com.suman.memoryarchitect.core.common.DispatcherProvider
 import com.suman.memoryarchitect.core.database.PlayerProgressDao
@@ -41,7 +41,9 @@ import javax.inject.Singleton
  * - `players/{uid}` - one denormalized doc per player, the Global Leaderboard's source: every
  *   field the leaderboard sorts/displays lives directly on this doc (no join, no second read).
  *   Writing it is a full overwrite each time (see [submitGlobalStats]) - it's a point-in-time
- *   cumulative snapshot, not an event log, so there's nothing to accumulate server-side.
+ *   snapshot, not an event log, so there's nothing to accumulate server-side. `bestScore` (what the
+ *   board actually ranks by) is a running max, not a lifetime sum - see [LeaderboardEntry]'s doc for
+ *   why.
  * - `leaderboardDaily/{yyyy-MM-dd}/entries/{uid}` and `leaderboardWeekly/{yyyy-'W'ww}/entries/{uid}`
  *   - period-keyed subcollections, one per calendar day / ISO week. This *is* the "reset
  *   automatically" mechanism: a new day/week is a brand-new, empty subcollection, nothing to
@@ -50,7 +52,7 @@ import javax.inject.Singleton
  *   than creating a duplicate row - the core of this app's leaderboard anti-duplicate-submission
  *   guarantee, enforced by the schema itself rather than application logic that could be bypassed.
  *
- * Every write/read is guarded by [FirebaseAvailability.isConfigured] and a resolved
+ * Every write/read is guarded by [FirebaseAvailabilityProvider.isConfigured] and a resolved
  * [PlayerIdentityManager.uid], and every Firestore exception is caught and mapped to
  * [Outcome.Error] - a leaderboard being unreachable (Firestore not yet enabled in the console, the
  * device is offline, security rules reject an unexpected shape) never throws past this class and
@@ -65,6 +67,7 @@ class LeaderboardRepositoryImpl @Inject constructor(
     private val progressDao: PlayerProgressDao,
     private val dispatchers: DispatcherProvider,
     private val clock: Clock,
+    private val firebaseAvailabilityProvider: FirebaseAvailabilityProvider,
 ) : LeaderboardRepository {
 
     private val firestore by lazy { Firebase.firestore }
@@ -73,10 +76,10 @@ class LeaderboardRepositoryImpl @Inject constructor(
         guarded { uid ->
             val identity = currentIdentityFields()
             val doc = mapOf(
-                "displayName" to uid.toPlayerDisplayName(),
+                "displayName" to playerDisplayName(uid),
                 "highestLevel" to stats.highestLevel,
                 "totalStars" to stats.totalStars,
-                "totalScore" to stats.totalScore,
+                "bestScore" to stats.bestScore,
                 "perfectLevels" to stats.perfectLevels,
                 "averageAccuracy" to stats.averageAccuracy.toDouble(),
                 "averageCompletionTimeMs" to stats.averageCompletionTimeMs,
@@ -112,18 +115,39 @@ class LeaderboardRepositoryImpl @Inject constructor(
         // Never let a resubmission (the same Daily/Weekly/Monthly puzzle attempted again after the
         // first clear, or a retried network call) overwrite a better prior score with a worse one -
         // the schema's overwrite-by-uid semantics already stop duplicates, this stops regressions.
-        val existingScore = collection.document(uid).get().await().getLong("score") ?: -1L
-        if (submission.score <= existingScore) return
-        val doc = mapOf(
-            "displayName" to uid.toPlayerDisplayName(),
-            "score" to submission.score,
-            "accuracy" to submission.accuracy.toDouble(),
-            "completionTimeMs" to submission.completionTimeMs,
-            "isPerfectRun" to submission.isPerfectRun,
-            "submittedAtEpochMs" to clock.millis(),
-        ) + currentIdentityFields()
-        collection.document(uid).set(doc).await()
+        //
+        // Wrapped in a transaction (unlike the original plain get-then-set) - two devices signed
+        // into the same account submitting within the same round-trip window used to be a genuine
+        // lost-update race: both could read the same existingScore before either write committed,
+        // so a worse score submitted second could still win the write, only to be caught and
+        // reverted a moment later by validatePeriodicEntry server-side. A transaction re-reads
+        // existingScore atomically and Firestore retries it on contention, closing the same window
+        // client-side instead of relying on the Cloud Function to clean up after the fact.
+        val identity = currentIdentityFields()
+        firestore.runTransaction { transaction ->
+            val existingScore = transaction.get(collection.document(uid)).getLong("score") ?: -1L
+            if (submission.score <= existingScore) return@runTransaction
+            val doc = mapOf(
+                "displayName" to playerDisplayName(uid),
+                "score" to submission.score,
+                "accuracy" to submission.accuracy.toDouble(),
+                "completionTimeMs" to submission.completionTimeMs,
+                "isPerfectRun" to submission.isPerfectRun,
+                "submittedAtEpochMs" to clock.millis(),
+            ) + identity
+            transaction.set(collection.document(uid), doc)
+        }.await()
     }
+
+    /** Every player reaching this point is Google-verified (see
+     * [com.suman.memoryarchitect.ui.ConnectivityGate]'s mandatory sign-in gate - there is no other
+     * way to reach a scored round any more), so [PlayerIdentityManager.displayName] is the real
+     * name shown on the public leaderboard now, truncated to [firestore.rules]' own
+     * `displayName.size() <= 32` bound. Falls back to [toPlayerDisplayName]'s anonymized
+     * `Architect#XXXX` form only for the rare edge case of a linked Google account with no display
+     * name set at all. */
+    private fun playerDisplayName(uid: String): String =
+        playerIdentityManager.displayName.value?.take(MAX_DISPLAY_NAME_LENGTH) ?: uid.toPlayerDisplayName()
 
     /** avatarId/league/verified/country, denormalized onto every leaderboard doc (Global and every
      * periodic entry) at write time - the Firestore-cost-optimization principle behind this whole
@@ -149,7 +173,7 @@ class LeaderboardRepositoryImpl @Inject constructor(
             fetchLeaderboard(
                 type = LeaderboardType.GLOBAL,
                 collection = playersCollection(),
-                sortField = "totalScore",
+                sortField = "bestScore",
                 accuracyField = "averageAccuracy",
                 timeField = "averageCompletionTimeMs",
                 limit = limit,
@@ -288,7 +312,7 @@ class LeaderboardRepositoryImpl @Inject constructor(
      * Firestore failure into [Outcome.Error] - the one place every public method's guard/try/catch
      * boilerplate lives instead of repeating it five times. */
     private suspend fun <T> guarded(block: suspend (uid: String) -> T): Outcome<T> {
-        if (!FirebaseAvailability.isConfigured) return Outcome.Error(AppError.FeatureUnavailable)
+        if (!firebaseAvailabilityProvider.isConfigured) return Outcome.Error(AppError.FeatureUnavailable)
         val uid = playerIdentityManager.awaitUid() ?: return Outcome.Error(AppError.FeatureUnavailable)
         return try {
             Outcome.Success(block(uid))
@@ -323,13 +347,18 @@ class LeaderboardRepositoryImpl @Inject constructor(
         const val WEEKLY_LEADERBOARD_COLLECTION = "leaderboardWeekly"
         const val MONTHLY_LEADERBOARD_COLLECTION = "leaderboardMonthly"
         const val ENTRIES_SUBCOLLECTION = "entries"
+        // Mirrors firestore.rules' isValidGlobalStats/isValidPeriodicEntry's own
+        // `displayName.size() <= 32` bound.
+        const val MAX_DISPLAY_NAME_LENGTH = 32
     }
 }
 
-/** A stable, non-PII display name derived purely from the uid - no username/login flow exists in
- * this app (see [PlayerIdentityManager]), so this is the only "name" a leaderboard entry ever has.
- * Deterministic (same uid always formats the same way) rather than random-per-call, so it doesn't
- * change between one submission and the next. */
+/** A stable, uid-derived display name - the fallback [LeaderboardRepositoryImpl.playerDisplayName]
+ * uses for the rare edge case of a Google-verified player whose linked account has no display name
+ * set at all (every real player reaches the leaderboard only after signing in with Google - see
+ * [com.suman.memoryarchitect.ui.ConnectivityGate] - so that account's own name is the normal case
+ * now, not this). Deterministic (same uid always formats the same way) rather than random-per-call,
+ * so it doesn't change between one submission and the next. */
 internal fun String.toPlayerDisplayName(): String {
     val suffix = takeLast(4).uppercase(Locale.ROOT)
     return "Architect#$suffix"

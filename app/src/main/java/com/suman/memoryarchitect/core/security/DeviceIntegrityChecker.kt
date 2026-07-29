@@ -6,7 +6,7 @@ import com.google.android.play.core.integrity.IntegrityManagerFactory
 import com.google.android.play.core.integrity.IntegrityTokenRequest
 import com.google.firebase.Firebase
 import com.google.firebase.functions.functions
-import com.suman.memoryarchitect.core.analytics.FirebaseAvailability
+import com.suman.memoryarchitect.core.analytics.FirebaseAvailabilityProvider
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.tasks.await
 import java.security.SecureRandom
@@ -34,12 +34,13 @@ import javax.inject.Singleton
 @Singleton
 class DeviceIntegrityChecker @Inject constructor(
     @param:ApplicationContext private val context: Context,
+    private val firebaseAvailabilityProvider: FirebaseAvailabilityProvider,
 ) {
     /** Fire-and-forget - never throws, never blocks the caller. Safe to call speculatively on
      * app start and again before a scored submission (throttling repeated calls is intentionally
      * left to the caller, since this class has no opinion on how often is "often enough"). */
     suspend fun checkOpportunistically() {
-        if (!FirebaseAvailability.isConfigured) return
+        if (!firebaseAvailabilityProvider.isConfigured) return
         try {
             val token = requestIntegrityToken() ?: return
             Firebase.functions.getHttpsCallable("verifyDeviceIntegrity")

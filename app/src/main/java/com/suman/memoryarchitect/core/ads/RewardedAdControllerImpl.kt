@@ -5,6 +5,7 @@ import android.content.Context
 import com.suman.memoryarchitect.core.analytics.AnalyticsLogger
 import com.suman.memoryarchitect.core.analytics.logAdClosed
 import com.suman.memoryarchitect.core.analytics.logAdLoadFailed
+import com.suman.memoryarchitect.core.analytics.logAdLoadLatency
 import com.suman.memoryarchitect.core.analytics.logAdLoaded
 import com.suman.memoryarchitect.core.analytics.logAdRequested
 import com.suman.memoryarchitect.core.analytics.logAdRevenue
@@ -41,6 +42,7 @@ class RewardedAdControllerImpl @Inject constructor(
     @ApplicationContext private val context: Context,
     private val networkMonitor: NetworkMonitor,
     private val analytics: AnalyticsLogger,
+    private val interstitialPacingGate: InterstitialPacingGate,
 ) : RewardedAdController {
 
     private val initMutex = Mutex()
@@ -62,7 +64,15 @@ class RewardedAdControllerImpl @Inject constructor(
         if (activity.isFinishing || activity.isDestroyed) {
             return RewardedAdResult.Failed(RewardedAdFailureReason.SHOW_FAILED)
         }
-        return showAd(activity, ad, feature)
+        val result = showAd(activity, ad, feature)
+        // Rewarded/Cancelled both mean the ad was genuinely shown and dismissed (only Failed means
+        // no full-screen experience ever happened) - see InterstitialPacingGate.recordRewardedAdShown's
+        // own doc for why this stamps the interstitial cooldown regardless of which rewarded
+        // placement (Hint/Redo/Rewatch/Lucky Spin/...) triggered it.
+        if (result !is RewardedAdResult.Failed) {
+            interstitialPacingGate.recordRewardedAdShown()
+        }
+        return result
     }
 
     /** Bounded so a hung SDK callback (dead network mid-handshake, first-run init that never
@@ -87,6 +97,7 @@ class RewardedAdControllerImpl @Inject constructor(
     }
 
     private suspend fun loadAd(feature: String): RewardedAd? = withTimeoutOrNull(LOAD_TIMEOUT_MS) {
+        val loadStartedAtMs = System.currentTimeMillis()
         suspendCancellableCoroutine { continuation ->
             RewardedAd.load(
                 context,
@@ -95,6 +106,7 @@ class RewardedAdControllerImpl @Inject constructor(
                 object : RewardedAdLoadCallback() {
                     override fun onAdLoaded(rewardedAd: RewardedAd) {
                         analytics.logAdLoaded(feature)
+                        analytics.logAdLoadLatency("rewarded", feature, System.currentTimeMillis() - loadStartedAtMs, success = true)
                         rewardedAd.onPaidEventListener = OnPaidEventListener { adValue ->
                             analytics.logAdRevenue(feature, adValue.valueMicros, adValue.currencyCode)
                         }
@@ -103,6 +115,7 @@ class RewardedAdControllerImpl @Inject constructor(
 
                     override fun onAdFailedToLoad(adError: LoadAdError) {
                         analytics.logAdLoadFailed(feature)
+                        analytics.logAdLoadLatency("rewarded", feature, System.currentTimeMillis() - loadStartedAtMs, success = false)
                         if (continuation.isActive) continuation.resume(null)
                     }
                 },

@@ -1,5 +1,6 @@
 package com.suman.memoryarchitect.ui.navigation
 
+import androidx.activity.compose.LocalActivity
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -15,6 +16,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 import com.suman.memoryarchitect.BuildConfig
 import com.suman.memoryarchitect.core.cosmetics.RootCosmeticsViewModel
 import com.suman.memoryarchitect.core.feedback.audio.MusicTrack
@@ -23,6 +25,7 @@ import com.suman.memoryarchitect.ui.components.LocalEquippedCosmetics
 import com.suman.memoryarchitect.ui.screens.analyticsdashboard.AnalyticsDashboardScreen
 import com.suman.memoryarchitect.domain.model.DifficultyTier
 import com.suman.memoryarchitect.domain.model.GameMode
+import com.suman.memoryarchitect.feature.ads.InterstitialGateViewModel
 import com.suman.memoryarchitect.feature.modeselect.ModeSelectViewModel
 import com.suman.memoryarchitect.ui.screens.gameplay.GameplayScreen
 import com.suman.memoryarchitect.ui.screens.home.HomeScreen
@@ -33,7 +36,6 @@ import com.suman.memoryarchitect.ui.screens.modeselect.ModeSelectScreen
 import com.suman.memoryarchitect.ui.screens.profile.AchievementsScreen
 import com.suman.memoryarchitect.ui.screens.profile.MemoryJourneyScreen
 import com.suman.memoryarchitect.ui.screens.profile.ProfileScreen
-import com.suman.memoryarchitect.ui.screens.profile.RewardsScreen
 import com.suman.memoryarchitect.ui.screens.removeads.RemoveAdsScreen
 import com.suman.memoryarchitect.ui.screens.settings.SettingsScreen
 import com.suman.memoryarchitect.ui.screens.shop.CosmeticsHubScreen
@@ -95,10 +97,11 @@ fun MemoryArchitectNavHost(
                     navController.navigate(Route.Gameplay(mode = mode.name, difficulty = tier.name))
                 },
                 onOpenRemoveAds = { navController.navigate(Route.RemoveAds) },
-                onOpenCosmetics = { navController.navigate(Route.CosmeticsHub) },
+                onOpenCosmetics = { navController.navigate(Route.CosmeticsHub()) },
                 onOpenLuckySpin = { navController.navigate(Route.LuckySpin) },
                 onOpenMissions = { navController.navigate(Route.Missions) },
                 onOpenInventory = { navController.navigate(Route.Inventory) },
+                onOpenLeaderboard = { navController.navigate(Route.Leaderboard) },
             )
         }
         composable<Route.LevelSelect> {
@@ -113,9 +116,7 @@ fun MemoryArchitectNavHost(
             TrackScreenView("profile", MusicTrack.HOME)
             ProfileScreen(
                 onOpenStatistics = { navController.navigate(Route.Statistics) },
-                onOpenLeaderboard = { navController.navigate(Route.Leaderboard) },
                 onOpenAchievements = { navController.navigate(Route.Achievements) },
-                onOpenRewards = { navController.navigate(Route.Rewards) },
                 onOpenMemoryJourney = { navController.navigate(Route.MemoryJourney) },
             )
         }
@@ -130,10 +131,6 @@ fun MemoryArchitectNavHost(
         composable<Route.Achievements>(enterTransition = NavAnimations.fadeEnter, exitTransition = NavAnimations.fadeExit) {
             TrackScreenView("achievements", MusicTrack.HOME)
             AchievementsScreen(onBack = { navController.popBackStack() })
-        }
-        composable<Route.Rewards>(enterTransition = NavAnimations.fadeEnter, exitTransition = NavAnimations.fadeExit) {
-            TrackScreenView("rewards", MusicTrack.HOME)
-            RewardsScreen(onBack = { navController.popBackStack() })
         }
         composable<Route.MemoryJourney>(enterTransition = NavAnimations.fadeEnter, exitTransition = NavAnimations.fadeExit) {
             TrackScreenView("memory_journey", MusicTrack.HOME)
@@ -151,13 +148,17 @@ fun MemoryArchitectNavHost(
             TrackScreenView("remove_ads", MusicTrack.HOME)
             RemoveAdsScreen(onBack = { navController.popBackStack() })
         }
-        composable<Route.CosmeticsHub>(enterTransition = NavAnimations.fadeEnter, exitTransition = NavAnimations.fadeExit) {
+        composable<Route.CosmeticsHub>(enterTransition = NavAnimations.fadeEnter, exitTransition = NavAnimations.fadeExit) { backStackEntry ->
             TrackScreenView("cosmetics_hub", MusicTrack.HOME)
-            CosmeticsHubScreen(onBack = { navController.popBackStack() })
+            val route = backStackEntry.toRoute<Route.CosmeticsHub>()
+            CosmeticsHubScreen(onBack = { navController.popBackStack() }, startOnCollectionsTab = route.startOnCollectionsTab)
         }
         composable<Route.LuckySpin>(enterTransition = NavAnimations.fadeEnter, exitTransition = NavAnimations.fadeExit) {
             TrackScreenView("lucky_spin", MusicTrack.HOME)
-            LuckySpinScreen(onBack = { navController.popBackStack() })
+            LuckySpinScreen(
+                onBack = { navController.popBackStack() },
+                onGoToCollections = { navController.navigate(Route.CosmeticsHub(startOnCollectionsTab = true)) },
+            )
         }
         composable<Route.Missions>(enterTransition = NavAnimations.fadeEnter, exitTransition = NavAnimations.fadeExit) {
             TrackScreenView("missions", MusicTrack.HOME)
@@ -182,8 +183,18 @@ fun MemoryArchitectNavHost(
             // happens a beat after this composable enters; setting a track here first would just
             // be immediately overridden.
             TrackScreenView("gameplay", MusicTrack.UNCHANGED)
+            // The one real interstitial trigger point in this app: GameplayResultsPanel's
+            // "Continue"/"Back to Levels" both funnel to this same onBack (never "Next Level",
+            // which stays in Gameplay and must never be interrupted) - see
+            // InterstitialGateViewModel's own doc. maybeShowInterstitial always calls its
+            // completion lambda exactly once, so a paced-out/unavailable/failed ad never blocks or
+            // delays returning to Level Select.
+            val activity = LocalActivity.current
+            val interstitialGateViewModel: InterstitialGateViewModel = hiltViewModel()
             GameplayScreen(
-                onBack = { navController.popBackStack() },
+                onBack = {
+                    interstitialGateViewModel.maybeShowInterstitial(activity) { navController.popBackStack() }
+                },
                 onReplayLevel = { mode, levelNumber ->
                     navController.navigate(Route.Gameplay(mode = mode.name, levelNumber = levelNumber)) {
                         popUpTo(Route.Gameplay::class) { inclusive = true }

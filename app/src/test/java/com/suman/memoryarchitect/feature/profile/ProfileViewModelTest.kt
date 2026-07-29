@@ -7,6 +7,7 @@ import com.suman.memoryarchitect.core.feedback.audio.MusicTrack
 import com.suman.memoryarchitect.domain.model.AchievementId
 import com.suman.memoryarchitect.domain.model.AppError
 import com.suman.memoryarchitect.domain.model.DailyRewardClaimResult
+import com.suman.memoryarchitect.domain.model.ReturningPlayerGiftClaimResult
 import com.suman.memoryarchitect.domain.model.DailyRewardStatus
 import com.suman.memoryarchitect.domain.model.GameMode
 import com.suman.memoryarchitect.domain.model.LevelCompletionOutcome
@@ -18,11 +19,13 @@ import com.suman.memoryarchitect.domain.model.ScoreResult
 import com.suman.memoryarchitect.domain.model.ScoreSubmissionResult
 import com.suman.memoryarchitect.domain.model.CosmeticCategory
 import com.suman.memoryarchitect.domain.model.CosmeticId
+import com.suman.memoryarchitect.domain.model.LuckySpinState
 import com.suman.memoryarchitect.domain.model.PurchaseResult
 import com.suman.memoryarchitect.domain.model.SpinResult
 import com.suman.memoryarchitect.domain.repository.LevelCampaignRepository
 import com.suman.memoryarchitect.domain.repository.ProgressionRepository
 import com.suman.memoryarchitect.domain.repository.ShopRepository
+import com.suman.memoryarchitect.domain.repository.SpinSource
 import com.suman.memoryarchitect.domain.usecase.ClaimDailyRewardUseCase
 import com.suman.memoryarchitect.domain.usecase.GetDailyRewardStatusUseCase
 import com.suman.memoryarchitect.domain.usecase.GetEquippedCosmeticsUseCase
@@ -61,7 +64,11 @@ private class FakeProgressionRepository(
     override suspend fun getDailyRewardStatus(todayEpochDay: Long) = dailyRewardStatusOutcome
     override suspend fun claimDailyReward(todayEpochDay: Long): Outcome<DailyRewardClaimResult> =
         throw UnsupportedOperationException("not exercised by these tests")
-    override suspend fun submitScore(mode: GameMode, levelSeed: Long, score: ScoreResult, playedOnEpochDay: Long, timeTakenMs: Long, submissionNonce: String): Outcome<ScoreSubmissionResult> =
+    override suspend fun claimReturningPlayerGift(todayEpochDay: Long): Outcome<ReturningPlayerGiftClaimResult> =
+        throw UnsupportedOperationException("not exercised by these tests")
+    override suspend fun retryPendingSubmissions() =
+        throw UnsupportedOperationException("not exercised by these tests")
+    override suspend fun submitScore(mode: GameMode, levelSeed: Long, score: ScoreResult, playedOnEpochDay: Long, timeTakenMs: Long, submissionNonce: String, awardXp: Boolean): Outcome<ScoreSubmissionResult> =
         throw UnsupportedOperationException("not used by ProfileViewModel")
     override suspend fun resetWinStreak() = Unit
     override suspend fun recordLeaderboardRank(dailyRank: Int?, weeklyRank: Int?, todayEpochDay: Long): List<AchievementId> =
@@ -71,13 +78,14 @@ private class FakeProgressionRepository(
 private class FakeShopRepository : ShopRepository {
     override suspend fun getOwnedCosmeticIds(): Set<CosmeticId> = emptySet()
     override suspend fun getEquippedCosmetics(): Map<CosmeticCategory, CosmeticId> = emptyMap()
-    override suspend fun purchase(id: CosmeticId, purchaseNonce: String): Outcome<PurchaseResult> =
+    override suspend fun purchase(id: CosmeticId, purchaseNonce: String, useDiscountCoupon: Boolean): Outcome<PurchaseResult> =
         throw UnsupportedOperationException("not used by ProfileViewModel")
     override suspend fun equip(category: CosmeticCategory, id: CosmeticId): Outcome<Unit> =
         throw UnsupportedOperationException("not used by ProfileViewModel")
     override suspend fun unequip(category: CosmeticCategory): Outcome<Unit> =
         throw UnsupportedOperationException("not used by ProfileViewModel")
-    override suspend fun spin(spinNonce: String): Outcome<SpinResult> =
+    override suspend fun getLuckySpinState(): LuckySpinState = LuckySpinState.EMPTY
+    override suspend fun spin(spinNonce: String, source: SpinSource): Outcome<SpinResult> =
         throw UnsupportedOperationException("not used by ProfileViewModel")
     override suspend fun toggleFavorite(id: CosmeticId) =
         throw UnsupportedOperationException("not used by ProfileViewModel")
@@ -126,6 +134,8 @@ private class FakeFeedbackManager : FeedbackManager {
     override fun onLevelUnlocked() = Unit
     override fun onDailyRewardClaimed() = Unit
     override fun onWeeklyRewardClaimed() = Unit
+    override fun onLuckySpinStarted() = Unit
+    override fun onLuckySpinRevealed() = Unit
     override fun onWarning() = Unit
     override fun onError() = Unit
 }

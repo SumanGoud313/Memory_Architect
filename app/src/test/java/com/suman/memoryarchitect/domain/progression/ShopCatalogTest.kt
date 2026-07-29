@@ -30,14 +30,28 @@ class ShopCatalogTest {
     }
 
     @Test
-    fun `every non-border category has exactly one item per rarity`() {
-        CosmeticCategory.entries.filter { it != CosmeticCategory.PROFILE_BORDER }.forEach { category ->
-            val items = ShopCatalog.definitionsOfCategory(category)
-            assertEquals("$category should have 4 items", 4, items.size)
-            CosmeticRarity.entries.forEach { rarity ->
-                assertEquals("$category should have exactly one $rarity item", 1, items.count { it.rarity == rarity })
+    fun `every non-border, non-premium-only coin category has exactly one item per rarity`() {
+        // ROOM_SKIN/OBJECT_MATERIAL are premium-only (see PremiumCatalog.kt's doc) - they have zero
+        // ShopCatalog presence by design, same reason PROFILE_BORDER is excluded for its own
+        // different (flagship, 12-item) shape.
+        val premiumOnlyCategories = setOf(CosmeticCategory.ROOM_SKIN, CosmeticCategory.OBJECT_MATERIAL)
+        CosmeticCategory.entries
+            .filter { it != CosmeticCategory.PROFILE_BORDER && it !in premiumOnlyCategories }
+            .forEach { category ->
+                val items = ShopCatalog.definitionsOfCategory(category)
+                assertEquals("$category should have 4 items", 4, items.size)
+                CosmeticRarity.entries.forEach { rarity ->
+                    assertEquals("$category should have exactly one $rarity item", 1, items.count { it.rarity == rarity })
+                }
             }
-        }
+    }
+
+    @Test
+    fun `ROOM_SKIN and OBJECT_MATERIAL are premium-only, absent from ShopCatalog`() {
+        assertTrue(ShopCatalog.definitionsOfCategory(CosmeticCategory.ROOM_SKIN).isEmpty())
+        assertTrue(ShopCatalog.definitionsOfCategory(CosmeticCategory.OBJECT_MATERIAL).isEmpty())
+        assertEquals(7, PremiumCatalog.definitions.count { it.category == CosmeticCategory.ROOM_SKIN })
+        assertEquals(7, PremiumCatalog.definitions.count { it.category == CosmeticCategory.OBJECT_MATERIAL })
     }
 
     @Test

@@ -18,15 +18,17 @@ import kotlinx.coroutines.tasks.await
  * `RemoteConfigRepositoryImpl`'s network call for [fetchAndActivate] plus [getString] would be a
  * self-contained change to that one class, nothing else in the app needs to know.
  *
- * No-ops (returns empty/defaults) when [FirebaseAvailability.isConfigured] is false, same as
- * every other Firebase-backed class in this package.
+ * No-ops (returns empty/defaults) when [FirebaseAvailabilityProvider.isConfigured] is false, same
+ * as every other Firebase-backed class in this package.
  */
 @Singleton
-class FirebaseRemoteConfigSource @Inject constructor() {
+class FirebaseRemoteConfigSource @Inject constructor(
+    private val firebaseAvailabilityProvider: FirebaseAvailabilityProvider,
+) {
     private val remoteConfig by lazy { Firebase.remoteConfig }
 
     suspend fun fetchAndActivate(): Boolean {
-        if (!FirebaseAvailability.isConfigured) return false
+        if (!firebaseAvailabilityProvider.isConfigured) return false
         return try {
             remoteConfig.setConfigSettingsAsync(
                 remoteConfigSettings { minimumFetchIntervalInSeconds = MIN_FETCH_INTERVAL_SECONDS },
@@ -39,7 +41,7 @@ class FirebaseRemoteConfigSource @Inject constructor() {
     }
 
     fun getString(key: String): String? {
-        if (!FirebaseAvailability.isConfigured) return null
+        if (!firebaseAvailabilityProvider.isConfigured) return null
         return try {
             remoteConfig.getString(key).ifEmpty { null }
         } catch (t: Throwable) {

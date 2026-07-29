@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -16,7 +17,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
-import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.SportsScore
@@ -79,9 +79,7 @@ private const val CLAIM_CELEBRATION_DURATION_MS = 1800L
 @Composable
 fun ProfileScreen(
     onOpenStatistics: () -> Unit,
-    onOpenLeaderboard: () -> Unit,
     onOpenAchievements: () -> Unit,
-    onOpenRewards: () -> Unit,
     onOpenMemoryJourney: () -> Unit,
     viewModel: ProfileViewModel = hiltViewModel(),
     accountViewModel: AccountViewModel = hiltViewModel(),
@@ -120,9 +118,7 @@ fun ProfileScreen(
                 accountViewModel = accountViewModel,
                 onClaimDailyReward = viewModel::claimDailyReward,
                 onOpenStatistics = onOpenStatistics,
-                onOpenLeaderboard = onOpenLeaderboard,
                 onOpenAchievements = onOpenAchievements,
-                onOpenRewards = onOpenRewards,
                 onOpenMemoryJourney = onOpenMemoryJourney,
             )
         }
@@ -139,9 +135,7 @@ private fun ProfileContent(
     accountViewModel: AccountViewModel,
     onClaimDailyReward: () -> Unit,
     onOpenStatistics: () -> Unit,
-    onOpenLeaderboard: () -> Unit,
     onOpenAchievements: () -> Unit,
-    onOpenRewards: () -> Unit,
     onOpenMemoryJourney: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -202,19 +196,26 @@ private fun ProfileContent(
             modifier = Modifier.padding(top = 8.dp).staggeredReveal(0),
         )
 
-        Row(
+        // FlowRow, not Row - Coins/Shields no longer fit on one line at once on some devices/font
+        // scales, and a plain Row has no way to wrap; it just keeps squeezing the last child into
+        // an ever-narrower sliver, which forced the Shields pill's text to wrap letter-by-letter
+        // into a vertical column at the edge of the screen. Wrapping the whole pill onto a second
+        // line instead is the fix.
+        //
+        // The current/longest-streak pill that used to sit here is gone - Home's HomeStreakChip
+        // already shows the current streak at a glance, and repeating it here just to add "longest"
+        // read as a second dashboard, not new information worth the duplicate screen space. The
+        // richer StreakMilestoneTimeline below is kept - unlike the streak count, its milestone
+        // progress view has no equivalent anywhere else in the app.
+        FlowRow(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.padding(top = 16.dp).staggeredReveal(1),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth().padding(top = 16.dp).staggeredReveal(1),
         ) {
             PillBadge(
                 text = context.getString(R.string.profile_coins, state.profile.coins),
                 icon = Icons.Filled.MonetizationOn,
                 contentColor = MemoryArchitectColors.accentGold,
-            )
-            PillBadge(
-                text = context.getString(R.string.profile_streak, state.profile.currentStreak, state.profile.longestStreak),
-                icon = Icons.Filled.LocalFireDepartment,
-                contentColor = MemoryArchitectColors.accentTerracotta,
             )
             if (state.profile.streakShields > 0) {
                 PillBadge(
@@ -225,6 +226,23 @@ private fun ProfileContent(
                     contentColor = MemoryArchitectColors.accentSage,
                 )
             }
+        }
+
+        if (state.dailyRewardStatus != null) {
+            DailyRewardCard(
+                status = state.dailyRewardStatus,
+                isClaiming = state.isClaimingDailyReward,
+                onClaim = onClaimDailyReward,
+                modifier = Modifier.fillMaxWidth().padding(top = 20.dp).staggeredReveal(1),
+            )
+        }
+        if (state.dailyRewardError != null) {
+            Text(
+                text = state.dailyRewardError.toDisplayMessage(context),
+                color = MemoryArchitectColors.danger,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp).staggeredReveal(1),
+            )
         }
 
         StreakMilestoneTimeline(
@@ -254,32 +272,14 @@ private fun ProfileContent(
             modifier = Modifier.staggeredReveal(1),
         )
 
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        // The one deliberately oversized, specially-styled row on this screen - see
+        // MemoryJourneyButton's own doc for why a lifetime standing gets its own full-width
+        // treatment instead of sharing a half-width slot the way Statistics/Achievements do.
+        MemoryJourneyButton(
+            standing = MemoryJourneyCatalog.standingFor(state.profile.journeyPoints),
+            onClick = onOpenMemoryJourney,
             modifier = Modifier.fillMaxWidth().padding(top = 16.dp).staggeredReveal(1),
-        ) {
-            OutlineButton(
-                text = stringResource(R.string.profile_view_statistics),
-                onClick = onOpenStatistics,
-                modifier = Modifier.weight(1f),
-                horizontalPadding = 12.dp,
-            )
-            OutlineButton(
-                text = stringResource(R.string.profile_view_leaderboards),
-                onClick = onOpenLeaderboard,
-                modifier = Modifier.weight(1f),
-                horizontalPadding = 12.dp,
-            )
-        }
-
-        if (state.dailyRewardStatus != null) {
-            DailyRewardCard(
-                status = state.dailyRewardStatus,
-                isClaiming = state.isClaimingDailyReward,
-                onClaim = onClaimDailyReward,
-                modifier = Modifier.padding(top = 20.dp).staggeredReveal(1),
-            )
-        }
+        )
 
         Text(
             text = stringResource(R.string.profile_stats_header),
@@ -318,29 +318,21 @@ private fun ProfileContent(
             }
         }
 
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        OutlineButton(
+            text = stringResource(R.string.profile_view_statistics),
+            onClick = onOpenStatistics,
+            modifier = Modifier.fillMaxWidth().padding(top = 16.dp).staggeredReveal(2),
+        )
+
+        // Rewards used to be a second half-width button here; its content is now the "Unlocks"
+        // tab inside Achievements itself (see AchievementsScreen.kt), so this button alone is
+        // full width rather than sharing a row with a sibling that no longer exists. Memory
+        // Journey moved further up this screen into its own big button - see MemoryJourneyButton.
+        OutlineButton(
+            text = stringResource(R.string.profile_achievements_header),
+            onClick = onOpenAchievements,
             modifier = Modifier.fillMaxWidth().padding(top = 28.dp).staggeredReveal(3),
-        ) {
-            OutlineButton(
-                text = stringResource(R.string.profile_achievements_header),
-                onClick = onOpenAchievements,
-                modifier = Modifier.weight(1f),
-                horizontalPadding = 12.dp,
-            )
-            OutlineButton(
-                text = stringResource(R.string.profile_rewards_header),
-                onClick = onOpenRewards,
-                modifier = Modifier.weight(1f),
-                horizontalPadding = 12.dp,
-            )
-            OutlineButton(
-                text = stringResource(R.string.memory_journey_header),
-                onClick = onOpenMemoryJourney,
-                modifier = Modifier.weight(1f),
-                horizontalPadding = 8.dp,
-            )
-        }
+        )
     }
 }
 

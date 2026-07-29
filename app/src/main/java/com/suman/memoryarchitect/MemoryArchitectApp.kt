@@ -2,23 +2,34 @@ package com.suman.memoryarchitect
 
 import android.app.Application
 import android.content.ComponentCallbacks2
-import android.content.res.Configuration
+import android.content.res.Configuration as AndroidConfiguration
+import androidx.hilt.work.HiltWorkerFactory
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.lifecycle.lifecycleScope
+import androidx.work.Configuration as WorkConfiguration
 import com.suman.memoryarchitect.core.analytics.AnalyticsLogger
 import com.suman.memoryarchitect.core.analytics.AppLifecycleTracker
 import com.suman.memoryarchitect.core.analytics.CrashReporter
 import com.suman.memoryarchitect.core.analytics.logMemoryWarning
 import com.suman.memoryarchitect.core.auth.PlayerIdentityManager
 import com.suman.memoryarchitect.core.billing.BillingManager
-import com.suman.memoryarchitect.core.billing.PremiumShopManager
+import com.suman.memoryarchitect.core.notifications.NotificationScheduler
 import com.suman.memoryarchitect.core.security.DeviceIntegrityChecker
+import com.suman.memoryarchitect.core.sync.PendingMissionClaimSyncScheduler
+import com.suman.memoryarchitect.core.sync.PendingScoreSyncScheduler
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * [WorkConfiguration.Provider] disables WorkManager's default `androidx.startup` auto-init (see
+ * the manifest's `tools:node="remove"` on `WorkManagerInitializer`) in favor of building it lazily
+ * with the injected [HiltWorkerFactory] - required for [com.suman.memoryarchitect.core.notifications.DailyReminderWorker]'s
+ * `@HiltWorker` constructor injection to work at all; the default factory can't construct a worker
+ * with non-trivial dependencies.
+ */
 @HiltAndroidApp
-class MemoryArchitectApp : Application(), ComponentCallbacks2 {
+class MemoryArchitectApp : Application(), ComponentCallbacks2, WorkConfiguration.Provider {
 
     @Inject lateinit var appLifecycleTracker: AppLifecycleTracker
 
@@ -32,7 +43,16 @@ class MemoryArchitectApp : Application(), ComponentCallbacks2 {
 
     @Inject lateinit var billingManager: BillingManager
 
-    @Inject lateinit var premiumShopManager: PremiumShopManager
+    @Inject lateinit var workerFactory: HiltWorkerFactory
+
+    @Inject lateinit var notificationScheduler: NotificationScheduler
+
+    @Inject lateinit var pendingScoreSyncScheduler: PendingScoreSyncScheduler
+
+    @Inject lateinit var pendingMissionClaimSyncScheduler: PendingMissionClaimSyncScheduler
+
+    override val workManagerConfiguration: WorkConfiguration
+        get() = WorkConfiguration.Builder().setWorkerFactory(workerFactory).build()
 
     override fun onCreate() {
         super.onCreate()
@@ -47,15 +67,22 @@ class MemoryArchitectApp : Application(), ComponentCallbacks2 {
         // (untestable in this environment, expected until Play Console linking exists) is never
         // surfaced to the player or treated as an error.
         ProcessLifecycleOwner.get().lifecycleScope.launch { deviceIntegrityChecker.checkOpportunistically() }
-        // Connects to Play Billing and re-verifies the remove_ads_lifetime entitlement against the
-        // signed-in Google Play account - this, not any explicit "Restore" tap, is what actually
-        // satisfies "restore automatically on reinstall/new device" (see BillingManager's doc).
+        // Connects to Play Billing and re-verifies every catalog product's entitlement (Remove Ads
+        // and every Premium Collection alike - one unified manager now covers both, see
+        // BillingManager's own doc) against the signed-in Google Play account - this, not any
+        // explicit "Restore" tap, is what actually satisfies "restore automatically on reinstall/new
+        // device."
         billingManager.startConnection()
-        // Same "connect + re-verify existing purchases" role as billingManager.startConnection()
-        // above, for the 7 premium cosmetic bundles instead of remove_ads_lifetime - shares the
-        // same underlying BillingClient (see SharedBillingClient's doc), so this is a second
-        // logical connection, not a second real one.
-        premiumShopManager.startConnection()
+        // Idempotent (KEEP policy) - safe to call on every cold start, never re-delays an
+        // already-queued reminder chain. See NotificationScheduler's doc.
+        notificationScheduler.schedule()
+        // Catches anything still queued from a previous session that never got flushed (e.g. the
+        // app was killed before connectivity returned) - a no-op if the queue is already empty.
+        // See PendingScoreSyncScheduler's doc.
+        pendingScoreSyncScheduler.scheduleRetry()
+        // Same reasoning as pendingScoreSyncScheduler above, for queued mission claims instead of
+        // score submissions - see PendingMissionClaimSyncScheduler's doc.
+        pendingMissionClaimSyncScheduler.scheduleRetry()
     }
 
     override fun onTrimMemory(level: Int) {
@@ -63,7 +90,7 @@ class MemoryArchitectApp : Application(), ComponentCallbacks2 {
         analytics.logMemoryWarning(trimMemoryLevelName(level))
     }
 
-    override fun onConfigurationChanged(newConfig: Configuration) = Unit
+    override fun onConfigurationChanged(newConfig: AndroidConfiguration) = Unit
 
     override fun onLowMemory() = Unit
 

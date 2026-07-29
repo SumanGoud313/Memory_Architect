@@ -1,6 +1,7 @@
 package com.suman.memoryarchitect.data.repository
 
 import com.suman.memoryarchitect.core.analytics.CrashReporter
+import com.suman.memoryarchitect.core.analytics.FirebaseAvailabilityProvider
 import com.suman.memoryarchitect.core.common.ImmediateDispatcherProvider
 import com.suman.memoryarchitect.core.database.RemoteConfigCacheEntity
 import com.suman.memoryarchitect.core.database.RemoteConfigDao
@@ -31,6 +32,16 @@ private class FakeRemoteConfigApi(
     }
 }
 
+/** Forces the mock-backend path deterministically, regardless of whether this machine's local
+ * `app/google-services.json` (see FIREBASE_SETUP.md) happens to exist - see
+ * [FirebaseAvailabilityProvider]'s doc for why [RemoteConfigRepositoryImpl] takes this as an
+ * injected seam instead of reading [com.suman.memoryarchitect.core.analytics.FirebaseAvailability]
+ * directly. These tests only ever exercise [MockBackendRemoteConfigSource]'s cache-bridge
+ * behavior - [FirebaseRemoteConfigSource] can't run at all in a plain JVM unit test (it needs a
+ * real, initialized `FirebaseApp`), so nothing here can or should depend on Firebase actually
+ * being configured on the machine running the suite. */
+private class FakeFirebaseAvailabilityProvider(override val isConfigured: Boolean = false) : FirebaseAvailabilityProvider
+
 private class FakeRemoteConfigDao : RemoteConfigDao {
     private val store = mutableMapOf<String, RemoteConfigCacheEntity>()
 
@@ -53,10 +64,12 @@ class RemoteConfigRepositoryImplTest {
     fun `network success writes through to cache and returns values`() = runTest {
         val dao = FakeRemoteConfigDao()
         val repository = RemoteConfigRepositoryImpl(
-            api = FakeRemoteConfigApi(response = RemoteConfigResponseDto(mapOf("ad_cadence" to "3"))),
+            mockBackendSource = MockBackendRemoteConfigSource(FakeRemoteConfigApi(response = RemoteConfigResponseDto(mapOf("ad_cadence" to "3")))),
+            firebaseSource = FirebaseRemoteConfigSource(),
             dao = dao,
             dispatchers = ImmediateDispatcherProvider,
             errorMapper = testErrorMapper,
+            firebaseAvailabilityProvider = FakeFirebaseAvailabilityProvider(),
         )
 
         val result = repository.getRemoteConfig()
@@ -72,10 +85,12 @@ class RemoteConfigRepositoryImplTest {
             upsert(listOf(RemoteConfigCacheEntity("ad_cadence", "2", fetchedAt = 1_000L)))
         }
         val repository = RemoteConfigRepositoryImpl(
-            api = FakeRemoteConfigApi(error = IOException("no route to host")),
+            mockBackendSource = MockBackendRemoteConfigSource(FakeRemoteConfigApi(error = IOException("no route to host"))),
+            firebaseSource = FirebaseRemoteConfigSource(),
             dao = dao,
             dispatchers = ImmediateDispatcherProvider,
             errorMapper = testErrorMapper,
+            firebaseAvailabilityProvider = FakeFirebaseAvailabilityProvider(),
         )
 
         val result = repository.getRemoteConfig()
@@ -87,10 +102,12 @@ class RemoteConfigRepositoryImplTest {
     @Test
     fun `network failure with empty cache returns error`() = runTest {
         val repository = RemoteConfigRepositoryImpl(
-            api = FakeRemoteConfigApi(error = IOException("no route to host")),
+            mockBackendSource = MockBackendRemoteConfigSource(FakeRemoteConfigApi(error = IOException("no route to host"))),
+            firebaseSource = FirebaseRemoteConfigSource(),
             dao = FakeRemoteConfigDao(),
             dispatchers = ImmediateDispatcherProvider,
             errorMapper = testErrorMapper,
+            firebaseAvailabilityProvider = FakeFirebaseAvailabilityProvider(),
         )
 
         val result = repository.getRemoteConfig()

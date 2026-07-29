@@ -1,11 +1,13 @@
 package com.suman.memoryarchitect.data.repository
 
-import com.suman.memoryarchitect.core.analytics.FirebaseAvailability
+import com.suman.memoryarchitect.core.analytics.FirebaseAvailabilityProvider
 import com.suman.memoryarchitect.core.auth.PlayerIdentityManager
 import com.suman.memoryarchitect.core.common.DispatcherProvider
 import com.suman.memoryarchitect.core.cosmetics.EquippedCosmeticsStore
 import com.suman.memoryarchitect.core.database.EquippedCosmeticDao
 import com.suman.memoryarchitect.core.database.EquippedCosmeticEntity
+import com.suman.memoryarchitect.core.database.LuckySpinStateDao
+import com.suman.memoryarchitect.core.database.LuckySpinStateEntity
 import com.suman.memoryarchitect.core.database.OwnedCosmeticDao
 import com.suman.memoryarchitect.core.database.OwnedCosmeticEntity
 import com.suman.memoryarchitect.core.database.PlayerProgressCacheEntity
@@ -13,12 +15,16 @@ import com.suman.memoryarchitect.core.database.PlayerProgressDao
 import com.suman.memoryarchitect.domain.model.AppError
 import com.suman.memoryarchitect.domain.model.CosmeticCategory
 import com.suman.memoryarchitect.domain.model.CosmeticId
+import com.suman.memoryarchitect.domain.model.LuckySpinState
 import com.suman.memoryarchitect.domain.model.Outcome
 import com.suman.memoryarchitect.domain.model.PlayerProfile
 import com.suman.memoryarchitect.domain.model.PurchaseResult
+import com.suman.memoryarchitect.domain.model.SpinRewardKind
 import com.suman.memoryarchitect.domain.model.SpinResult
 import com.suman.memoryarchitect.domain.progression.LuckySpinEngine
+import com.suman.memoryarchitect.domain.progression.PermanentFreeCosmetics
 import com.suman.memoryarchitect.domain.repository.ShopRepository
+import com.suman.memoryarchitect.domain.repository.SpinSource
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withContext
 import java.time.Clock
@@ -46,10 +52,12 @@ class ShopRepositoryImpl @Inject constructor(
     private val progressDao: PlayerProgressDao,
     private val ownedCosmeticDao: OwnedCosmeticDao,
     private val equippedCosmeticDao: EquippedCosmeticDao,
+    private val luckySpinStateDao: LuckySpinStateDao,
     private val equippedCosmeticsStore: EquippedCosmeticsStore,
     private val clock: Clock,
     private val dispatchers: DispatcherProvider,
     private val errorMapper: ErrorMapper,
+    private val firebaseAvailabilityProvider: FirebaseAvailabilityProvider,
 ) : ShopRepository {
 
     private val spinEngine = LuckySpinEngine()
@@ -57,26 +65,33 @@ class ShopRepositoryImpl @Inject constructor(
     /** Mirrors [ProgressionRepositoryImpl.activeRemoteSource] exactly - see its doc for why this
      * small policy is duplicated rather than shared (the codebase's existing convention). */
     private suspend fun activeRemoteSource(): ShopRemoteSource {
-        if (!FirebaseAvailability.isConfigured) return mockBackendSource
+        if (!firebaseAvailabilityProvider.isConfigured) return mockBackendSource
         val uid = playerIdentityManager.awaitUid()
         return if (uid != null) firestoreSource else mockBackendSource
     }
 
+    /** Unions in [PermanentFreeCosmetics.ids] - every player owns those unconditionally, free,
+     * with no purchase/grant/migration ever needed (see that object's doc), so no persisted Room/
+     * Firestore row for them has to exist at all. */
     override suspend fun getOwnedCosmeticIds(): Set<CosmeticId> = withContext(dispatchers.io) {
-        ownedCosmeticDao.getAll().mapNotNull { entity -> runCatching { CosmeticId.valueOf(entity.sku) }.getOrNull() }.toSet()
+        ownedCosmeticDao.getAll().mapNotNull { entity -> runCatching { CosmeticId.valueOf(entity.sku) }.getOrNull() }.toSet() + PermanentFreeCosmetics.ids
     }
 
+    /** [PermanentFreeCosmetics.defaultEquippedByCategory] fills in only the categories with no
+     * explicit persisted row - a player who has equipped something else for that category keeps
+     * their own choice; unequipping reverts to this default rather than a bare/unstyled look. */
     override suspend fun getEquippedCosmetics(): Map<CosmeticCategory, CosmeticId> = withContext(dispatchers.io) {
-        equippedCosmeticDao.getAll().mapNotNull { entity ->
+        val persisted = equippedCosmeticDao.getAll().mapNotNull { entity ->
             val category = runCatching { CosmeticCategory.valueOf(entity.category) }.getOrNull() ?: return@mapNotNull null
             val id = runCatching { CosmeticId.valueOf(entity.sku) }.getOrNull() ?: return@mapNotNull null
             category to id
         }.toMap()
+        PermanentFreeCosmetics.defaultEquippedByCategory + persisted
     }
 
-    override suspend fun purchase(id: CosmeticId, purchaseNonce: String): Outcome<PurchaseResult> = withContext(dispatchers.io) {
+    override suspend fun purchase(id: CosmeticId, purchaseNonce: String, useDiscountCoupon: Boolean): Outcome<PurchaseResult> = withContext(dispatchers.io) {
         try {
-            val (updatedProfile, updatedOwned) = activeRemoteSource().purchase(id, purchaseNonce)
+            val (updatedProfile, updatedOwned) = activeRemoteSource().purchase(id, purchaseNonce, useDiscountCoupon)
             progressDao.upsert(updatedProfile.toCacheEntity())
             persistOwned(updatedOwned, acquiredVia = "PURCHASE")
             Outcome.Success(PurchaseResult(id, updatedProfile))
@@ -88,6 +103,8 @@ class ShopRepositoryImpl @Inject constructor(
             Outcome.Error(AppError.Server(code = 402, message = insufficient.message))
         } catch (duplicate: DuplicatePurchaseException) {
             Outcome.Error(AppError.Server(code = 409, message = duplicate.message))
+        } catch (insufficientInventory: InsufficientInventoryException) {
+            Outcome.Error(AppError.Server(code = 409, message = insufficientInventory.message))
         } catch (failure: Throwable) {
             Outcome.Error(with(errorMapper) { failure.toAppError() })
         }
@@ -117,9 +134,14 @@ class ShopRepositoryImpl @Inject constructor(
         }
     }
 
+    /** For [CosmeticCategory.BACKGROUND_THEME]/[CosmeticCategory.PROFILE_BORDER], the live
+     * in-memory store falls straight back to [PermanentFreeCosmetics.defaultEquippedByCategory]
+     * rather than going bare - same "there's no real empty state, only a default" reasoning
+     * [getEquippedCosmetics] already documents, just applied immediately instead of waiting for
+     * the next cold start's fresh read to reapply it. */
     override suspend fun unequip(category: CosmeticCategory): Outcome<Unit> = withContext(dispatchers.io) {
         equippedCosmeticDao.deleteByCategory(category.name)
-        equippedCosmeticsStore.setEquipped(category, null)
+        equippedCosmeticsStore.setEquipped(category, PermanentFreeCosmetics.defaultEquippedByCategory[category])
         try {
             activeRemoteSource().unequip(category)
             Outcome.Success(Unit)
@@ -130,21 +152,36 @@ class ShopRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun spin(spinNonce: String): Outcome<SpinResult> = withContext(dispatchers.io) {
-        val roll = spinEngine.spin()
+    override suspend fun getLuckySpinState(): LuckySpinState = withContext(dispatchers.io) {
+        luckySpinStateDao.get()?.toDomain() ?: LuckySpinState.EMPTY
+    }
+
+    override suspend fun spin(spinNonce: String, source: SpinSource): Outcome<SpinResult> = withContext(dispatchers.io) {
+        val cachedSpinState = luckySpinStateDao.get()?.toDomain() ?: LuckySpinState.EMPTY
+        val todayEpochDay = LocalDate.now(clock).toEpochDay()
+        val reward = spinEngine.spin(guaranteeCosmetic = !cachedSpinState.hasEverSpun, todayEpochDay = todayEpochDay)
+        val request = when (reward) {
+            is SpinRewardKind.Coins -> SpinRequest.Coins(reward.amount)
+            is SpinRewardKind.Cosmetic -> SpinRequest.Cosmetic(reward.id, reward.rarity)
+        }
         try {
-            val outcome = activeRemoteSource().spin(roll.id, roll.rarity, spinNonce)
+            val outcome = activeRemoteSource().spin(request, spinNonce, source, todayEpochDay)
             progressDao.upsert(outcome.profile.toCacheEntity())
-            persistOwned(outcome.ownedSkus, acquiredVia = "SPIN")
+            luckySpinStateDao.upsert(outcome.spinState.toCacheEntity())
+            if (outcome.reward is SpinRewardKind.Cosmetic) persistOwned(outcome.ownedSkus, acquiredVia = "SPIN")
             Outcome.Success(
-                SpinResult(outcome.awardedId, roll.rarity, outcome.wasDuplicate, outcome.coinsRefunded, outcome.profile),
+                SpinResult(outcome.reward, outcome.wasDuplicate, outcome.coinsRefunded, outcome.profile, outcome.spinState),
             )
         } catch (cancellation: CancellationException) {
             throw cancellation
+        } catch (notAvailable: SpinNotAvailableException) {
+            Outcome.Error(AppError.Server(code = 429, message = notAvailable.message))
         } catch (insufficient: InsufficientCoinsException) {
             Outcome.Error(AppError.Server(code = 402, message = insufficient.message))
         } catch (duplicate: DuplicatePurchaseException) {
             Outcome.Error(AppError.Server(code = 409, message = duplicate.message))
+        } catch (insufficientInventory: InsufficientInventoryException) {
+            Outcome.Error(AppError.Server(code = 409, message = insufficientInventory.message))
         } catch (failure: Throwable) {
             Outcome.Error(with(errorMapper) { failure.toAppError() })
         }
@@ -173,14 +210,32 @@ class ShopRepositoryImpl @Inject constructor(
         }
     }
 
+    // streakShields/journeyPoints were previously omitted here, silently zeroing both in the local
+    // Room cache after any purchase/spin even though the real Firestore document still had the
+    // correct values (every write there uses SetOptions.merge()) - see
+    // FirestoreShopRemoteSource.toProfile's identical fix and its own doc for the full story.
+    private fun LuckySpinStateEntity.toDomain() = LuckySpinState(
+        lastFreeSpinEpochDay = lastFreeSpinEpochDay,
+        lastAdSpinEpochDay = lastAdSpinEpochDay,
+        hasEverSpun = hasEverSpun,
+    )
+
+    private fun LuckySpinState.toCacheEntity() = LuckySpinStateEntity(
+        lastFreeSpinEpochDay = lastFreeSpinEpochDay,
+        lastAdSpinEpochDay = lastAdSpinEpochDay,
+        hasEverSpun = hasEverSpun,
+    )
+
     private fun PlayerProfile.toCacheEntity() = PlayerProgressCacheEntity(
         xp = xp,
         coins = coins,
         currentStreak = currentStreak,
         longestStreak = longestStreak,
         lastPlayedEpochDay = lastPlayedEpochDay,
+        streakShields = streakShields,
         dailyChallengeWonAtEpochSecond = dailyChallengeWonAtEpochSecond,
         weeklyChallengeWonAtEpochSecond = weeklyChallengeWonAtEpochSecond,
+        journeyPoints = journeyPoints,
         lastSyncedAt = System.currentTimeMillis(),
     )
 }

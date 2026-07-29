@@ -16,4 +16,9 @@ data class ScoreSubmissionRequestDto(
      * local-only. Level-completed/perfect-accuracy/streak-milestone bonuses are all recomputed
      * server-side from the fields already above. */
     val newlyUnlockedAchievementCount: Int = 0,
+    /** `false` only for a repeat clear of an already-completed Classic level - see
+     * [com.suman.memoryarchitect.domain.repository.ProgressionRepository.submitScore]'s doc. The
+     * mock backend zeroes the xp contribution when `false`, mirroring [FirestoreProgressionRemoteSource]'s
+     * own handling. */
+    val awardXp: Boolean = true,
 )

@@ -3,7 +3,6 @@ package com.suman.memoryarchitect.domain.security
 import com.suman.memoryarchitect.domain.model.LevelSpec
 import com.suman.memoryarchitect.domain.model.ScoreResult
 import com.suman.memoryarchitect.domain.scoring.ScoringRules
-import kotlin.math.roundToInt
 
 /**
  * The client-side half of leaderboard integrity: a cheap, pure sanity check run immediately
@@ -35,7 +34,7 @@ object LeaderboardAntiCheat {
     private fun maxPlausibleScore(level: LevelSpec, rules: ScoringRules): Int {
         val maxPerObject = rules.basePointsPerObject + rules.correctPlacementBonus
         val maxPlacementScore = level.objects.size * maxPerObject
-        val maxTimeBonus = (rules.maxTimeBonusPoints * rules.timeBonusWeight).roundToInt()
+        val maxTimeBonus = level.objects.size * rules.timeBonusPerObject
         val maxComboBonus = level.objects.size * rules.comboBonusPerStreakObject
         return maxPlacementScore + maxTimeBonus + maxComboBonus
     }

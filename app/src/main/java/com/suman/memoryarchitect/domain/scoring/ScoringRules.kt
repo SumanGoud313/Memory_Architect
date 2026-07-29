@@ -10,8 +10,13 @@ data class ScoringRules(
     val correctPlacementThreshold: Float = 0.9f,
     val rotationToleranceDegrees: Float = 15f,
     val maxRotationErrorDegrees: Float = 90f,
-    val maxTimeBonusPoints: Int = 200,
-    val timeBonusWeight: Float = 0.5f,
+    /** Time bonus scales with object count (like [comboBonusPerStreakObject]) rather than a flat
+     * pool - a fixed pool would shrink to a negligible fraction of the total score on larger,
+     * later-campaign levels (e.g. ~5% of the max possible score at 12 objects vs ~17% at 3),
+     * making completion speed feel like it stopped mattering the further a player progressed.
+     * Scaling per-object keeps time's share of the total roughly constant (~13%) at every level
+     * size, so a fast, skilled run always visibly outscores a slow one regardless of difficulty. */
+    val timeBonusPerObject: Int = 25,
     val threeStarAccuracy: Float = 0.95f,
     val threeStarTimeBonusRatio: Float = 0.6f,
     val twoStarAccuracy: Float = 0.85f,

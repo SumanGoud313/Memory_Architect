@@ -11,12 +11,21 @@ import com.suman.memoryarchitect.domain.model.MissionPeriod
 data class MissionRotationRules(
     val activeDailyCount: Int = 3,
     val activeWeeklyCount: Int = 3,
-    val activeMonthlyCount: Int = 1,
+    // 3, matching Daily/Weekly's shape - was 1 against a pool of 3 (no real rotation at all).
+    // The pool is now 5 (see MissionCatalog's Monthly section), so a genuine 3-of-5 rotation
+    // exists, with headroom for the "never repeats the just-finished set" pay-to-reroll guarantee
+    // (see MissionRepository.unlockAllMissionsEarly's doc).
+    val activeMonthlyCount: Int = 3,
+    // Equal to the entire Event pool's size (see MissionCatalog.definitions) - unlike the other
+    // periods, an event's whole window is short and rare enough that every Event mission should
+    // just show up together rather than only a rotating subset of them.
+    val activeEventCount: Int = 3,
 ) {
     fun activeCountFor(period: MissionPeriod): Int = when (period) {
         MissionPeriod.DAILY -> activeDailyCount
         MissionPeriod.WEEKLY -> activeWeeklyCount
         MissionPeriod.MONTHLY -> activeMonthlyCount
+        MissionPeriod.EVENT -> activeEventCount
     }
 
     companion object {

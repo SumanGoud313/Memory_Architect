@@ -53,8 +53,9 @@ import com.suman.memoryarchitect.ui.theme.MemoryArchitectColors
 fun RemoveAdsScreen(onBack: () -> Unit, viewModel: RemoveAdsViewModel = hiltViewModel()) {
     val context = LocalContext.current
     val hasRemovedAds by viewModel.hasRemovedAds.collectAsStateWithLifecycle()
-    val product by viewModel.product.collectAsStateWithLifecycle()
+    val formattedPrice by viewModel.formattedPrice.collectAsStateWithLifecycle()
     val purchaseState by viewModel.purchaseState.collectAsStateWithLifecycle()
+    val priceLoadFailed by viewModel.priceLoadFailed.collectAsStateWithLifecycle()
     val particles = rememberParticleFieldState()
 
     AmbientBackground(nearParticles = particles, modifier = Modifier.fillMaxSize()) {
@@ -72,10 +73,12 @@ fun RemoveAdsScreen(onBack: () -> Unit, viewModel: RemoveAdsViewModel = hiltView
                     PurchasedCard(modifier = Modifier.staggeredReveal(1))
                 } else {
                     OfferCard(
-                        formattedPrice = product?.formattedPrice,
+                        formattedPrice = formattedPrice,
+                        priceLoadFailed = priceLoadFailed,
                         purchaseState = purchaseState,
                         onBuyNow = { (context as? android.app.Activity)?.let(viewModel::buyNow) },
                         onRestore = viewModel::restorePurchases,
+                        onRetryPriceLoad = viewModel::retryPriceLoad,
                         modifier = Modifier.staggeredReveal(1),
                     )
                     StatusMessage(purchaseState = purchaseState, modifier = Modifier.staggeredReveal(2))
@@ -88,9 +91,11 @@ fun RemoveAdsScreen(onBack: () -> Unit, viewModel: RemoveAdsViewModel = hiltView
 @Composable
 private fun OfferCard(
     formattedPrice: String?,
+    priceLoadFailed: Boolean,
     purchaseState: PurchaseUiState,
     onBuyNow: () -> Unit,
     onRestore: () -> Unit,
+    onRetryPriceLoad: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val isLoading = purchaseState is PurchaseUiState.Loading
@@ -115,12 +120,30 @@ private fun OfferCard(
                 BenefitRow(stringResource(R.string.remove_ads_benefit_keep_rewarded))
             }
 
-            Text(
-                text = formattedPrice ?: stringResource(R.string.remove_ads_price_loading),
-                style = MaterialTheme.typography.headlineMedium,
-                color = MemoryArchitectColors.accentGold,
-                modifier = Modifier.padding(top = 24.dp),
-            )
+            if (formattedPrice != null) {
+                Text(
+                    text = formattedPrice,
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = MemoryArchitectColors.accentGold,
+                    modifier = Modifier.padding(top = 24.dp),
+                )
+            } else if (priceLoadFailed) {
+                Row(modifier = Modifier.padding(top = 24.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = stringResource(R.string.remove_ads_price_load_failed),
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = MemoryArchitectColors.textTertiary,
+                    )
+                    OutlineButton(text = stringResource(R.string.action_retry), onClick = onRetryPriceLoad)
+                }
+            } else {
+                Text(
+                    text = stringResource(R.string.remove_ads_price_loading),
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = MemoryArchitectColors.accentGold,
+                    modifier = Modifier.padding(top = 24.dp),
+                )
+            }
 
             PrimaryButton(
                 text = stringResource(R.string.remove_ads_buy_now),

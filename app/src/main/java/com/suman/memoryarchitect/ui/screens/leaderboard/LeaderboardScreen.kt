@@ -76,8 +76,17 @@ fun LeaderboardScreen(onBack: () -> Unit, viewModel: LeaderboardViewModel = hilt
             LeaderboardTabRow(
                 selected = selectedTab,
                 onSelect = viewModel::selectTab,
-                modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 16.dp).staggeredReveal(1),
+                modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 12.dp).staggeredReveal(1),
             )
+
+            if (selectedTab != null) {
+                Text(
+                    text = stringResource(selectedTab.explainerRes()),
+                    color = MemoryArchitectColors.textSecondary,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp).staggeredReveal(1),
+                )
+            }
 
             when (val state = uiState) {
                 LeaderboardUiState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -97,7 +106,7 @@ fun LeaderboardScreen(onBack: () -> Unit, viewModel: LeaderboardViewModel = hilt
                         )
                     }
                 }
-                is LeaderboardUiState.Content -> LeaderboardList(state.result.entries, state.result.currentPlayerRank)
+                is LeaderboardUiState.Content -> LeaderboardList(state.result.type, state.result.entries, state.result.currentPlayerRank)
             }
         }
     }
@@ -154,8 +163,26 @@ private fun LeaderboardTabChip(text: String, isSelected: Boolean, onClick: () ->
     }
 }
 
+/** [R.string] resource for the label shown next to [LeaderboardEntry.primaryValue] - "Best Score"
+ * for [LeaderboardType.GLOBAL] (a lifetime running max), "Today's/This Week's/This Month's Score"
+ * for the periodic boards (that period's own best) - see [LeaderboardEntry]'s doc for why neither
+ * is ever a cumulative total. */
+private fun LeaderboardType.scoreLabelRes(): Int = when (this) {
+    LeaderboardType.GLOBAL -> R.string.leaderboard_score_label_global
+    LeaderboardType.DAILY -> R.string.leaderboard_score_label_daily
+    LeaderboardType.WEEKLY -> R.string.leaderboard_score_label_weekly
+    LeaderboardType.MONTHLY -> R.string.leaderboard_score_label_monthly
+}
+
+private fun LeaderboardType.explainerRes(): Int = when (this) {
+    LeaderboardType.GLOBAL -> R.string.leaderboard_explainer_global
+    LeaderboardType.DAILY -> R.string.leaderboard_explainer_daily
+    LeaderboardType.WEEKLY -> R.string.leaderboard_explainer_weekly
+    LeaderboardType.MONTHLY -> R.string.leaderboard_explainer_monthly
+}
+
 @Composable
-private fun LeaderboardList(entries: List<LeaderboardEntry>, currentPlayerRank: Int?) {
+private fun LeaderboardList(type: LeaderboardType, entries: List<LeaderboardEntry>, currentPlayerRank: Int?) {
     if (entries.isEmpty()) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text(
@@ -196,14 +223,14 @@ private fun LeaderboardList(entries: List<LeaderboardEntry>, currentPlayerRank: 
         }
         LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             items(entries, key = { it.uid }) { entry ->
-                LeaderboardRow(entry)
+                LeaderboardRow(entry, type)
             }
         }
     }
 }
 
 @Composable
-private fun LeaderboardRow(entry: LeaderboardEntry) {
+private fun LeaderboardRow(entry: LeaderboardEntry, type: LeaderboardType) {
     GlassCard(
         modifier = Modifier.fillMaxWidth(),
         tint = if (entry.isCurrentPlayer) MemoryArchitectColors.accentGold.copy(alpha = 0.14f) else null,
@@ -245,11 +272,18 @@ private fun LeaderboardRow(entry: LeaderboardEntry) {
                     style = MaterialTheme.typography.labelMedium,
                 )
             }
-            Text(
-                text = "${entry.primaryValue}",
-                color = MemoryArchitectColors.accentGold,
-                style = MaterialTheme.typography.titleMedium,
-            )
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = "${entry.primaryValue}",
+                    color = MemoryArchitectColors.accentGold,
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Text(
+                    text = stringResource(type.scoreLabelRes()),
+                    color = MemoryArchitectColors.textTertiary,
+                    style = MaterialTheme.typography.labelSmall,
+                )
+            }
         }
     }
 }

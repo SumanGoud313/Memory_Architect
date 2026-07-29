@@ -114,6 +114,17 @@ interface FeedbackManager {
     fun onDailyRewardClaimed()
     fun onWeeklyRewardClaimed()
 
+    /** The instant a Lucky Spin's wheel starts turning - see
+     * [com.suman.memoryarchitect.ui.screens.shop.LuckySpinWheel]'s doc for the 5-second spin this
+     * accompanies. */
+    fun onLuckySpinStarted()
+
+    /** The instant a Lucky Spin's wheel settles and its reward reveals - [HapticPattern.VICTORY]
+     * tier, the same STRONG haptic reserved for a Perfect/Memory Master results reveal, since a
+     * spin's reward (especially a cosmetic, or the 500-coin jackpot) is meant to feel like a
+     * comparably major moment. */
+    fun onLuckySpinRevealed()
+
     // --- Denials / warnings ------------------------------------------------------------------
     fun onWarning()
     fun onError()

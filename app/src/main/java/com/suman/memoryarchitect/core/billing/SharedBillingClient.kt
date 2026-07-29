@@ -26,17 +26,14 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * The single [BillingClient] instance for the whole app process. [BillingManager] (the pre-existing
- * `remove_ads_lifetime` flow) and [PremiumShopManager] (the 7 cosmetic-bundle products added
- * alongside it) both need a `BillingClient`, but Google Play Billing supports exactly one
- * [PurchasesUpdatedListener] per client, and this codebase's own established rule (see
- * [BillingManager]'s doc) is that exactly one `BillingClient` instance may ever exist. Rather than
- * either manager privately constructing its own (violating that rule) or [BillingManager]
- * special-casing the 7 new product ids itself (defeating the point of a separate manager), this
- * class owns the one real client and [purchasesUpdated] broadcasts every update to both managers,
- * each filtering for the product ids it actually owns - the same "one shared signal, every
- * observer decides what's relevant to it" shape [com.suman.memoryarchitect.core.cosmetics.EquippedCosmeticsStore]
- * already uses for equipped-cosmetic state.
+ * The single [BillingClient] instance for the whole app process. Google Play Billing supports
+ * exactly one [PurchasesUpdatedListener] per client, and this codebase's own established rule (see
+ * [BillingManager]'s doc) is that exactly one `BillingClient` instance may ever exist and exactly
+ * one manager ([BillingManager]) may ever own it. This class exists purely to isolate the raw
+ * `BillingClient` lifecycle (connection, reconnect-with-backoff, the one `PurchasesUpdatedListener`)
+ * from [BillingManager]'s own purchase/grant logic - a separation of concerns, not a second manager;
+ * an app that previously split Remove Ads and Premium Collections across two managers sharing this
+ * same client is exactly what [BillingManager]'s consolidation replaced.
  */
 @Singleton
 class SharedBillingClient @Inject constructor(@param:ApplicationContext context: Context) {
@@ -83,6 +80,16 @@ class SharedBillingClient @Inject constructor(@param:ApplicationContext context:
             override fun onBillingSetupFinished(billingResult: BillingResult) {
                 if (billingResult.responseCode != BillingClient.BillingResponseCode.OK) {
                     Log.w(TAG, "Billing setup failed: ${billingResult.responseCode} ${billingResult.debugMessage}")
+                    // Previously left the client permanently unusable for the rest of the process
+                    // lifetime on any non-OK setup result (e.g. a transient BILLING_UNAVAILABLE) -
+                    // onBillingServiceDisconnected already retries with backoff below, but a setup
+                    // failure never reaches that callback at all, it's a separate path. Same
+                    // backoff-and-retry Google's own guidance already covers for the disconnect
+                    // case, now applied here too.
+                    scope.launch {
+                        delay(RECONNECT_DELAY_MS)
+                        if (!billingClient.isReady) connect()
+                    }
                     return
                 }
                 _isReady.value = true

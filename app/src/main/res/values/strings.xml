@@ -9,6 +9,9 @@
     <string name="no_internet_title">No Internet Connection</string>
     <string name="no_internet_message">Memory Architect needs an internet connection to fetch levels, sync your progress, and keep play fair for everyone. Reconnect and we\'ll continue automatically.</string>
 
+    <string name="sign_in_gate_title">Sign In to Play</string>
+    <string name="sign_in_gate_message">Sign in with Google to save your progress and appear on the leaderboard. This only takes a moment.</string>
+
     <string name="home_title">Memory Architect</string>
     <string name="home_tagline">Rebuild the scene. Beat the clock. Trust your memory.</string>
     <string name="home_play">Play</string>
@@ -34,7 +37,7 @@
     <string name="settings_account_verified">Verified with Google</string>
     <string name="settings_account_sign_in_google">Sign in with Google</string>
     <string name="settings_account_linking">Linking…</string>
-    <string name="settings_account_link_error_already_linked">This Google account is already linked to a different Memory Architect profile.</string>
+    <string name="settings_account_link_error_already_linked">This Google account already has a saved profile - couldn\'t restore it right now. Check your connection and try again.</string>
     <string name="settings_account_link_error_no_google_account">No Google account was found on this device. Add one in your device\'s Settings, then try again.</string>
     <string name="settings_account_link_error_unknown">Couldn\'t sign in right now. Check your connection and try again.</string>
     <string name="settings_account_avatar">Avatar</string>
@@ -48,6 +51,11 @@
     <string name="settings_account_country_dialog_title">Choose your country</string>
     <string name="settings_account_country_clear">No country</string>
     <string name="settings_sound_and_haptics">Sound &amp; Haptics</string>
+    <string name="settings_notifications">Notifications</string>
+    <string name="settings_streak_reminder">Streak Reminder</string>
+    <string name="settings_streak_reminder_subtitle">A nudge if you haven\'t played yet today</string>
+    <string name="settings_daily_challenge_reminder">Daily Challenge Ready</string>
+    <string name="settings_daily_challenge_reminder_subtitle">A nudge when today\'s challenge is fresh</string>
     <string name="settings_mute_all">Mute All</string>
     <string name="settings_mute_all_subtitle">Silences sound and haptics together</string>
     <string name="settings_master_volume">Master Volume</string>
@@ -82,10 +90,6 @@
     <string name="mode_win_reward">Win to get %1$d coins</string>
     <!-- %1$s is a pre-formatted HH:MM:SS countdown (hours can exceed 24 for the weekly 168h lock). -->
     <string name="mode_locked_unlocks_in">Unlocks in %1$s</string>
-
-    <string name="mode_select_progress_level">Level %1$d</string>
-    <string name="mode_select_progress_xp">%1$d / %2$d XP</string>
-    <string name="mode_select_progress_streak">%1$d day streak</string>
 
     <string name="gameplay_loading">Generating level…</string>
     <string name="gameplay_phase_memorize">Memorize the scene</string>
@@ -128,6 +132,10 @@
          allowed this level attempt (e.g. "Ad 2/5"). -->
     <string name="gameplay_reward_progress_caption">Ad %1$d/%2$d</string>
     <string name="gameplay_reward_exhausted_caption">No ads left</string>
+    <!-- Shown instead of the ad-progress caption while an owned Hint/Redo/Rewatch token would be
+         redeemed by the next tap instead of watching an ad - see AssistIconBadge's sage-tinted
+         token badge, which this caption sits directly beneath. -->
+    <string name="gameplay_assist_use_token_caption">Use token</string>
 
     <string name="gameplay_hint_count">Hint · %1$s</string>
     <string name="gameplay_hint_idle_description">Hint available, %1$d remaining.</string>
@@ -136,6 +144,8 @@
     <string name="gameplay_hint_none_remaining_snackbar">No hints remaining.</string>
     <string name="gameplay_hint_reward_exhausted_description">No more Hint rewards available for this level.</string>
     <string name="gameplay_hint_reward_limit_reached_snackbar">No more Hint rewards available for this level.</string>
+    <string name="gameplay_hint_use_token_description">No hints remaining. Tap to use 1 Hint Token from your Inventory instead of watching an ad (%1$d in Inventory).</string>
+    <string name="gameplay_hint_redeeming_token_description">Using Hint Token…</string>
 
     <string name="gameplay_rewarded_hint_watch_ad">Watch Ad</string>
     <string name="gameplay_rewarded_hint_watch_ad_description">No hints remaining. Watch a short ad to earn one more hint (%1$d left this level).</string>
@@ -156,6 +166,8 @@
     <string name="gameplay_redo_nothing_to_undo_snackbar">Nothing to undo yet.</string>
     <string name="gameplay_redo_reward_exhausted_description">No more Redo rewards available for this level.</string>
     <string name="gameplay_redo_reward_limit_reached_snackbar">No more Redo rewards available for this level.</string>
+    <string name="gameplay_redo_use_token_description">No redos remaining. Tap to use 1 Redo Token from your Inventory instead of watching an ad (%1$d in Inventory).</string>
+    <string name="gameplay_redo_redeeming_token_description">Using Redo Token…</string>
 
     <string name="gameplay_rewarded_redo_watch_ad">Watch Ad</string>
     <string name="gameplay_rewarded_redo_watch_ad_description">No redos remaining. Watch a short ad to earn one more redo (%1$d left this level).</string>
@@ -183,6 +195,18 @@
     <string name="gameplay_rewatch_show_failed">Couldn\'t show ad</string>
     <string name="gameplay_rewatch_retry_description">Ad failed. Tap to try again.</string>
     <string name="gameplay_rewatch_cancelled_snackbar">Ad closed — no reward earned.</string>
+    <string name="gameplay_rewatch_use_token_description">Tap to use 1 Rewatch Ticket from your Inventory instead of watching an ad (%1$d in Inventory).</string>
+    <string name="gameplay_rewatch_redeeming_token_description">Using Rewatch Ticket…</string>
+
+    <!-- "Assist Resources" info dialog - opened from the small info button in GameplayToolbar,
+         a read-only breakdown of what a player owns for each of the three assist controls. Never
+         pauses the Reconstruct countdown - see AssistResourcesDialog's doc. -->
+    <string name="gameplay_assist_info_button_description">View Hint, Redo, and Rewatch resources</string>
+    <string name="gameplay_assist_info_title">Assist Resources</string>
+    <string name="gameplay_assist_info_free">Free: %1$d</string>
+    <string name="gameplay_assist_info_inventory">Inventory: %1$d</string>
+    <string name="gameplay_assist_info_ads_left">Reward Ads Left: %1$d</string>
+    <string name="gameplay_assist_info_close">Close</string>
 
     <string name="gameplay_tutorial_caption_memorize">Memorize the room.</string>
     <string name="gameplay_tutorial_caption_drag">Drag each object back to its spot.</string>
@@ -271,10 +295,33 @@
     <string name="missions_header">Missions</string>
     <string name="missions_section_daily">Daily</string>
     <string name="missions_section_weekly">Weekly</string>
-    <string name="missions_section_monthly">Monthly Goal</string>
+    <string name="missions_section_monthly">Monthly</string>
+    <string name="missions_section_event">Event</string>
+    <string name="missions_countdown_days_hours">New missions in %1$dd %2$dh</string>
+    <string name="missions_countdown_hours_minutes">New missions in %1$dh %2$dm</string>
+    <string name="missions_countdown_minutes">New missions in %1$dm</string>
+    <string name="missions_category_bonus_daily_pending">Finish all 3 for a coin bonus!</string>
+    <string name="missions_category_bonus_weekly_pending">Finish all 3 for coins + a Lucky Spin Ticket!</string>
+    <string name="missions_category_bonus_monthly_pending">Finish all 3 for a Lucky Spin Ticket + Redo Token + Hint Token!</string>
+    <string name="missions_category_bonus_claimed">Bonus claimed!</string>
+    <string name="missions_unlock_all_action">Unlock New Missions Now - 1,000 Coins</string>
+    <string name="missions_unlock_all_error">Not enough coins, or not every mission is claimed yet.</string>
+    <string name="notification_streak_reminder_title">Your streak is waiting</string>
+    <string name="notification_streak_reminder_text">Play today to keep it going.</string>
+    <string name="notification_daily_challenge_title">Today\'s Daily Challenge is ready</string>
+    <string name="notification_daily_challenge_text">A fresh challenge is waiting for you.</string>
+    <string name="returning_player_title">Welcome back!</string>
+    <string name="returning_player_message_short">Good to see you again.</string>
+    <string name="returning_player_message_medium">It\'s been a little while - here\'s a little something to pick back up with.</string>
+    <string name="returning_player_message_long">It\'s been a while - your progress is exactly as you left it.</string>
+    <string name="returning_player_journey_reminder">You\'re still %1$s. Pick up right where you left off.</string>
+    <string name="returning_player_claim_gift">Claim Gift</string>
     <string name="missions_claim">Claim</string>
     <string name="missions_claimed">Claimed</string>
     <string name="missions_progress_format">%1$d / %2$d</string>
+    <string name="missions_reward_coins_format">+%1$d Coins</string>
+    <string name="missions_reward_xp_format">+%1$d XP</string>
+    <string name="missions_reward_item_format">%1$s ×%2$d</string>
     <string name="mission_clear_two_levels">Clear 2 Levels</string>
     <string name="mission_clear_practice_round">Complete a Practice Round</string>
     <string name="mission_win_daily_challenge">Win the Daily Challenge</string>
@@ -290,8 +337,13 @@
     <string name="mission_earn_800_coins">Earn 800 Coins</string>
     <string name="mission_five_zero_hint_clears">Clear 5 Levels With No Hints</string>
     <string name="mission_clear_forty_levels">Clear 40 Levels</string>
-    <string name="mission_four_weekly_sets">Earn 120 Stars</string>
+    <string name="mission_four_weekly_sets">Earn 80 Stars</string>
     <string name="mission_earn_2500_coins_monthly">Earn 2,500 Coins</string>
+    <string name="mission_win_daily_challenge_monthly">Win the Daily Challenge 4 Times</string>
+    <string name="mission_win_weekly_challenge_monthly">Win the Weekly Challenge</string>
+    <string name="mission_event_clear_five_levels">Clear 5 Levels</string>
+    <string name="mission_event_earn_forty_stars">Earn 40 Stars</string>
+    <string name="mission_event_earn_1000_coins">Earn 1,000 Coins</string>
 
     <!-- Inventory - see domain/model/InventoryItemKind.kt -->
     <string name="inventory_header">Inventory</string>
@@ -303,6 +355,11 @@
     <string name="inventory_xp_boost">XP Boost</string>
     <string name="inventory_discount_coupon">Discount Coupon</string>
     <string name="inventory_mystery_chest">Mystery Chest</string>
+    <string name="inventory_open_chest">Open</string>
+    <string name="inventory_use_xp_boost">Use</string>
+    <string name="inventory_mystery_chest_opened">Chest opened — +%1$d coins!</string>
+    <string name="inventory_xp_boost_applied">XP Boost used — +%1$d XP!</string>
+    <string name="inventory_action_failed">Something went wrong — try again.</string>
 
     <!-- Player Rank tiers - see domain/progression/PlayerRankEngine.kt -->
     <string name="rank_bronze">Bronze</string>
@@ -361,8 +418,16 @@
     <string name="leaderboard_empty">No entries yet — be the first to set a score!</string>
     <string name="leaderboard_unavailable">Leaderboards aren\'t available right now. Check your connection and try again.</string>
     <string name="leaderboard_your_rank">Your rank</string>
+    <string name="leaderboard_score_label_global">Best Score</string>
+    <string name="leaderboard_score_label_daily">Today\'s Score</string>
+    <string name="leaderboard_score_label_weekly">This Week\'s Score</string>
+    <string name="leaderboard_score_label_monthly">This Month\'s Score</string>
+    <string name="leaderboard_explainer_global">Ranked by your best single-round score ever - anyone can take #1 with one great round</string>
+    <string name="leaderboard_explainer_daily">Ranked by your best score today - resets every day, so it\'s a fresh race each morning</string>
+    <string name="leaderboard_explainer_weekly">Ranked by your best score this week - resets every week, so it\'s a fresh race each week</string>
+    <string name="leaderboard_explainer_monthly">Ranked by your best score this month - resets every month, so it\'s a fresh race each month</string>
     <string name="profile_rank_label">Rank</string>
-    <string name="profile_view_statistics">Statistics</string>
+    <string name="profile_view_statistics">More Statistics</string>
     <string name="profile_view_leaderboards">Leaderboards</string>
 
     <!-- Motivation insight messages - see domain/motivation/MotivationEngine.kt. Deliberately
@@ -404,6 +469,9 @@
     <string name="reward_badge_celestial_key">Celestial Key</string>
     <string name="reward_locked_at_level">Unlocks at Level %1$d</string>
     <string name="profile_rewards_header">Rewards</string>
+    <!-- The tab inside Achievements that shows the same reward timeline - not a standalone screen
+         anymore, see AchievementsScreen.kt. -->
+    <string name="profile_unlocks_header">Unlocks</string>
 
     <string name="profile_coins">%1$d coins</string>
     <string name="profile_xp_progress">%1$d / %2$d XP to next level</string>
@@ -415,6 +483,14 @@
         <item quantity="one">%1$d Shield</item>
         <item quantity="other">%1$d Shields</item>
     </plurals>
+    <plurals name="live_event_ends_in_days">
+        <item quantity="one">Ends in %1$d day</item>
+        <item quantity="other">Ends in %1$d days</item>
+    </plurals>
+    <plurals name="live_event_ends_in_hours">
+        <item quantity="one">Ends in %1$d hour</item>
+        <item quantity="other">Ends in %1$d hours</item>
+    </plurals>
 
     <!-- Memory Journey - see domain/progression/MemoryJourneyCatalog.kt -->
     <string name="memory_journey_header">Memory Journey</string>
@@ -422,6 +498,7 @@
     <string name="memory_journey_points_format">%1$d pts</string>
     <string name="memory_journey_next_tier">Next: %1$s</string>
     <string name="memory_journey_max_tier">Highest tier reached</string>
+    <string name="memory_journey_explainer">Your lifetime standing - it never resets. Points add up automatically as you play: clearing levels, earning a perfect score, unlocking achievements, keeping a streak alive, and claiming missions all count. There\'s nothing to claim here - just reach a tier\'s point total to permanently unlock its title below.</string>
 
     <string name="profile_stat_games_played">Games Played</string>
     <string name="profile_stat_best_score">Best Score</string>
@@ -432,7 +509,7 @@
     <string name="profile_cosmetics_header">Cosmetics</string>
     <string name="profile_showcase_header">Showcase</string>
     <string name="profile_shop_header">Shop</string>
-    <string name="profile_collections_header">Collections</string>
+    <string name="profile_collections_header">My Collections</string>
     <string name="profile_lucky_spin_header">Lucky Spin</string>
 
     <string name="shop_title">Point Shop</string>
@@ -441,6 +518,7 @@
     <string name="shop_error_insufficient_coins">Not enough coins for this item yet - keep playing to earn more.</string>
     <string name="shop_error_no_connectivity">No internet connection. Please check your connection and try again.</string>
     <string name="shop_error_already_owned">You already own this item.</string>
+    <string name="shop_error_spin_not_available">You\'ve already used that spin today - come back tomorrow!</string>
     <string name="shop_error_generic">Something went wrong. Please try again.</string>
 
     <string name="collections_title">Collections</string>
@@ -486,10 +564,17 @@
     <string name="premium_luxury_collection_tagline">Onyx black and polished gold.</string>
 
     <string name="lucky_spin_title">Lucky Spin</string>
-    <string name="lucky_spin_cost">Spin cost: %1$d coins</string>
-    <string name="lucky_spin_action">Spin</string>
     <string name="lucky_spin_new_item">New item added to your collection!</string>
     <string name="lucky_spin_duplicate_refund">Already owned - refunded %1$d coins</string>
+    <string name="lucky_spin_free_action">Free Spin</string>
+    <string name="lucky_spin_watch_ad_action">Watch Ad for Bonus Spin</string>
+    <string name="lucky_spin_use_ticket_action">Use Lucky Spin Ticket (×%1$d)</string>
+    <string name="lucky_spin_come_back_tomorrow">Come back tomorrow!</string>
+    <string name="lucky_spin_coins_won">+%1$d Coins!</string>
+    <string name="lucky_spin_first_spin_badge">First Spin Bonus!</string>
+    <string name="lucky_spin_go_to_collections">Head to Shop → Collections to equip it!</string>
+    <string name="lucky_spin_go_to_shop_action">Go to Shop</string>
+    <string name="lucky_spin_ad_unavailable">No ad available right now - try again shortly.</string>
 
     <string name="error_no_connectivity">No internet connection. Please check your connection and try again.</string>
     <string name="error_network">Couldn\'t reach the server. Please try again.</string>

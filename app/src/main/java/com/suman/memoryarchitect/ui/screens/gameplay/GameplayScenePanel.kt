@@ -41,6 +41,7 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
@@ -70,6 +71,7 @@ import com.suman.memoryarchitect.domain.model.SceneObjectSpec
 import com.suman.memoryarchitect.ui.components.LightingOverlay
 import com.suman.memoryarchitect.ui.components.OvershootEasing
 import com.suman.memoryarchitect.ui.components.ParticleField
+import com.suman.memoryarchitect.ui.components.RoomSkinOverlay
 import com.suman.memoryarchitect.ui.components.rememberParticleFieldState
 import com.suman.memoryarchitect.ui.illustration.IdleAnimatedObject
 import com.suman.memoryarchitect.ui.illustration.ObjectArt
@@ -77,6 +79,8 @@ import com.suman.memoryarchitect.ui.illustration.ObjectArtRegistry
 import com.suman.memoryarchitect.ui.illustration.RoomArt
 import com.suman.memoryarchitect.ui.illustration.RoomArtRegistry
 import com.suman.memoryarchitect.ui.theme.MemoryArchitectColors
+import com.suman.memoryarchitect.ui.theme.ObjectMaterialVisualSpec
+import com.suman.memoryarchitect.ui.theme.RoomSkinVisualSpec
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -125,7 +129,13 @@ fun GameplayScenePanel(
     highlightedSlotIndex: Int? = null,
     hintReveal: HintReveal? = null,
     onPanelPositioned: (LayoutCoordinates) -> Unit = {},
+    // Premium ROOM_SKIN/OBJECT_MATERIAL cosmetics - both `null` (nothing equipped) is a true no-op,
+    // reproducing today's exact look at every call site below. See RoomSkinOverlay's/
+    // objectMaterialTint's own docs for the recolor techniques.
+    roomSkin: RoomSkinVisualSpec? = null,
+    objectMaterial: ObjectMaterialVisualSpec? = null,
 ) {
+    val accentColor = roomSkin?.accentGlow ?: MemoryArchitectColors.accentGold
     var panelSizePx by remember { mutableStateOf(IntSize.Zero) }
     val objectSizeScale = remember(level.objects.size) { objectSizeScale(level.objects.size) }
     val progressMap = rememberRevealProgress(level, visibleObjects, phase)
@@ -168,11 +178,12 @@ fun GameplayScenePanel(
     ) {
         roomArt.backdrop(Modifier.fillMaxSize().graphicsLayer { alpha = backdropAlpha.value; if (mirrored) scaleX = -1f })
         LightingOverlay(mood = lightingMood, modifier = Modifier.fillMaxSize().graphicsLayer { alpha = backdropAlpha.value }, seed = level.seed)
+        RoomSkinOverlay(spec = roomSkin, modifier = Modifier.fillMaxSize().graphicsLayer { alpha = backdropAlpha.value })
 
         // Always present (never gated by an `if` reading the animated value) - drawing a
         // fully-transparent overlay costs nothing extra, and Canvas only actually redraws while
         // hintAlpha.value is genuinely changing.
-        SlotHintOverlay(roomArt = roomArt, occupiedIndices = occupiedIndices, highlightedSlotIndex = highlightedSlotIndex, alpha = hintAlpha, objectSizeScale = objectSizeScale)
+        SlotHintOverlay(roomArt = roomArt, occupiedIndices = occupiedIndices, highlightedSlotIndex = highlightedSlotIndex, alpha = hintAlpha, objectSizeScale = objectSizeScale, accentColor = accentColor)
 
         visibleObjects.forEach { obj ->
             val animatable = progressMap[obj.objectId] ?: return@forEach
@@ -199,7 +210,7 @@ fun GameplayScenePanel(
                         .offset(y = sizeDp * 0.12f)
                         .graphicsLayer { alpha = animatable.value * 0.35f }
                         .blur(6.dp)
-                        .background(MemoryArchitectColors.bgBase, CircleShape),
+                        .background(roomSkin?.wallTint?.copy(alpha = 0.5f) ?: MemoryArchitectColors.bgBase, CircleShape),
                 )
                 // A brief confirmation pulse exactly when an object is placed during Reconstruct
                 // — glow and a slight outward breathe rise and fade together as the pop-in settles
@@ -220,7 +231,7 @@ fun GameplayScenePanel(
                                 scaleY = glowScale
                             }
                             .blur(10.dp)
-                            .background(MemoryArchitectColors.accentGold, CircleShape),
+                            .background(accentColor, CircleShape),
                     )
                 }
                 Box(
@@ -252,6 +263,7 @@ fun GameplayScenePanel(
                         modifier = Modifier
                             .size(sizeDp * 0.82f)
                             .offset(sizeDp * 0.09f, sizeDp * 0.09f)
+                            .objectMaterialTint(objectMaterial)
                             .distractorDesaturation(obj.isDistractor),
                     )
                 }
@@ -273,6 +285,8 @@ fun GameplayScenePanel(
                     sizeDp = sizeDp,
                     art = ObjectArtRegistry.get(reveal.objectId),
                     rotationDegrees = reveal.rotationDegrees,
+                    accentColor = accentColor,
+                    objectMaterial = objectMaterial,
                 )
             }
         }
@@ -298,6 +312,8 @@ private fun HintRevealHighlight(
     art: ObjectArt,
     rotationDegrees: Int,
     modifier: Modifier = Modifier,
+    accentColor: Color = MemoryArchitectColors.accentGold,
+    objectMaterial: ObjectMaterialVisualSpec? = null,
 ) {
     val transition = rememberInfiniteTransition(label = "hintReveal")
     val pulseScale by transition.animateFloat(
@@ -339,7 +355,7 @@ private fun HintRevealHighlight(
                 }
                 .blur(20.dp)
                 .background(
-                    brush = Brush.radialGradient(listOf(MemoryArchitectColors.accentGold, MemoryArchitectColors.accentGold.copy(alpha = 0f))),
+                    brush = Brush.radialGradient(listOf(accentColor, accentColor.copy(alpha = 0f))),
                     shape = CircleShape,
                 ),
         )
@@ -352,7 +368,7 @@ private fun HintRevealHighlight(
                     scaleX = pulseScale
                     scaleY = pulseScale
                 }
-                .border(width = 3.dp, color = MemoryArchitectColors.accentGold, shape = CircleShape),
+                .border(width = 3.dp, color = accentColor, shape = CircleShape),
         )
         // Ghost — a translucent preview of the object itself, rotated to its actual correct
         // angle, so the hint shows orientation as directly as it shows position: not just "here,"
@@ -366,7 +382,7 @@ private fun HintRevealHighlight(
                     rotationZ = rotationDegrees.toFloat()
                 },
         ) {
-            IdleAnimatedObject(art = art, modifier = Modifier.fillMaxSize())
+            IdleAnimatedObject(art = art, modifier = Modifier.fillMaxSize().objectMaterialTint(objectMaterial))
         }
         // Rotate badge — only when a turn is actually required, so the need to rotate is obvious
         // before the player has to study the ghost's exact angle.
@@ -382,7 +398,7 @@ private fun HintRevealHighlight(
                         scaleX = pulseScale
                         scaleY = pulseScale
                     }
-                    .background(MemoryArchitectColors.accentGold, CircleShape)
+                    .background(accentColor, CircleShape)
                     .padding(3.dp),
             )
         }
@@ -390,7 +406,7 @@ private fun HintRevealHighlight(
         Icon(
             imageVector = Icons.Filled.KeyboardArrowDown,
             contentDescription = null,
-            tint = MemoryArchitectColors.accentGold,
+            tint = accentColor,
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .size(28.dp)
@@ -406,6 +422,7 @@ private fun SlotHintOverlay(
     highlightedSlotIndex: Int?,
     alpha: Animatable<Float, AnimationVector1D>,
     objectSizeScale: Float,
+    accentColor: Color = MemoryArchitectColors.accentGold,
 ) {
     Canvas(modifier = Modifier.fillMaxSize()) {
         // Read inside the draw scope, not the composable body - this is what actually makes the
@@ -419,12 +436,12 @@ private fun SlotHintOverlay(
             val isHighlighted = index == highlightedSlotIndex
             if (isHighlighted) {
                 drawCircle(
-                    color = MemoryArchitectColors.accentGold.copy(alpha = 0.22f * currentAlpha),
+                    color = accentColor.copy(alpha = 0.22f * currentAlpha),
                     radius = radius * 1.35f,
                     center = center,
                 )
                 drawCircle(
-                    color = MemoryArchitectColors.accentGold.copy(alpha = 0.95f * currentAlpha),
+                    color = accentColor.copy(alpha = 0.95f * currentAlpha),
                     radius = radius * 1.1f,
                     center = center,
                     style = Stroke(width = 5f),
@@ -475,6 +492,46 @@ private fun rememberRevealProgress(
         }
     }
     return progressMap
+}
+
+/**
+ * A premium `OBJECT_MATERIAL`'s paint-transform - the same `saveLayer` + `ColorFilter` compositing
+ * technique [distractorDesaturation] below already establishes, kept as a fully independent second
+ * pass (never merged into that function's logic) so distractor behavior stays byte-for-byte
+ * unchanged regardless of what material is equipped. Applied *before* [distractorDesaturation] in
+ * every call site's modifier chain, so a distractor still desaturates on top of its material tint
+ * rather than the two fighting over which one "wins." A true no-op when [material] is `null`.
+ *
+ * `internal`, not `private` - [com.suman.memoryarchitect.ui.screens.gameplay.GameplayScreen]'s
+ * `PremiumDragGhost` (the floating drag ghost, a different composable/file in this same package)
+ * reuses this exact function so the ghost's material tint matches the tray chip and placed object
+ * exactly, rather than duplicating the technique a third time.
+ *
+ * [BlendMode.Color], not [BlendMode.Overlay] - this is a correction, not the original design.
+ * `Overlay`'s neutral (no-brightness-change) point is raw value 0.5 on *each* R/G/B channel
+ * independently, which has nothing to do with a color's overall (WCAG-weighted) luminance - a
+ * `tintColor` can look "medium brightness" by luminance while one channel (usually blue, weighted
+ * only ~7% in luminance) still sits well under 0.5, so `Overlay` quietly crushed every object
+ * toward black regardless of which of the 7 materials was equipped. `BlendMode.Color` is defined
+ * (CSS Compositing spec, which the platform implements exactly) to take the *source*'s hue/
+ * saturation while preserving the *destination*'s own luminance exactly - so no tint color, now or
+ * added later, can ever darken or wash out an object. See `CosmeticColorBlendTest.kt` for the
+ * computed proof (not just an eyeballed claim) that this actually holds.
+ */
+internal fun Modifier.objectMaterialTint(material: ObjectMaterialVisualSpec?): Modifier {
+    if (material == null) return this
+    return this.drawWithCache {
+        val filterPaint = Paint().apply {
+            colorFilter = ColorFilter.tint(material.tintColor.copy(alpha = material.blendStrength), BlendMode.Color)
+        }
+        onDrawWithContent {
+            drawIntoCanvas { canvas ->
+                canvas.saveLayer(Rect(Offset.Zero, size), filterPaint)
+                drawContent()
+                canvas.restore()
+            }
+        }
+    }
 }
 
 /**

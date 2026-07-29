@@ -11,9 +11,11 @@ import javax.inject.Singleton
  * synchronous SDK calls (unlike event logging, there's no network I/O to push to a background
  * thread), so this doesn't need [FirebaseAnalyticsLogger]'s coroutine dispatch. */
 @Singleton
-class FirebasePerformanceTracer @Inject constructor() : PerformanceTracer {
+class FirebasePerformanceTracer @Inject constructor(
+    private val firebaseAvailabilityProvider: FirebaseAvailabilityProvider,
+) : PerformanceTracer {
     override fun startTrace(name: String): PerformanceTrace {
-        if (!FirebaseAvailability.isConfigured) return NoopPerformanceTrace
+        if (!firebaseAvailabilityProvider.isConfigured) return NoopPerformanceTrace
         return try {
             val trace = Firebase.performance.newTrace(name)
             trace.start()

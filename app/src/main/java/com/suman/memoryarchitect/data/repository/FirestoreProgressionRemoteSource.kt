@@ -2,17 +2,22 @@ package com.suman.memoryarchitect.data.repository
 
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.DocumentSnapshot
+import com.google.firebase.firestore.SetOptions
 import com.google.firebase.firestore.firestore
 import com.suman.memoryarchitect.core.auth.PlayerIdentityManager
 import com.suman.memoryarchitect.domain.model.DailyRewardClaimResult
 import com.suman.memoryarchitect.domain.model.DailyRewardStatus
 import com.suman.memoryarchitect.domain.model.GameMode
+import com.suman.memoryarchitect.domain.model.Inventory
+import com.suman.memoryarchitect.domain.model.InventoryItemKind
 import com.suman.memoryarchitect.domain.model.MemoryJourneyRules
 import com.suman.memoryarchitect.domain.model.PlayerProfile
+import com.suman.memoryarchitect.domain.model.ReturningPlayerGiftClaimResult
 import com.suman.memoryarchitect.domain.model.ScoreResult
 import com.suman.memoryarchitect.domain.model.StreakRules
 import com.suman.memoryarchitect.domain.progression.DailyRewardCatalog
 import com.suman.memoryarchitect.domain.progression.ProgressionRules
+import com.suman.memoryarchitect.domain.progression.ReturningPlayerRules
 import com.suman.memoryarchitect.domain.progression.StreakCalculator
 import kotlinx.coroutines.tasks.await
 import java.time.Clock
@@ -65,11 +70,12 @@ class FirestoreProgressionRemoteSource @Inject constructor(
         playedOnEpochDay: Long,
         submissionNonce: String,
         newlyUnlockedAchievementCount: Int,
+        awardXp: Boolean,
     ): PlayerProfile {
         val uid = requireUid()
         val docRef = firestore.collection(PROFILES_COLLECTION).document(uid)
         val nonceRef = firestore.collection(SUBMISSION_NONCES_COLLECTION).document(nonceDocId(uid, submissionNonce))
-        val xpAwarded = (score.finalScore * ProgressionRules.Default.xpPerScorePoint).roundToLong()
+        val xpAwarded = if (awardXp) (score.finalScore * ProgressionRules.Default.xpPerScorePoint).roundToLong() else 0L
         val coinsAwarded = coinsAwardedFor(mode, score)
         val won = isChallengeWin(mode, score)
         val nowEpochMs = clock.millis()
@@ -100,7 +106,14 @@ class FirestoreProgressionRemoteSource @Inject constructor(
                 journeyPoints = current.journeyPoints + journeyPointsAwarded,
             )
             transaction.set(nonceRef, mapOf("uid" to uid, "createdAtEpochMs" to nowEpochMs))
-            transaction.set(docRef, updated.toFirestoreMap(clock))
+            // lastWriteSource: see PROFILE_WRITE_SOURCES' doc in functions/src/index.ts - lets
+            // validateProfileWrite rate-limit this write independently of an unrelated action
+            // (a shop purchase, a mission claim) landing within the same few seconds.
+            // SetOptions.merge() - a plain overwrite here would silently wipe flaggedForReview,
+            // the one field validateProfileWrite adds that this client map never knows about (see
+            // FirestoreShopRemoteSource.purchase's own identical comment - this write was the one
+            // remaining profile write that didn't already follow that convention).
+            transaction.set(docRef, updated.toFirestoreMap(clock) + mapOf("lastWriteSource" to "submit_score"), SetOptions.merge())
             updated
         }.await()
     }
@@ -139,6 +152,7 @@ class FirestoreProgressionRemoteSource @Inject constructor(
         val uid = requireUid()
         val rewardRef = firestore.collection(DAILY_REWARDS_COLLECTION).document(uid)
         val profileRef = firestore.collection(PROFILES_COLLECTION).document(uid)
+        val inventoryRef = firestore.collection(INVENTORY_COLLECTION).document(uid)
         return firestore.runTransaction { transaction ->
             val rewardSnapshot = transaction.get(rewardRef)
             val lastClaimedEpochDay = rewardSnapshot.getLong("lastClaimedEpochDay")
@@ -155,11 +169,55 @@ class FirestoreProgressionRemoteSource @Inject constructor(
                 xp = currentProfile.xp + entry.xp,
                 streakShields = if (shieldAwarded) currentProfile.streakShields + 1 else currentProfile.streakShields,
             )
+            val currentQuantities = transaction.get(inventoryRef).toQuantities().toMutableMap()
+            entry.inventoryGrants.forEach { (kind, amount) -> currentQuantities[kind] = (currentQuantities[kind] ?: 0) + amount }
             transaction.set(rewardRef, mapOf("cycleDay" to cycleDay, "lastClaimedEpochDay" to claimedOnEpochDay))
-            transaction.set(profileRef, updatedProfile.toFirestoreMap(clock))
-            DailyRewardClaimResult(cycleDay, entry.coins, entry.xp, updatedProfile, shieldAwarded)
+            // See submitScore's own lastWriteSource comment above.
+            // See submitScore's own comment above - same flaggedForReview-preserving reason.
+            transaction.set(profileRef, updatedProfile.toFirestoreMap(clock) + mapOf("lastWriteSource" to "claim_daily_reward"), SetOptions.merge())
+            if (entry.inventoryGrants.isNotEmpty()) transaction.set(inventoryRef, currentQuantities.toInventoryFirestoreMap())
+            DailyRewardClaimResult(cycleDay, entry.coins, entry.xp, updatedProfile, shieldAwarded, Inventory(currentQuantities))
         }.await()
     }
+
+    override suspend fun claimReturningPlayerGift(claimedOnEpochDay: Long): ReturningPlayerGiftClaimResult {
+        val uid = requireUid()
+        val giftRef = firestore.collection(RETURNING_PLAYER_GIFTS_COLLECTION).document(uid)
+        val profileRef = firestore.collection(PROFILES_COLLECTION).document(uid)
+        val inventoryRef = firestore.collection(INVENTORY_COLLECTION).document(uid)
+        return firestore.runTransaction { transaction ->
+            val currentProfile = transaction.get(profileRef).toProfile() ?: PlayerProfile.EMPTY
+            val gapDays = currentProfile.lastPlayedEpochDay?.let { claimedOnEpochDay - it }
+            if (gapDays == null || gapDays < ReturningPlayerRules.Default.mediumGapDays) {
+                throw ReturningPlayerGiftNotEligibleException("gap of $gapDays days is too short")
+            }
+            val giftSnapshot = transaction.get(giftRef)
+            if (giftSnapshot.getLong("lastClaimedOnEpochDay") == claimedOnEpochDay) {
+                throw ReturningPlayerGiftAlreadyClaimedException()
+            }
+            val currentQuantities = transaction.get(inventoryRef).toQuantities().toMutableMap()
+            currentQuantities[InventoryItemKind.MYSTERY_CHEST] = (currentQuantities[InventoryItemKind.MYSTERY_CHEST] ?: 0) + 1
+            transaction.set(giftRef, mapOf("lastClaimedOnEpochDay" to claimedOnEpochDay))
+            transaction.set(inventoryRef, currentQuantities.toInventoryFirestoreMap())
+            ReturningPlayerGiftClaimResult(Inventory(currentQuantities))
+        }.await()
+    }
+
+    /** Duplicated from [FirestoreMissionRemoteSource]'s own private copy - see that class's doc for
+     * why (the established "three independent copies of the same small mapping" convention). */
+    private fun DocumentSnapshot.toQuantities(): Map<InventoryItemKind, Int> {
+        if (!exists()) return emptyMap()
+        val raw = get("quantities") as? Map<*, *> ?: return emptyMap()
+        return raw.mapNotNull { (key, value) ->
+            val kind = runCatching { InventoryItemKind.valueOf(key as String) }.getOrNull() ?: return@mapNotNull null
+            kind to ((value as? Number)?.toInt() ?: 0)
+        }.toMap()
+    }
+
+    private fun Map<InventoryItemKind, Int>.toInventoryFirestoreMap(): Map<String, Any?> = mapOf(
+        "quantities" to mapKeys { it.key.name },
+        "updatedAtEpochMs" to clock.millis(),
+    )
 
     private suspend fun requireUid(): String = playerIdentityManager.awaitUid()
         ?: throw IllegalStateException("FirestoreProgressionRemoteSource used with no signed-in player - callers must gate on FirebaseAvailability + a resolved uid via ProgressionRepositoryImpl.activeRemoteSource first")
@@ -218,6 +276,15 @@ class FirestoreProgressionRemoteSource @Inject constructor(
         const val PROFILES_COLLECTION = "playerProfiles"
         const val DAILY_REWARDS_COLLECTION = "dailyRewards"
         const val SUBMISSION_NONCES_COLLECTION = "submissionNonces"
+        // Same "inventory/{uid}" doc FirestoreMissionRemoteSource writes to - one shared Inventory
+        // regardless of which claim source (mission, daily reward, returning-player gift) granted
+        // into it.
+        const val INVENTORY_COLLECTION = "inventory"
+        // Deliberately its own doc, not a new field on DAILY_REWARDS_COLLECTION's document -
+        // claimDailyReward's own transaction.set() on that doc is a full overwrite, not a merge,
+        // so a field living there that claimDailyReward doesn't itself write would get silently
+        // wiped out the next time a daily reward is claimed.
+        const val RETURNING_PLAYER_GIFTS_COLLECTION = "returningPlayerGifts"
 
         /** `{uid}_{nonce}` rather than a bare nonce as the doc id - keeps one player's nonces from
          * ever colliding with another's even in the (cryptographically negligible) case of a UUID

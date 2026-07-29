@@ -6,6 +6,7 @@ import com.suman.memoryarchitect.domain.model.CosmeticCategory
 import com.suman.memoryarchitect.domain.model.CosmeticId
 import com.suman.memoryarchitect.domain.model.MissionEvent
 import com.suman.memoryarchitect.domain.model.Outcome
+import com.suman.memoryarchitect.domain.progression.PermanentFreeCosmetics
 import com.suman.memoryarchitect.domain.usecase.EquipCosmeticUseCase
 import com.suman.memoryarchitect.domain.usecase.GetEquippedCosmeticsUseCase
 import com.suman.memoryarchitect.domain.usecase.GetFavoriteCosmeticsUseCase
@@ -100,7 +101,17 @@ class CollectionsViewModel @Inject constructor(
             val outcome = unequipCosmetic(category)
             val latest = _uiState.value as? CollectionsUiState.Content ?: return@launch
             _uiState.value = when (outcome) {
-                is Outcome.Success -> latest.copy(equipped = latest.equipped - category, equippingId = null)
+                // BACKGROUND_THEME/PROFILE_BORDER fall straight back to their permanent free
+                // default (see PermanentFreeCosmetics/ShopRepositoryImpl.unequip's doc) rather than
+                // showing "nothing equipped" here and only correcting itself on the next cold
+                // start's fresh read.
+                is Outcome.Success -> {
+                    val fallback = PermanentFreeCosmetics.defaultEquippedByCategory[category]
+                    latest.copy(
+                        equipped = if (fallback != null) latest.equipped + (category to fallback) else latest.equipped - category,
+                        equippingId = null,
+                    )
+                }
                 is Outcome.Error -> latest.copy(equippingId = null)
             }
         }

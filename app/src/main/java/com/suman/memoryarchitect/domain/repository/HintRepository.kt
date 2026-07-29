@@ -9,11 +9,19 @@ package com.suman.memoryarchitect.domain.repository
  */
 interface HintRepository {
     suspend fun getHintsUsed(levelNumber: Int): Int
+
+    /** How many rewarded-ad grants have already been redeemed for this level attempt - capped by
+     * [com.suman.memoryarchitect.domain.model.RewardedAssistLimits.maxRewardedHints], independent
+     * of the free-tier count [getHintsUsed] tracks. Resets to zero on the same "fresh attempt"
+     * schedule as [getHintsUsed] (see [resetHintUsage]) - never carries across levels. */
+    suspend fun getRewardedHintsUsed(levelNumber: Int): Int
+
     suspend fun recordHintUsed(levelNumber: Int)
 
-    /** A rewarded-ad bonus hint is modeled as refunding one real use, rather than a separate
-     * counter - it reuses the exact same persisted field, so it needs no schema of its own and
-     * survives a level reload/process death exactly like a normal hint's usage does. */
+    /** A rewarded-ad bonus hint refunds one real use (reusing the exact same persisted
+     * [getHintsUsed] field, so the granted hint needs no separate "spend" step) while also
+     * incrementing [getRewardedHintsUsed]'s own counter, which is what actually caps how many
+     * times this can happen per level. */
     suspend fun grantBonusHint(levelNumber: Int)
 
     /** Clears this level's usage back to zero - called once at the start of every fresh attempt,

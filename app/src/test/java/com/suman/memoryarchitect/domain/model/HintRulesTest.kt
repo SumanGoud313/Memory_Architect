@@ -18,12 +18,12 @@ class HintRulesTest {
     }
 
     @Test
-    fun `level 25 - the first tier-two level - allows three hints`() {
-        assertEquals(3, rules.hintsAllowedForLevel(25))
+    fun `level 25 - the first tier-two level - allows two hints`() {
+        assertEquals(2, rules.hintsAllowedForLevel(25))
     }
 
     @Test
-    fun `level 100 allows three hints`() {
-        assertEquals(3, rules.hintsAllowedForLevel(100))
+    fun `level 100 allows two hints`() {
+        assertEquals(2, rules.hintsAllowedForLevel(100))
     }
 }

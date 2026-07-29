@@ -18,14 +18,30 @@ class HintRepositoryImpl @Inject constructor(
         hintUsageDao.get(levelNumber)?.hintsUsed ?: 0
     }
 
+    override suspend fun getRewardedHintsUsed(levelNumber: Int): Int = withContext(dispatchers.io) {
+        hintUsageDao.get(levelNumber)?.rewardedHintsUsed ?: 0
+    }
+
     override suspend fun recordHintUsed(levelNumber: Int) = withContext(dispatchers.io) {
-        val current = hintUsageDao.get(levelNumber)?.hintsUsed ?: 0
-        hintUsageDao.upsert(HintUsageEntity(levelNumber = levelNumber, hintsUsed = current + 1))
+        val existing = hintUsageDao.get(levelNumber)
+        hintUsageDao.upsert(
+            HintUsageEntity(
+                levelNumber = levelNumber,
+                hintsUsed = (existing?.hintsUsed ?: 0) + 1,
+                rewardedHintsUsed = existing?.rewardedHintsUsed ?: 0,
+            ),
+        )
     }
 
     override suspend fun grantBonusHint(levelNumber: Int) = withContext(dispatchers.io) {
-        val current = hintUsageDao.get(levelNumber)?.hintsUsed ?: 0
-        hintUsageDao.upsert(HintUsageEntity(levelNumber = levelNumber, hintsUsed = (current - 1).coerceAtLeast(0)))
+        val existing = hintUsageDao.get(levelNumber)
+        hintUsageDao.upsert(
+            HintUsageEntity(
+                levelNumber = levelNumber,
+                hintsUsed = ((existing?.hintsUsed ?: 0) - 1).coerceAtLeast(0),
+                rewardedHintsUsed = (existing?.rewardedHintsUsed ?: 0) + 1,
+            ),
+        )
     }
 
     override suspend fun resetHintUsage(levelNumber: Int) = withContext(dispatchers.io) {

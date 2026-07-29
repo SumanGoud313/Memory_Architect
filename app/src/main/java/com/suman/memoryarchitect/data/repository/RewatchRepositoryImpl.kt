@@ -18,9 +18,30 @@ class RewatchRepositoryImpl @Inject constructor(
         rewatchUsageDao.get(levelNumber)?.rewatchesUsed ?: 0
     }
 
+    override suspend fun getRewardedRewatchesUsed(levelNumber: Int): Int = withContext(dispatchers.io) {
+        rewatchUsageDao.get(levelNumber)?.rewardedRewatchesUsed ?: 0
+    }
+
     override suspend fun recordRewatchUsed(levelNumber: Int) = withContext(dispatchers.io) {
-        val current = rewatchUsageDao.get(levelNumber)?.rewatchesUsed ?: 0
-        rewatchUsageDao.upsert(RewatchUsageEntity(levelNumber = levelNumber, rewatchesUsed = current + 1))
+        val existing = rewatchUsageDao.get(levelNumber)
+        rewatchUsageDao.upsert(
+            RewatchUsageEntity(
+                levelNumber = levelNumber,
+                rewatchesUsed = (existing?.rewatchesUsed ?: 0) + 1,
+                rewardedRewatchesUsed = existing?.rewardedRewatchesUsed ?: 0,
+            ),
+        )
+    }
+
+    override suspend fun recordRewardedRewatchUsed(levelNumber: Int) = withContext(dispatchers.io) {
+        val existing = rewatchUsageDao.get(levelNumber)
+        rewatchUsageDao.upsert(
+            RewatchUsageEntity(
+                levelNumber = levelNumber,
+                rewatchesUsed = existing?.rewatchesUsed ?: 0,
+                rewardedRewatchesUsed = (existing?.rewardedRewatchesUsed ?: 0) + 1,
+            ),
+        )
     }
 
     override suspend fun resetRewatchUsage(levelNumber: Int) = withContext(dispatchers.io) {

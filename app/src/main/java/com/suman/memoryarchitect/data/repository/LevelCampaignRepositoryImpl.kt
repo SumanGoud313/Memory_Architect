@@ -50,6 +50,9 @@ class LevelCampaignRepositoryImpl @Inject constructor(
         val existing = bestTimeDao.get(levelNumber)
         val existingBestMs = existing?.bestTimeMs
         val existingBestStars = existing?.bestStars ?: 0
+        // Read before this call's own upsert below overwrites it - existingBestStars == 0 means no
+        // prior pass was ever recorded for this level, i.e. this is genuinely the first clear.
+        val isFirstCompletion = passed && existingBestStars == 0
 
         var bestMs = existingBestMs
         var bestStars = existingBestStars
@@ -79,6 +82,7 @@ class LevelCampaignRepositoryImpl @Inject constructor(
             isNewBestStars = isNewBestStars,
             nextLevelUnlocked = nextMax > levelNumber,
             isFinalLevel = campaignEngine.isFinalLevel(levelNumber),
+            isFirstCompletion = isFirstCompletion,
         )
     }
 }

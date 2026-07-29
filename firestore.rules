@@ -64,38 +64,86 @@ service cloud.firestore {
       allow write: if isOwner(uid) && isValidDailyReward(request.resource.data);
     }
 
+    // returningPlayerGifts/{uid} - the double-claim guard for
+    // FirestoreProgressionRemoteSource.claimReturningPlayerGift, deliberately its own doc rather
+    // than a field on dailyRewards/{uid} - see that method's doc for why (dailyRewards' own write
+    // is a full overwrite, not a merge). Private, same reasoning as dailyRewards above.
+    match /returningPlayerGifts/{uid} {
+      allow read: if isOwner(uid);
+      allow write: if isOwner(uid) && isValidReturningPlayerGift(request.resource.data);
+    }
+
     // submissionNonces/{uid}_{nonce} - replay protection for FirestoreProgressionRemoteSource
     // .submitScore. A doc id is minted once per finished round client-side and reused across any
     // retry of *that* round; the transaction that grants XP/coins checks-then-writes this doc
     // atomically (see the class doc), so a duplicated/replayed write can never succeed twice - the
     // second attempt's transaction.set here is still permitted by this rule (same owner, same
-    // shape), but the transaction itself already threw before reaching it. No client ever needs to
-    // *read* these - only the Admin SDK (Cloud Functions, TTL cleanup) does, and Functions bypass
-    // rules entirely, so no `allow read` exists here on purpose.
+    // shape), but the transaction itself already threw before reaching it.
+    //
+    // allow read is required here, not optional - submitScore's own transaction does
+    // transaction.get(nonceRef).exists() as its very first step (the duplicate check this rule's
+    // write side is protecting), so without read access that get() itself is denied and the whole
+    // transaction fails with PERMISSION_DENIED before ever reaching the write - every score
+    // submission would fail, not just genuine replays. `resource == null` covers the common case
+    // (first submission of a nonce, nothing to read yet); `resource.data.uid == request.auth.uid`
+    // covers a real prior doc, same ownership check every other collection here uses.
     match /submissionNonces/{nonceId} {
+      allow read: if request.auth != null && (resource == null || resource.data.uid == request.auth.uid);
       allow write: if request.auth != null
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.createdAtEpochMs is int;
     }
 
     // playerCosmetics/{uid} - the Point Shop's owned/equipped state, written by
-    // FirestoreShopRemoteSource.purchase/spin/equip. Private, same reasoning as playerProfiles
-    // above - a player's own cosmetic inventory isn't public leaderboard data.
+    // FirestoreShopRemoteSource.purchase/spin/equip - and, since the real-money Premium Shop grant
+    // path stopped calling a Cloud Function, also written directly by
+    // core.billing.CosmeticCollectionGrantor (inside the same transaction as the
+    // claimedPurchaseTokens write below) for a Premium Collection purchase. Private, same reasoning
+    // as playerProfiles above - a player's own cosmetic inventory isn't public leaderboard data.
     match /playerCosmetics/{uid} {
       allow read: if isOwner(uid);
       allow write: if isOwner(uid) && isValidCosmetics(request.resource.data);
     }
 
+    // claimedPurchaseTokens/{sha256(purchaseToken)} - the Spark-plan-compatible replay guard for a
+    // real-money purchase grant (core.billing.CosmeticCollectionGrantor), replacing what a Cloud
+    // Function's own claimedPurchaseTokens check used to do server-side. A document that already
+    // exists is evaluated as an `update` by these rules regardless of the client's intent - denying
+    // `update` (and `delete`) makes a second claim of the same purchase token fail outright, the
+    // same guarantee the removed Cloud Function gave (minus cross-account revocation lookups, which
+    // genuinely need a server - see BillingManagerImpl's own doc for that accepted trade-off).
+    // `allow read: if false` because nothing legitimate ever needs to read this back - the app only
+    // ever attempts a `create`, and a permission-denied on that attempt already tells the client the
+    // token was claimed, without needing a separate read.
+    match /claimedPurchaseTokens/{tokenHash} {
+      allow read: if false;
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid
+        && request.resource.data.productId is string
+        && request.resource.data.claimedAtEpochMs is int;
+      allow update, delete: if false;
+    }
+
     // purchaseReceipts/{uid}_{nonce} - replay protection for purchase/spin, direct analog of
-    // submissionNonces above. No client ever needs to *read* these - only Cloud Functions
-    // (validatePurchaseReceipt) does, and Functions bypass rules entirely.
+    // submissionNonces above - same allow read requirement and reasoning: FirestoreShopRemoteSource
+    // .purchase/.spin both do transaction.get(receiptRef).exists() as their first step, so without
+    // read access every purchase/spin would fail with PERMISSION_DENIED, not just genuine replays.
     match /purchaseReceipts/{receiptId} {
+      allow read: if request.auth != null && (resource == null || resource.data.uid == request.auth.uid);
       allow write: if request.auth != null
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.sku is string
         && request.resource.data.priceCoins is int && request.resource.data.priceCoins >= 0
         && request.resource.data.kind in ['PURCHASE', 'SPIN']
         && request.resource.data.createdAtEpochMs is int;
+    }
+
+    // luckySpinState/{uid} - Lucky Spin's own daily-gate/first-spin state, written by
+    // FirestoreShopRemoteSource.spin - deliberately its own document rather than fields on
+    // playerProfiles/{uid}, see LuckySpinState.kt's doc. Private, same reasoning as
+    // playerCosmetics/playerProfiles above.
+    match /luckySpinState/{uid} {
+      allow read: if isOwner(uid);
+      allow write: if isOwner(uid) && isValidLuckySpinState(request.resource.data);
     }
 
     // inventory/{uid} - the permanent home for earned consumables (Hint/Redo/Rewatch tokens,
@@ -117,6 +165,23 @@ service cloud.firestore {
       allow write: if isOwner(uid) && isValidMissionClaims(request.resource.data);
     }
 
+    // missionCategoryBonusClaims/{uid} - one claimedKeys map ("{period}_{periodKey}" -> epoch-ms
+    // claimed), the double-grant guard for FirestoreMissionRemoteSource.claimCategoryBonus.
+    // Deliberately its own document, not a key on missionClaims/{uid} above - see that method's
+    // doc for why (a "{period}_..." key would fail missionClaims' own MissionId-shaped validation).
+    match /missionCategoryBonusClaims/{uid} {
+      allow read: if isOwner(uid);
+      allow write: if isOwner(uid) && isValidMissionCategoryBonusClaims(request.resource.data);
+    }
+
+    // missionRefreshState/{uid} - the "pay 1000 coins to skip the countdown" override, written by
+    // FirestoreMissionRemoteSource.unlockAllMissionsEarly. Private, same reasoning as
+    // playerCosmetics/playerProfiles above.
+    match /missionRefreshState/{uid} {
+      allow read: if isOwner(uid);
+      allow write: if isOwner(uid) && isValidMissionRefreshState(request.resource.data);
+    }
+
     // Everything else is denied by default (Firestore's implicit deny-all for any path with no
     // matching rule) - no catch-all "allow" rule exists anywhere in this file on purpose.
 
@@ -128,7 +193,7 @@ service cloud.firestore {
       return data.displayName is string && data.displayName.size() <= 32
         && data.highestLevel is int && data.highestLevel >= 1 && data.highestLevel <= 100
         && data.totalStars is int && data.totalStars >= 0 && data.totalStars <= 300
-        && data.totalScore is int && data.totalScore >= 0 && data.totalScore <= 100000000
+        && data.bestScore is int && data.bestScore >= 0 && data.bestScore <= 5000 // one round's worth (a running max), not a lifetime total - mirrors isValidPeriodicEntry's own score bound
         && data.perfectLevels is int && data.perfectLevels >= 0
         && data.averageAccuracy is number && data.averageAccuracy >= 0 && data.averageAccuracy <= 1
         && data.averageCompletionTimeMs is int && data.averageCompletionTimeMs >= 0
@@ -192,7 +257,13 @@ service cloud.firestore {
         && data.journeyPoints is int && data.journeyPoints >= 0 && data.journeyPoints <= 1000000000
         && data.updatedAtEpochMs is int
         && data.updatedAtEpochMs > request.time.toMillis() - 600000
-        && data.updatedAtEpochMs < request.time.toMillis() + 600000;
+        && data.updatedAtEpochMs < request.time.toMillis() + 600000
+        // Optional - which client operation caused this write, so validateProfileWrite in
+        // functions/src/index.ts can rate-limit each independently instead of one shared bucket
+        // (see that file's PROFILE_WRITE_SOURCES). Shape/length bound only, same division of
+        // labor as everywhere else in this function - the Function is what checks the value
+        // itself is one of the known sources.
+        && (data.lastWriteSource == null || (data.lastWriteSource is string && data.lastWriteSource.size() <= 40));
     }
 
     // Mirrors DailyRewardCatalog.kt - cycleDay is always 1..7 (the reward table's length).
@@ -224,6 +295,41 @@ service cloud.firestore {
     // values) - just a sane cap on how many distinct claims one player can accumulate.
     function isValidMissionClaims(data) {
       return data.claimedKeys is map && data.claimedKeys.size() <= 1000;
+    }
+
+    // Same shape as isValidMissionClaims above - the actual "was every active mission in this
+    // period really claimed" eligibility check needs missionClaims/{uid} itself, which
+    // functions/src/index.ts's validateMissionCategoryBonusClaims re-derives, same division of
+    // labor as isValidProfile/validateProfileWrite.
+    function isValidMissionCategoryBonusClaims(data) {
+      return data.claimedKeys is map && data.claimedKeys.size() <= 200;
+    }
+
+    // Three epoch-day-or-null integers - no economy bounds needed here (this only ever gates which
+    // mission set shows, never a coin/item amount directly); functions/src/index.ts's
+    // validateMissionRefreshState checks each field only ever moves forward, never backward.
+    function isValidMissionRefreshState(data) {
+      return (data.dailyForcedPeriodKey == null || data.dailyForcedPeriodKey is int)
+        && (data.weeklyForcedPeriodKey == null || data.weeklyForcedPeriodKey is int)
+        && (data.monthlyForcedPeriodKey == null || data.monthlyForcedPeriodKey is int);
+    }
+
+    // One epoch-day integer, no bounds needed beyond the type check - the actual "is this gap
+    // really long enough, has today's gift already been claimed" eligibility needs the player's
+    // own playerProfiles/{uid} doc, which functions/src/index.ts's validateReturningPlayerGiftWrite
+    // re-checks, same division of labor as isValidProfile/validateProfileWrite above.
+    function isValidReturningPlayerGift(data) {
+      return data.lastClaimedOnEpochDay is int;
+    }
+
+    // Two epoch-day-or-null integers plus a bool - no economy bounds needed (these gate spin
+    // *frequency*, not coin amounts; the actual per-write coin-gain cap is enforced on
+    // playerProfiles/{uid} by validateProfileWrite regardless of which allowance a spin used), same
+    // "shape/type only" division of labor isValidInventory already uses.
+    function isValidLuckySpinState(data) {
+      return (data.lastFreeSpinEpochDay == null || data.lastFreeSpinEpochDay is int)
+        && (data.lastAdSpinEpochDay == null || data.lastAdSpinEpochDay is int)
+        && data.hasEverSpun is bool;
     }
   }
 }

@@ -5,10 +5,12 @@ import com.suman.memoryarchitect.core.analytics.AnalyticsLogger
 import com.suman.memoryarchitect.core.analytics.CompositeAnalyticsLogger
 import com.suman.memoryarchitect.core.analytics.CrashReporter
 import com.suman.memoryarchitect.core.analytics.FirebaseAnalyticsLogger
+import com.suman.memoryarchitect.core.analytics.FirebaseAvailabilityProvider
 import com.suman.memoryarchitect.core.analytics.FirebaseCrashReporter
 import com.suman.memoryarchitect.core.analytics.FirebasePerformanceTracer
 import com.suman.memoryarchitect.core.analytics.LogcatAnalyticsLogger
 import com.suman.memoryarchitect.core.analytics.PerformanceTracer
+import com.suman.memoryarchitect.core.analytics.RealFirebaseAvailabilityProvider
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -39,6 +41,10 @@ abstract class AnalyticsModule {
     @Binds
     @Singleton
     abstract fun bindPerformanceTracer(impl: FirebasePerformanceTracer): PerformanceTracer
+
+    @Binds
+    @Singleton
+    abstract fun bindFirebaseAvailabilityProvider(impl: RealFirebaseAvailabilityProvider): FirebaseAvailabilityProvider
 
     companion object {
         // Logcat visibility only in debug builds - BuildConfig.DEBUG is a compile-time constant

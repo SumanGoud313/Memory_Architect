@@ -2,6 +2,7 @@ package com.suman.memoryarchitect.data.remote
 
 import com.suman.memoryarchitect.data.remote.dto.CosmeticsStateDto
 import com.suman.memoryarchitect.data.remote.dto.EquipCosmeticRequestDto
+import com.suman.memoryarchitect.data.remote.dto.LuckySpinStateDto
 import com.suman.memoryarchitect.data.remote.dto.PurchaseCosmeticRequestDto
 import com.suman.memoryarchitect.data.remote.dto.PurchaseCosmeticResponseDto
 import com.suman.memoryarchitect.data.remote.dto.SpinLuckySpinRequestDto
@@ -17,6 +18,9 @@ import retrofit2.http.POST
 interface ShopApi {
     @GET("v1/cosmetics")
     suspend fun getCosmeticsState(): CosmeticsStateDto
+
+    @GET("v1/cosmetics/luckySpinState")
+    suspend fun getLuckySpinState(): LuckySpinStateDto
 
     @POST("v1/cosmetics/purchase")
     suspend fun purchase(@Body body: PurchaseCosmeticRequestDto): PurchaseCosmeticResponseDto

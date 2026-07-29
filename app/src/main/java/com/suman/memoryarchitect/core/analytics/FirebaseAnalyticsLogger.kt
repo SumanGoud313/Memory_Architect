@@ -16,7 +16,7 @@ import kotlinx.coroutines.launch
 
 /**
  * Real Firebase Analytics-backed [AnalyticsLogger]. Every call is a no-op when
- * [FirebaseAvailability.isConfigured] is false (no `google-services.json` yet - see
+ * [FirebaseAvailabilityProvider.isConfigured] is false (no `google-services.json` yet - see
  * FIREBASE_SETUP.md) rather than throwing, so the rest of the app never needs to know or care
  * whether a real Firebase project is wired up.
  *
@@ -28,14 +28,15 @@ import kotlinx.coroutines.launch
 @Singleton
 class FirebaseAnalyticsLogger @Inject constructor(
     @ApplicationContext private val context: Context,
+    private val firebaseAvailabilityProvider: FirebaseAvailabilityProvider,
 ) : AnalyticsLogger {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val firebaseAnalytics: FirebaseAnalytics? by lazy {
-        if (FirebaseAvailability.isConfigured) Firebase.analytics else null
+        if (firebaseAvailabilityProvider.isConfigured) Firebase.analytics else null
     }
 
     override fun logEvent(name: String, params: Map<String, Any?>) {
-        if (!FirebaseAvailability.isConfigured) return
+        if (!firebaseAvailabilityProvider.isConfigured) return
         scope.launch {
             try {
                 firebaseAnalytics?.logEvent(name, params.toBundle())
@@ -46,7 +47,7 @@ class FirebaseAnalyticsLogger @Inject constructor(
     }
 
     override fun setUserProperty(name: String, value: String?) {
-        if (!FirebaseAvailability.isConfigured) return
+        if (!firebaseAvailabilityProvider.isConfigured) return
         scope.launch {
             try {
                 firebaseAnalytics?.setUserProperty(name, value)

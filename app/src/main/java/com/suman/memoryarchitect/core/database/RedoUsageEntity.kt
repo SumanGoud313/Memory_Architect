@@ -7,4 +7,5 @@ import androidx.room.PrimaryKey
 data class RedoUsageEntity(
     @PrimaryKey val levelNumber: Int,
     val redosUsed: Int,
+    val rewardedRedosUsed: Int = 0,
 )

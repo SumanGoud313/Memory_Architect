@@ -6,6 +6,7 @@ import com.squareup.moshi.JsonClass
 data class PurchaseCosmeticRequestDto(
     val sku: String,
     val purchaseNonce: String,
+    val useDiscountCoupon: Boolean = false,
 )
 
 @JsonClass(generateAdapter = true)
@@ -13,4 +14,5 @@ data class PurchaseCosmeticResponseDto(
     val purchasedSku: String,
     val profile: PlayerProfileDto,
     val cosmetics: CosmeticsStateDto,
+    val inventory: InventoryDto = InventoryDto(),
 )

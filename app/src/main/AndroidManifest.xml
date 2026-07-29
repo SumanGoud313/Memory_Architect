@@ -7,6 +7,10 @@
     <!-- Real Vibrator/VibrationEffect patterns (core/feedback/haptics) - Compose's
          LocalHapticFeedback used elsewhere doesn't need this, but per-event custom waveforms do. -->
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Runtime-requested on Android 13+ (see SettingsScreen's Notifications section) - local
+         streak/daily-challenge reminders (core/notifications/) silently no-op without it, never a
+         hard requirement for anything else in the app. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:name=".MemoryArchitectApp"
@@ -23,6 +27,20 @@
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
             android:value="ca-app-pub-3940256099942544~3347511713" />
+        <!-- Disables WorkManager's default androidx.startup auto-initializer - MemoryArchitectApp
+             implements Configuration.Provider instead, so WorkManager is built lazily with the
+             injected HiltWorkerFactory (see MemoryArchitectApp's doc) rather than the un-injectable
+             default factory the auto-initializer would otherwise install first. -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
+        </provider>
         <activity
             android:name=".MainActivity"
             android:exported="true"

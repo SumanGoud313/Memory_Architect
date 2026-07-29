@@ -51,22 +51,32 @@ fun RedoButton(
     onWatchAd: () -> Unit,
     modifier: Modifier = Modifier,
     compact: Boolean = false,
+    maxRewardedRedos: Int = 0,
+    rewardedRemaining: Int = 0,
+    hasInventoryToken: Boolean = false,
+    inventoryTokenCount: Int = 0,
+    isRedeemingToken: Boolean = false,
+    onUseToken: () -> Unit = {},
 ) {
     val tick = rememberHapticsTick()
     val interactionSource = remember { MutableInteractionSource() }
     val hasFreeUses = remaining > 0
-    val isLoading = !hasFreeUses && adState is RewardedAdUiState.Loading
+    val isExhausted = !hasFreeUses && !hasInventoryToken && rewardedRemaining <= 0 && maxRewardedRedos > 0
+    val isLoading = !hasFreeUses && !hasInventoryToken && !isExhausted && adState is RewardedAdUiState.Loading
     val nothingToUndo = hasFreeUses && !canUndo
 
     val disabledAlpha by animateFloatAsState(
-        targetValue = if (nothingToUndo) 0.45f else 1f,
+        targetValue = if (nothingToUndo || isExhausted) 0.45f else 1f,
         animationSpec = tween(200),
         label = "redoDisabledAlpha",
     )
 
     val description = when {
         nothingToUndo -> stringResource(R.string.gameplay_redo_nothing_description)
-        hasFreeUses -> stringResource(R.string.gameplay_redo_enabled_description, remaining)
+        hasFreeUses -> stringResource(R.string.gameplay_redo_enabled_description, remaining + inventoryTokenCount)
+        isRedeemingToken -> stringResource(R.string.gameplay_redo_redeeming_token_description)
+        hasInventoryToken -> stringResource(R.string.gameplay_redo_use_token_description, inventoryTokenCount)
+        isExhausted -> stringResource(R.string.gameplay_redo_reward_exhausted_description)
         adState is RewardedAdUiState.Loading -> stringResource(R.string.gameplay_rewarded_redo_loading_description)
         adState is RewardedAdUiState.Failed -> stringResource(
             when (adState.reason) {
@@ -75,7 +85,7 @@ fun RedoButton(
                 RewardedAdFailureReason.SHOW_FAILED -> R.string.gameplay_rewarded_redo_show_failed
             },
         )
-        else -> stringResource(R.string.gameplay_rewarded_redo_watch_ad_description)
+        else -> stringResource(R.string.gameplay_rewarded_redo_watch_ad_description, rewardedRemaining)
     }
 
     GlassCard(
@@ -86,9 +96,13 @@ fun RedoButton(
                 role = Role.Button
                 contentDescription = description
             }
-            .clickable(interactionSource = interactionSource, indication = null, enabled = !nothingToUndo && !isLoading) {
+            .clickable(interactionSource = interactionSource, indication = null, enabled = !nothingToUndo && !isLoading && !isRedeemingToken && !isExhausted) {
                 tick()
-                if (hasFreeUses) onClick() else onWatchAd()
+                when {
+                    hasFreeUses -> onClick()
+                    hasInventoryToken -> onUseToken()
+                    else -> onWatchAd()
+                }
             },
         shape = RoundedCornerShape(MemoryArchitectRadii.chip),
     ) {
@@ -102,7 +116,10 @@ fun RedoButton(
                 icon = Icons.Filled.Replay,
                 iconTint = MemoryArchitectColors.accentTerracotta,
                 remaining = remaining,
-                isLoading = isLoading,
+                isLoading = isLoading || isRedeemingToken,
+                isExhausted = isExhausted,
+                hasInventoryToken = hasInventoryToken,
+                inventoryTokenCount = inventoryTokenCount,
             )
             Text(
                 text = stringResource(R.string.gameplay_redo_name),
@@ -111,6 +128,19 @@ fun RedoButton(
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier.padding(top = 3.dp),
             )
+            if (!hasFreeUses && (hasInventoryToken || maxRewardedRedos > 0)) {
+                Text(
+                    text = when {
+                        hasInventoryToken -> stringResource(R.string.gameplay_assist_use_token_caption)
+                        isExhausted -> stringResource(R.string.gameplay_reward_exhausted_caption)
+                        else -> stringResource(R.string.gameplay_reward_progress_caption, maxRewardedRedos - rewardedRemaining, maxRewardedRedos)
+                    },
+                    color = MemoryArchitectColors.textTertiary,
+                    fontSize = 8.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                )
+            }
         }
     }
 }

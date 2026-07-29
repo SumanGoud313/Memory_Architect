@@ -24,6 +24,10 @@ sealed interface ProfileUiState {
         val equippedPaletteId: RewardId?,
         val dailyRewardStatus: DailyRewardStatus?,
         val isClaimingDailyReward: Boolean = false,
+        // Surfaced when a claim attempt fails (already claimed elsewhere, network error, etc.) -
+        // without this the claim button silently resets with zero feedback, indistinguishable
+        // from the tap doing nothing at all. Cleared the moment a new claim attempt starts.
+        val dailyRewardError: AppError? = null,
         // Points Economy - purely additive, see ShopRepository/CollectionsScreen/ProfileScreen.
         val memoryRank: String = "",
         val ownedCosmeticIds: Set<CosmeticId> = emptySet(),

@@ -99,6 +99,16 @@ android {
         buildConfig = true
         compose = true
     }
+
+    sourceSets {
+        // Lets AppDatabaseMigrationTest's MigrationTestHelper load the exported per-version schema
+        // JSON (ksp's "room.schemaLocation" output below) as a test asset, the standard Room
+        // migration-testing wiring - without this, MigrationTestHelper.createDatabase() can't find
+        // the old-version schema it seeds a pre-migration database from.
+        getByName("androidTest") {
+            assets.srcDirs("$projectDir/schemas")
+        }
+    }
 }
 
 ksp {
@@ -174,6 +184,36 @@ tasks.whenTaskAdded {
     }
 }
 
+// Security gate: core.billing.PurchaseSignatureVerifier.BASE64_PUBLIC_KEY ships blank in source
+// control (a per-developer-account Play Console value nobody else can supply) - this task fails a
+// release build outright while it stays blank, so local purchase verification can never silently
+// ship disabled. Debug builds are unaffected (see that class's own NotConfigured handling).
+val checkBillingPublicKeyConfigured by tasks.registering {
+    group = "memory architect"
+    description = "Fails the build if PurchaseSignatureVerifier's BASE64_PUBLIC_KEY is still blank."
+    notCompatibleWithConfigurationCache("reads a source file's live text at execution time, not a cacheable input/output relationship")
+
+    doLast {
+        val verifierFile = file("src/main/java/com/suman/memoryarchitect/core/billing/PurchaseSignatureVerifier.kt")
+        check(verifierFile.exists()) { "PurchaseSignatureVerifier.kt not found at the expected path - has it moved? Update this task's path if so." }
+        val text = verifierFile.readText()
+        val keyValue = Regex("""BASE64_PUBLIC_KEY\s*=\s*"([^"]*)"""").find(text)?.groupValues?.get(1)
+            ?: error("Couldn't find BASE64_PUBLIC_KEY in PurchaseSignatureVerifier.kt - has its declaration changed shape?")
+        check(keyValue.isNotBlank()) {
+            "PurchaseSignatureVerifier.BASE64_PUBLIC_KEY is still blank - a release build must not ship " +
+                "without local purchase-signature verification configured. Paste the Base64-encoded RSA " +
+                "public key from Play Console > [app] > Monetize > Monetization setup > Licensing into that " +
+                "constant before building a release."
+        }
+    }
+}
+
+tasks.whenTaskAdded {
+    if (name == "assembleRelease" || name == "bundleRelease") {
+        dependsOn(checkBillingPublicKeyConfigured)
+    }
+}
+
 dependencies {
     // AndroidX / UI
     implementation(libs.androidx.core.ktx)
@@ -206,6 +246,12 @@ dependencies {
     // Hilt
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
+
+    // Local notifications (core/notifications/) - streak/daily-challenge reminders, scheduled via
+    // WorkManager so they survive process death and don't need the app in the foreground.
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.hilt.work)
+    ksp(libs.androidx.hilt.compiler)
 
     // Networking
     implementation(libs.retrofit.core)
@@ -282,4 +328,13 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.kotlinx.coroutines.test)
+    // Room migration tests (core/database/ - see AppDatabaseMigrationTest) - needs a real device/
+    // emulator's SQLite, same as every other Room-backed androidTest here already does.
+    androidTestImplementation(libs.androidx.room.testing)
+    // Compose UI tests (ui/screens/gameplay/ - see HintButtonTest) - first use of this in the
+    // project; needs a real device/emulator's Compose runtime, same as the Room migration tests
+    // above.
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
 }

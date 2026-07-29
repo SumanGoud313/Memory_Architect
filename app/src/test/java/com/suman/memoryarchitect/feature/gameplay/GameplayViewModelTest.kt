@@ -16,11 +16,14 @@ import com.suman.memoryarchitect.core.feedback.audio.MusicTrack
 import com.suman.memoryarchitect.domain.generation.DifficultyEngine
 import com.suman.memoryarchitect.domain.generation.LevelGenerator
 import com.suman.memoryarchitect.domain.model.AchievementId
+import com.suman.memoryarchitect.domain.model.AppError
 import com.suman.memoryarchitect.domain.model.DifficultyTier
 import com.suman.memoryarchitect.domain.model.GameMode
 import com.suman.memoryarchitect.domain.model.GamePhase
 import com.suman.memoryarchitect.domain.model.GlobalLeaderboardStats
 import com.suman.memoryarchitect.domain.model.HintReveal
+import com.suman.memoryarchitect.domain.model.Inventory
+import com.suman.memoryarchitect.domain.model.InventoryItemKind
 import com.suman.memoryarchitect.domain.model.LeaderboardResult
 import com.suman.memoryarchitect.domain.model.LeaderboardType
 import com.suman.memoryarchitect.domain.model.LevelCompletionOutcome
@@ -28,14 +31,19 @@ import com.suman.memoryarchitect.domain.model.ActiveMission
 import com.suman.memoryarchitect.domain.model.MissionClaimResult
 import com.suman.memoryarchitect.domain.model.MissionEvent
 import com.suman.memoryarchitect.domain.model.MissionId
+import com.suman.memoryarchitect.domain.model.MissionPeriod
+import com.suman.memoryarchitect.domain.model.MissionRefreshState
+import com.suman.memoryarchitect.domain.model.MissionReward
 import com.suman.memoryarchitect.domain.model.Outcome
 import com.suman.memoryarchitect.domain.model.PeriodicLeaderboardSubmission
+import com.suman.memoryarchitect.domain.progression.MysteryChestReward
 import com.suman.memoryarchitect.domain.model.PlayerProfile
 import com.suman.memoryarchitect.domain.model.PlayerStatistics
 import com.suman.memoryarchitect.domain.model.RewardId
 import com.suman.memoryarchitect.domain.model.ScoreResult
 import com.suman.memoryarchitect.domain.model.ScoreSubmissionResult
 import com.suman.memoryarchitect.domain.repository.HintRepository
+import com.suman.memoryarchitect.domain.repository.InventoryRepository
 import com.suman.memoryarchitect.domain.repository.LeaderboardRepository
 import com.suman.memoryarchitect.domain.repository.LevelCampaignRepository
 import com.suman.memoryarchitect.domain.repository.LevelRepository
@@ -43,10 +51,15 @@ import com.suman.memoryarchitect.domain.repository.MissionRepository
 import com.suman.memoryarchitect.domain.repository.ProgressionRepository
 import com.suman.memoryarchitect.domain.repository.RedoRepository
 import com.suman.memoryarchitect.domain.repository.RewatchRepository
+import com.suman.memoryarchitect.domain.usecase.ConsumeInventoryItemUseCase
 import com.suman.memoryarchitect.domain.usecase.GenerateLevelUseCase
 import com.suman.memoryarchitect.domain.usecase.GetHintsUsedUseCase
+import com.suman.memoryarchitect.domain.usecase.GetInventoryUseCase
 import com.suman.memoryarchitect.domain.usecase.GetLevelCampaignProgressUseCase
 import com.suman.memoryarchitect.domain.usecase.GetRedosUsedUseCase
+import com.suman.memoryarchitect.domain.usecase.GetRewardedHintsUsedUseCase
+import com.suman.memoryarchitect.domain.usecase.GetRewardedRedosUsedUseCase
+import com.suman.memoryarchitect.domain.usecase.GetRewardedRewatchesUsedUseCase
 import com.suman.memoryarchitect.domain.usecase.GetRewatchesUsedUseCase
 import com.suman.memoryarchitect.domain.usecase.GetUnlockedAchievementsUseCase
 import com.suman.memoryarchitect.domain.usecase.GrantBonusHintUseCase
@@ -55,6 +68,7 @@ import com.suman.memoryarchitect.domain.usecase.RecordHintUsedUseCase
 import com.suman.memoryarchitect.domain.usecase.RecordLevelCompletionUseCase
 import com.suman.memoryarchitect.domain.usecase.RecordMissionEventUseCase
 import com.suman.memoryarchitect.domain.usecase.RecordRedoUsedUseCase
+import com.suman.memoryarchitect.domain.usecase.RecordRewardedRewatchUsedUseCase
 import com.suman.memoryarchitect.domain.usecase.RecordRewatchUsedUseCase
 import com.suman.memoryarchitect.domain.usecase.ResetHintUsageUseCase
 import com.suman.memoryarchitect.domain.usecase.ResetRedoUsageUseCase
@@ -122,6 +136,12 @@ private class FakeProgressionRepository(
     override suspend fun claimDailyReward(todayEpochDay: Long): Outcome<com.suman.memoryarchitect.domain.model.DailyRewardClaimResult> =
         throw UnsupportedOperationException("not used by GameplayViewModel")
 
+    override suspend fun claimReturningPlayerGift(todayEpochDay: Long): Outcome<com.suman.memoryarchitect.domain.model.ReturningPlayerGiftClaimResult> =
+        throw UnsupportedOperationException("not used by GameplayViewModel")
+
+    override suspend fun retryPendingSubmissions() =
+        throw UnsupportedOperationException("not used by GameplayViewModel")
+
     override suspend fun recordLeaderboardRank(dailyRank: Int?, weeklyRank: Int?, todayEpochDay: Long): List<AchievementId> =
         throw UnsupportedOperationException("not used by GameplayViewModel")
 
@@ -130,12 +150,16 @@ private class FakeProgressionRepository(
         resetWinStreakCalled = true
     }
 
-    override suspend fun submitScore(mode: GameMode, levelSeed: Long, score: ScoreResult, playedOnEpochDay: Long, timeTakenMs: Long, submissionNonce: String): Outcome<ScoreSubmissionResult> {
+    var lastAwardXp: Boolean? = null
+
+    override suspend fun submitScore(mode: GameMode, levelSeed: Long, score: ScoreResult, playedOnEpochDay: Long, timeTakenMs: Long, submissionNonce: String, awardXp: Boolean): Outcome<ScoreSubmissionResult> {
         submitScoreCalled = true
+        lastAwardXp = awardXp
+        val xpAwarded = if (awardXp) score.finalScore.toLong() else 0L
         return Outcome.Success(
             ScoreSubmissionResult(
-                profile = PlayerProfile.EMPTY.copy(xp = score.finalScore.toLong()),
-                xpAwarded = score.finalScore.toLong(),
+                profile = PlayerProfile.EMPTY.copy(xp = xpAwarded),
+                xpAwarded = xpAwarded,
                 coinsAwarded = 0L,
                 leveledUp = false,
                 isPendingSync = !shouldSucceed,
@@ -187,17 +211,42 @@ private class FakeLeaderboardRepository : LeaderboardRepository {
 
 private class FakeHintRepository(initial: Map<Int, Int> = emptyMap()) : HintRepository {
     private val usage = initial.toMutableMap()
+    private val rewardedUsage = mutableMapOf<Int, Int>()
     override suspend fun getHintsUsed(levelNumber: Int): Int = usage[levelNumber] ?: 0
+    override suspend fun getRewardedHintsUsed(levelNumber: Int): Int = rewardedUsage[levelNumber] ?: 0
     override suspend fun recordHintUsed(levelNumber: Int) {
         usage[levelNumber] = (usage[levelNumber] ?: 0) + 1
     }
     override suspend fun grantBonusHint(levelNumber: Int) {
         usage[levelNumber] = ((usage[levelNumber] ?: 0) - 1).coerceAtLeast(0)
+        rewardedUsage[levelNumber] = (rewardedUsage[levelNumber] ?: 0) + 1
     }
     override suspend fun resetHintUsage(levelNumber: Int) {
         usage.remove(levelNumber)
+        rewardedUsage.remove(levelNumber)
     }
     fun usedCountFor(levelNumber: Int): Int = usage[levelNumber] ?: 0
+}
+
+/** Empty by default (the common "no tokens held" case) - construct with [initial] to simulate the
+ * player already holding a Hint/Redo/Rewatch token/ticket. */
+private class FakeInventoryRepository(initial: Map<InventoryItemKind, Int> = emptyMap()) : InventoryRepository {
+    private val quantities = initial.toMutableMap()
+    override suspend fun getInventory(): Outcome<Inventory> = Outcome.Success(Inventory(quantities.toMap()))
+    override suspend fun consumeItem(kind: InventoryItemKind, quantity: Int): Outcome<Inventory> {
+        val current = quantities[kind] ?: 0
+        if (current < quantity) return Outcome.Error(AppError.Server(code = 409, message = "insufficient_inventory"))
+        quantities[kind] = current - quantity
+        return Outcome.Success(Inventory(quantities.toMap()))
+    }
+    override suspend fun cacheInventory(inventory: Inventory) {
+        quantities.clear()
+        quantities.putAll(inventory.quantities)
+    }
+    override suspend fun openMysteryChest(): Outcome<MysteryChestReward> =
+        throw UnsupportedOperationException("not used by GameplayViewModelTest")
+    override suspend fun applyXpBoost(): Outcome<Long> =
+        throw UnsupportedOperationException("not used by GameplayViewModelTest")
 }
 
 private class FakeRewardedAdController(
@@ -222,31 +271,48 @@ private class FakeMissionRepository : MissionRepository {
     }
     override suspend fun claimMissionReward(missionId: MissionId, todayEpochDay: Long): Outcome<MissionClaimResult> =
         throw UnsupportedOperationException("not used by GameplayViewModelTest")
+    override suspend fun retryPendingClaims(): Unit = throw UnsupportedOperationException("not used by GameplayViewModelTest")
+    override suspend fun getMissionRefreshState(): MissionRefreshState = MissionRefreshState.EMPTY
+    override suspend fun claimCategoryBonus(period: MissionPeriod, periodKey: Long): Outcome<MissionReward> =
+        throw UnsupportedOperationException("not used by GameplayViewModelTest")
+    override suspend fun unlockAllMissionsEarly(dailyPeriodKey: Long, weeklyPeriodKey: Long, monthlyPeriodKey: Long): Outcome<MissionRefreshState> =
+        throw UnsupportedOperationException("not used by GameplayViewModelTest")
 }
 
 private class FakeRewatchRepository(initial: Map<Int, Int> = emptyMap()) : RewatchRepository {
     private val usage = initial.toMutableMap()
+    private val rewardedUsage = mutableMapOf<Int, Int>()
     override suspend fun getRewatchesUsed(levelNumber: Int): Int = usage[levelNumber] ?: 0
+    override suspend fun getRewardedRewatchesUsed(levelNumber: Int): Int = rewardedUsage[levelNumber] ?: 0
     override suspend fun recordRewatchUsed(levelNumber: Int) {
         usage[levelNumber] = (usage[levelNumber] ?: 0) + 1
     }
+    override suspend fun recordRewardedRewatchUsed(levelNumber: Int) {
+        rewardedUsage[levelNumber] = (rewardedUsage[levelNumber] ?: 0) + 1
+    }
     override suspend fun resetRewatchUsage(levelNumber: Int) {
         usage.remove(levelNumber)
+        rewardedUsage.remove(levelNumber)
     }
     fun usedCountFor(levelNumber: Int): Int = usage[levelNumber] ?: 0
+    fun rewardedUsedCountFor(levelNumber: Int): Int = rewardedUsage[levelNumber] ?: 0
 }
 
 private class FakeRedoRepository(initial: Map<Int, Int> = emptyMap()) : RedoRepository {
     private val usage = initial.toMutableMap()
+    private val rewardedUsage = mutableMapOf<Int, Int>()
     override suspend fun getRedosUsed(levelNumber: Int): Int = usage[levelNumber] ?: 0
+    override suspend fun getRewardedRedosUsed(levelNumber: Int): Int = rewardedUsage[levelNumber] ?: 0
     override suspend fun recordRedoUsed(levelNumber: Int) {
         usage[levelNumber] = (usage[levelNumber] ?: 0) + 1
     }
     override suspend fun grantBonusRedo(levelNumber: Int) {
         usage[levelNumber] = ((usage[levelNumber] ?: 0) - 1).coerceAtLeast(0)
+        rewardedUsage[levelNumber] = (rewardedUsage[levelNumber] ?: 0) + 1
     }
     override suspend fun resetRedoUsage(levelNumber: Int) {
         usage.remove(levelNumber)
+        rewardedUsage.remove(levelNumber)
     }
     fun usedCountFor(levelNumber: Int): Int = usage[levelNumber] ?: 0
 }
@@ -296,6 +362,8 @@ private class FakeFeedbackManager : FeedbackManager {
     override fun onLevelUnlocked() = Unit
     override fun onDailyRewardClaimed() = Unit
     override fun onWeeklyRewardClaimed() = Unit
+    override fun onLuckySpinStarted() = Unit
+    override fun onLuckySpinRevealed() = Unit
     override fun onWarning() = Unit
     override fun onError() = Unit
 }
@@ -315,6 +383,7 @@ private class FakeLevelCampaignRepository(var maxUnlockedLevel: Int = 1) : Level
         isNewBestStars = passed,
         nextLevelUnlocked = passed,
         isFinalLevel = false,
+        isFirstCompletion = passed,
     )
 }
 
@@ -350,6 +419,7 @@ class GameplayViewModelTest {
         missionRepository: MissionRepository = FakeMissionRepository(),
         levelRepository: FakeLevelRepository = FakeLevelRepository(),
         leaderboardRepository: LeaderboardRepository = FakeLeaderboardRepository(),
+        inventoryRepository: InventoryRepository = FakeInventoryRepository(),
         levelNumber: Int = 1,
         clock: Clock = fixedClock,
         analyticsLogger: AnalyticsLogger = FakeAnalyticsLogger(),
@@ -369,16 +439,20 @@ class GameplayViewModelTest {
         getUnlockedAchievements = GetUnlockedAchievementsUseCase(progressionRepository),
         resetWinStreak = ResetWinStreakUseCase(progressionRepository),
         getHintsUsed = GetHintsUsedUseCase(hintRepository),
+        getRewardedHintsUsed = GetRewardedHintsUsedUseCase(hintRepository),
         recordHintUsed = RecordHintUsedUseCase(hintRepository),
         grantBonusHint = GrantBonusHintUseCase(hintRepository),
         resetHintUsage = ResetHintUsageUseCase(hintRepository),
         rewardedAdController = rewardedAdController,
         getRedosUsed = GetRedosUsedUseCase(redoRepository),
+        getRewardedRedosUsed = GetRewardedRedosUsedUseCase(redoRepository),
         recordRedoUsed = RecordRedoUsedUseCase(redoRepository),
         grantBonusRedo = GrantBonusRedoUseCase(redoRepository),
         resetRedoUsage = ResetRedoUsageUseCase(redoRepository),
         getRewatchesUsed = GetRewatchesUsedUseCase(rewatchRepository),
+        getRewardedRewatchesUsed = GetRewardedRewatchesUsedUseCase(rewatchRepository),
         recordRewatchUsed = RecordRewatchUsedUseCase(rewatchRepository),
+        recordRewardedRewatchUsed = RecordRewardedRewatchUsedUseCase(rewatchRepository),
         resetRewatchUsage = ResetRewatchUsageUseCase(rewatchRepository),
         recordMissionEvent = RecordMissionEventUseCase(missionRepository, clock),
         clock = clock,
@@ -386,6 +460,8 @@ class GameplayViewModelTest {
         performanceTracer = performanceTracer,
         frustrationTracker = frustrationTracker,
         feedback = feedback,
+        getInventory = GetInventoryUseCase(inventoryRepository),
+        consumeInventoryItem = ConsumeInventoryItemUseCase(inventoryRepository),
         savedStateHandle = savedStateHandle,
     )
 
@@ -803,12 +879,12 @@ class GameplayViewModelTest {
     }
 
     @Test
-    fun `a late campaign level grants three hints`() {
+    fun `a late campaign level grants two hints`() {
         val viewModel = viewModel(GameMode.PRACTICE, levelNumber = 30)
         advanceToReconstruct(viewModel)
 
-        assertEquals(3, viewModel.hintState.value.maxHints)
-        assertEquals(3, viewModel.hintState.value.remaining)
+        assertEquals(2, viewModel.hintState.value.maxHints)
+        assertEquals(2, viewModel.hintState.value.remaining)
     }
 
     @Test
@@ -879,7 +955,7 @@ class GameplayViewModelTest {
         assertEquals(HintReveal(objectId, expectedSlot, expectedRotation), hint.activeReveal)
         assertFalse(hint.isArmed)
         assertEquals(1, hint.hintsUsed)
-        assertEquals(2, hint.remaining)
+        assertEquals(1, hint.remaining)
 
         // Written through to the repository immediately (not just held in the in-memory ViewModel
         // state) - this is what lets a process-death restore of the SAME live session pick the
@@ -894,7 +970,7 @@ class GameplayViewModelTest {
         val hintRepository = FakeHintRepository()
         val firstAttempt = viewModel(GameMode.PRACTICE, hintRepository = hintRepository, levelNumber = 30)
         val firstReconstruct = advanceToReconstruct(firstAttempt)
-        exhaustFreeHints(firstAttempt, firstReconstruct, count = 3)
+        exhaustFreeHints(firstAttempt, firstReconstruct, count = 2)
         assertEquals(0, firstAttempt.hintState.value.remaining)
 
         // A brand new ViewModel for the same level, with no live-session snapshot to restore from
@@ -902,7 +978,7 @@ class GameplayViewModelTest {
         // again, not the exhausted one left behind by the first attempt.
         val secondAttempt = viewModel(GameMode.PRACTICE, hintRepository = hintRepository, levelNumber = 30)
         advanceToReconstruct(secondAttempt)
-        assertEquals(3, secondAttempt.hintState.value.remaining)
+        assertEquals(2, secondAttempt.hintState.value.remaining)
         assertEquals(0, secondAttempt.hintState.value.hintsUsed)
     }
 
@@ -945,7 +1021,7 @@ class GameplayViewModelTest {
         val adController = FakeRewardedAdController(result = RewardedAdResult.Rewarded)
         val viewModel = viewModel(GameMode.PRACTICE, hintRepository = hintRepository, rewardedAdController = adController, levelNumber = 30)
         val reconstructState = advanceToReconstruct(viewModel)
-        exhaustFreeHints(viewModel, reconstructState, count = 3)
+        exhaustFreeHints(viewModel, reconstructState, count = 2)
         assertEquals(0, viewModel.hintState.value.remaining)
 
         viewModel.watchRewardedAd(fakeActivity)
@@ -953,8 +1029,8 @@ class GameplayViewModelTest {
 
         assertEquals(1, viewModel.hintState.value.remaining)
         assertEquals(RewardedAdUiState.Idle, viewModel.rewardedHintAdState.value)
-        // Written through to the repository (3 real uses, then one refunded by the bonus).
-        assertEquals(2, hintRepository.usedCountFor(30))
+        // Written through to the repository (2 real uses, then one refunded by the bonus).
+        assertEquals(1, hintRepository.usedCountFor(30))
     }
 
     @Test
@@ -963,7 +1039,7 @@ class GameplayViewModelTest {
         val adController = FakeRewardedAdController(result = RewardedAdResult.Cancelled)
         val viewModel = viewModel(GameMode.PRACTICE, hintRepository = hintRepository, rewardedAdController = adController, levelNumber = 30)
         val reconstructState = advanceToReconstruct(viewModel)
-        exhaustFreeHints(viewModel, reconstructState, count = 3)
+        exhaustFreeHints(viewModel, reconstructState, count = 2)
 
         var cancelled = false
         val collectorScope = CoroutineScope(testDispatcher)
@@ -984,7 +1060,7 @@ class GameplayViewModelTest {
         val adController = FakeRewardedAdController(result = RewardedAdResult.Failed(RewardedAdFailureReason.NO_INTERNET))
         val viewModel = viewModel(GameMode.PRACTICE, hintRepository = hintRepository, rewardedAdController = adController, levelNumber = 30)
         val reconstructState = advanceToReconstruct(viewModel)
-        exhaustFreeHints(viewModel, reconstructState, count = 3)
+        exhaustFreeHints(viewModel, reconstructState, count = 2)
 
         viewModel.watchRewardedAd(fakeActivity)
         testDispatcher.scheduler.runCurrent()
@@ -1001,7 +1077,7 @@ class GameplayViewModelTest {
         val adController = FakeRewardedAdController(result = RewardedAdResult.Rewarded)
         val viewModel = viewModel(GameMode.PRACTICE, hintRepository = hintRepository, rewardedAdController = adController, levelNumber = 30)
         val reconstructState = advanceToReconstruct(viewModel)
-        exhaustFreeHints(viewModel, reconstructState, count = 3)
+        exhaustFreeHints(viewModel, reconstructState, count = 2)
 
         // Both calls happen before the dispatcher runs the launched coroutine, so the state is
         // still Loading from the first call when the second one arrives - exactly the race a
@@ -1011,6 +1087,173 @@ class GameplayViewModelTest {
         testDispatcher.scheduler.runCurrent()
 
         assertEquals(1, adController.loadAndShowCallCount)
+    }
+
+    // --- Inventory-token redemption (Hint/Redo/Rewatch) - the production-readiness fix wiring
+    // useInventoryHintToken/useInventoryRedoToken/useInventoryRewatchToken into the UI. ---
+
+    @Test
+    fun `useInventoryHintToken does nothing while free hints remain`() {
+        val inventoryRepository = FakeInventoryRepository(mapOf(InventoryItemKind.HINT_TOKEN to 2))
+        val hintRepository = FakeHintRepository()
+        val viewModel = viewModel(GameMode.PRACTICE, hintRepository = hintRepository, inventoryRepository = inventoryRepository, levelNumber = 30)
+        advanceToReconstruct(viewModel)
+        testDispatcher.scheduler.runCurrent()
+
+        viewModel.useInventoryHintToken()
+        testDispatcher.scheduler.runCurrent()
+
+        assertEquals(2, viewModel.hintState.value.inventoryTokenCount)
+        assertEquals(0, hintRepository.usedCountFor(30))
+    }
+
+    @Test
+    fun `useInventoryHintToken does nothing without an owned token`() {
+        val hintRepository = FakeHintRepository()
+        val viewModel = viewModel(GameMode.PRACTICE, hintRepository = hintRepository, levelNumber = 30)
+        val reconstructState = advanceToReconstruct(viewModel)
+        exhaustFreeHints(viewModel, reconstructState, count = 2)
+        testDispatcher.scheduler.runCurrent()
+        assertFalse(viewModel.hintState.value.hasInventoryToken)
+
+        viewModel.useInventoryHintToken()
+        testDispatcher.scheduler.runCurrent()
+
+        assertEquals(0, viewModel.hintState.value.remaining)
+        assertEquals(2, hintRepository.usedCountFor(30))
+    }
+
+    @Test
+    fun `useInventoryHintToken redeems exactly one token, grants back one hint, and refreshes the inventory count`() {
+        val inventoryRepository = FakeInventoryRepository(mapOf(InventoryItemKind.HINT_TOKEN to 2))
+        val hintRepository = FakeHintRepository()
+        val viewModel = viewModel(GameMode.PRACTICE, hintRepository = hintRepository, inventoryRepository = inventoryRepository, levelNumber = 30)
+        val reconstructState = advanceToReconstruct(viewModel)
+        exhaustFreeHints(viewModel, reconstructState, count = 2)
+        testDispatcher.scheduler.runCurrent()
+        assertTrue(viewModel.hintState.value.canUseInventoryToken)
+        assertEquals(2, viewModel.hintState.value.inventoryTokenCount)
+
+        viewModel.useInventoryHintToken()
+        testDispatcher.scheduler.runCurrent()
+
+        assertEquals(1, viewModel.hintState.value.remaining)
+        assertEquals(1, viewModel.hintState.value.inventoryTokenCount)
+        assertFalse(viewModel.hintState.value.isRedeemingToken)
+        // 2 real uses recorded, then one refunded by the token grant - same repository bookkeeping
+        // `watchRewardedAd`'s own test above already verifies for the ad-granted path.
+        assertEquals(1, hintRepository.usedCountFor(30))
+    }
+
+    @Test
+    fun `useInventoryHintToken ignores a second concurrent call while the first redemption is still in flight`() {
+        val inventoryRepository = FakeInventoryRepository(mapOf(InventoryItemKind.HINT_TOKEN to 5))
+        val hintRepository = FakeHintRepository()
+        val viewModel = viewModel(GameMode.PRACTICE, hintRepository = hintRepository, inventoryRepository = inventoryRepository, levelNumber = 30)
+        val reconstructState = advanceToReconstruct(viewModel)
+        exhaustFreeHints(viewModel, reconstructState, count = 2)
+        testDispatcher.scheduler.runCurrent()
+
+        // Both calls happen before the dispatcher runs the launched coroutine - the same
+        // double-tap race `watchRewardedAd ignores a second trigger...` above already covers for
+        // the ad path, here covering the token path's own isRedeemingToken guard instead.
+        viewModel.useInventoryHintToken()
+        viewModel.useInventoryHintToken()
+        testDispatcher.scheduler.runCurrent()
+
+        assertEquals(4, viewModel.hintState.value.inventoryTokenCount)
+        assertEquals(1, viewModel.hintState.value.remaining)
+    }
+
+    @Test
+    fun `useInventoryRedoToken redeems exactly one token and grants back one redo`() {
+        val inventoryRepository = FakeInventoryRepository(mapOf(InventoryItemKind.REDO_TOKEN to 2))
+        val redoRepository = FakeRedoRepository()
+        val viewModel = viewModel(GameMode.PRACTICE, redoRepository = redoRepository, inventoryRepository = inventoryRepository, levelNumber = 30)
+        val reconstructState = advanceToReconstruct(viewModel)
+        exhaustFreeRedos(viewModel, reconstructState, count = 2)
+        testDispatcher.scheduler.runCurrent()
+        assertTrue(viewModel.redoState.value.canUseInventoryToken)
+
+        viewModel.useInventoryRedoToken()
+        testDispatcher.scheduler.runCurrent()
+
+        assertEquals(1, viewModel.redoState.value.remaining)
+        assertEquals(1, viewModel.redoState.value.inventoryTokenCount)
+        assertFalse(viewModel.redoState.value.isRedeemingToken)
+    }
+
+    @Test
+    fun `useInventoryRedoToken ignores a second concurrent call while the first redemption is still in flight`() {
+        val inventoryRepository = FakeInventoryRepository(mapOf(InventoryItemKind.REDO_TOKEN to 5))
+        val viewModel = viewModel(GameMode.PRACTICE, inventoryRepository = inventoryRepository, levelNumber = 30)
+        val reconstructState = advanceToReconstruct(viewModel)
+        exhaustFreeRedos(viewModel, reconstructState, count = 2)
+        testDispatcher.scheduler.runCurrent()
+
+        viewModel.useInventoryRedoToken()
+        viewModel.useInventoryRedoToken()
+        testDispatcher.scheduler.runCurrent()
+
+        assertEquals(4, viewModel.redoState.value.inventoryTokenCount)
+    }
+
+    @Test
+    fun `useInventoryRewatchToken redeems exactly one ticket and replays the scene`() {
+        val inventoryRepository = FakeInventoryRepository(mapOf(InventoryItemKind.REWATCH_TICKET to 2))
+        val rewatchRepository = FakeRewatchRepository()
+        val viewModel = viewModel(GameMode.PRACTICE, rewatchRepository = rewatchRepository, inventoryRepository = inventoryRepository, levelNumber = 30)
+        advanceToReconstruct(viewModel)
+        testDispatcher.scheduler.runCurrent()
+        assertTrue(viewModel.rewatchState.value.canUseInventoryToken)
+
+        viewModel.useInventoryRewatchToken()
+        testDispatcher.scheduler.runCurrent()
+
+        assertEquals(1, viewModel.rewatchState.value.inventoryTokenCount)
+        assertEquals(1, rewatchRepository.rewardedUsedCountFor(30))
+        assertFalse(viewModel.rewatchState.value.isRedeemingToken)
+    }
+
+    @Test
+    fun `useInventoryRewatchToken ignores a second concurrent call while the first redemption is still in flight`() {
+        val inventoryRepository = FakeInventoryRepository(mapOf(InventoryItemKind.REWATCH_TICKET to 5))
+        val viewModel = viewModel(GameMode.PRACTICE, inventoryRepository = inventoryRepository, levelNumber = 30)
+        advanceToReconstruct(viewModel)
+        testDispatcher.scheduler.runCurrent()
+
+        viewModel.useInventoryRewatchToken()
+        viewModel.useInventoryRewatchToken()
+        testDispatcher.scheduler.runCurrent()
+
+        assertEquals(4, viewModel.rewatchState.value.inventoryTokenCount)
+    }
+
+    @Test
+    fun `useInventoryHintToken with an insufficient real balance leaves the hint budget untouched`() {
+        // FakeInventoryRepository.consumeItem enforces the same "can't spend more than owned"
+        // check the real server-side transaction does - hasInventoryToken can only be true when
+        // the balance is already >= 1, but this guards against the balance changing out from under
+        // a stale UI state (another device spending the same token first) between the state read
+        // and the actual consume call.
+        val inventoryRepository = FakeInventoryRepository(mapOf(InventoryItemKind.HINT_TOKEN to 1))
+        val hintRepository = FakeHintRepository()
+        val viewModel = viewModel(GameMode.PRACTICE, hintRepository = hintRepository, inventoryRepository = inventoryRepository, levelNumber = 30)
+        val reconstructState = advanceToReconstruct(viewModel)
+        exhaustFreeHints(viewModel, reconstructState, count = 2)
+        testDispatcher.scheduler.runCurrent()
+        // Spend the one token from underneath the ViewModel's stale cached flag, simulating
+        // another device consuming it first.
+        val drainScope = CoroutineScope(testDispatcher)
+        drainScope.launch { inventoryRepository.consumeItem(InventoryItemKind.HINT_TOKEN, 1) }
+        testDispatcher.scheduler.runCurrent()
+
+        viewModel.useInventoryHintToken()
+        testDispatcher.scheduler.runCurrent()
+
+        assertEquals(0, viewModel.hintState.value.remaining)
+        assertEquals(2, hintRepository.usedCountFor(30))
+        assertFalse(viewModel.hintState.value.isRedeemingToken)
     }
 
     @Test
@@ -1023,12 +1266,12 @@ class GameplayViewModelTest {
     }
 
     @Test
-    fun `a late campaign level grants three redos`() {
+    fun `a late campaign level grants two redos`() {
         val viewModel = viewModel(GameMode.PRACTICE, levelNumber = 30)
         advanceToReconstruct(viewModel)
 
-        assertEquals(3, viewModel.redoState.value.maxRedos)
-        assertEquals(3, viewModel.redoState.value.remaining)
+        assertEquals(2, viewModel.redoState.value.maxRedos)
+        assertEquals(2, viewModel.redoState.value.remaining)
     }
 
     @Test
@@ -1117,7 +1360,7 @@ class GameplayViewModelTest {
         viewModel.redoLastPlacement()
         testDispatcher.scheduler.runCurrent()
 
-        assertEquals(2, viewModel.redoState.value.remaining)
+        assertEquals(1, viewModel.redoState.value.remaining)
         // Written through to the repository, same distinction as hint usage - a live session's
         // process-death restore picks this up, but a fresh attempt at this level resets it (see
         // "a fresh attempt at the same level resets a previously used redo budget back to full").
@@ -1129,12 +1372,12 @@ class GameplayViewModelTest {
         val redoRepository = FakeRedoRepository()
         val firstAttempt = viewModel(GameMode.PRACTICE, redoRepository = redoRepository, levelNumber = 30)
         val firstReconstruct = advanceToReconstruct(firstAttempt)
-        exhaustFreeRedos(firstAttempt, firstReconstruct, count = 3)
+        exhaustFreeRedos(firstAttempt, firstReconstruct, count = 2)
         assertEquals(0, firstAttempt.redoState.value.remaining)
 
         val secondAttempt = viewModel(GameMode.PRACTICE, redoRepository = redoRepository, levelNumber = 30)
         advanceToReconstruct(secondAttempt)
-        assertEquals(3, secondAttempt.redoState.value.remaining)
+        assertEquals(2, secondAttempt.redoState.value.remaining)
         assertEquals(0, secondAttempt.redoState.value.redosUsed)
     }
 
@@ -1160,7 +1403,7 @@ class GameplayViewModelTest {
         val adController = FakeRewardedAdController(result = RewardedAdResult.Rewarded)
         val viewModel = viewModel(GameMode.PRACTICE, redoRepository = redoRepository, rewardedAdController = adController, levelNumber = 30)
         val reconstructState = advanceToReconstruct(viewModel)
-        exhaustFreeRedos(viewModel, reconstructState, count = 3)
+        exhaustFreeRedos(viewModel, reconstructState, count = 2)
         assertEquals(0, viewModel.redoState.value.remaining)
 
         viewModel.watchRewardedRedoAd(fakeActivity)
@@ -1168,8 +1411,8 @@ class GameplayViewModelTest {
 
         assertEquals(1, viewModel.redoState.value.remaining)
         assertEquals(RewardedAdUiState.Idle, viewModel.rewardedRedoAdState.value)
-        // Written through to the repository (3 real uses, then one refunded by the bonus).
-        assertEquals(2, redoRepository.usedCountFor(30))
+        // Written through to the repository (2 real uses, then one refunded by the bonus).
+        assertEquals(1, redoRepository.usedCountFor(30))
     }
 
     @Test
@@ -1178,7 +1421,7 @@ class GameplayViewModelTest {
         val adController = FakeRewardedAdController(result = RewardedAdResult.Cancelled)
         val viewModel = viewModel(GameMode.PRACTICE, redoRepository = redoRepository, rewardedAdController = adController, levelNumber = 30)
         val reconstructState = advanceToReconstruct(viewModel)
-        exhaustFreeRedos(viewModel, reconstructState, count = 3)
+        exhaustFreeRedos(viewModel, reconstructState, count = 2)
 
         var cancelled = false
         val collectorScope = CoroutineScope(testDispatcher)
@@ -1199,7 +1442,7 @@ class GameplayViewModelTest {
         val adController = FakeRewardedAdController(result = RewardedAdResult.Failed(RewardedAdFailureReason.NO_INTERNET))
         val viewModel = viewModel(GameMode.PRACTICE, redoRepository = redoRepository, rewardedAdController = adController, levelNumber = 30)
         val reconstructState = advanceToReconstruct(viewModel)
-        exhaustFreeRedos(viewModel, reconstructState, count = 3)
+        exhaustFreeRedos(viewModel, reconstructState, count = 2)
 
         viewModel.watchRewardedRedoAd(fakeActivity)
         testDispatcher.scheduler.runCurrent()
@@ -1216,7 +1459,7 @@ class GameplayViewModelTest {
         val adController = FakeRewardedAdController(result = RewardedAdResult.Rewarded)
         val viewModel = viewModel(GameMode.PRACTICE, redoRepository = redoRepository, rewardedAdController = adController, levelNumber = 30)
         val reconstructState = advanceToReconstruct(viewModel)
-        exhaustFreeRedos(viewModel, reconstructState, count = 3)
+        exhaustFreeRedos(viewModel, reconstructState, count = 2)
 
         // Both calls happen before the dispatcher runs the launched coroutine, so the state is
         // still Loading from the first call when the second one arrives.
@@ -1380,7 +1623,7 @@ class GameplayViewModelTest {
     }
 
     @Test
-    fun `watchRewatchAd persists rewatch usage for the level`() {
+    fun `watchRewatchAd persists rewarded rewatch usage for the level`() {
         val rewatchRepository = FakeRewatchRepository()
         val viewModel = viewModel(GameMode.PRACTICE, rewatchRepository = rewatchRepository, levelNumber = 30)
         advanceToReconstruct(viewModel)
@@ -1388,7 +1631,7 @@ class GameplayViewModelTest {
         viewModel.watchRewatchAd(fakeActivity)
         testDispatcher.scheduler.runCurrent()
 
-        assertEquals(1, rewatchRepository.usedCountFor(30))
+        assertEquals(1, rewatchRepository.rewardedUsedCountFor(30))
     }
 
     // --- Rewatch has no free tier at any level - ad-only end to end ------------------------
@@ -1479,7 +1722,7 @@ class GameplayViewModelTest {
 
         val memorizeReplay = viewModel.uiState.value as GameplayUiState.InProgress
         assertEquals(GamePhase.MEMORIZE, memorizeReplay.phase)
-        assertEquals(1, rewatchRepository.usedCountFor(30))
+        assertEquals(1, rewatchRepository.rewardedUsedCountFor(30))
     }
 
     // --- Process-death save-state restore -----------------------------------------------------
@@ -1827,7 +2070,7 @@ class GameplayViewModelTest {
     }
 
     @Test
-    fun `watching a rewatch ad logs rewatch_used`() {
+    fun `watching a rewatch ad logs rewarded_rewatch_used, not the free rewatch_used event`() {
         val analytics = FakeAnalyticsLogger()
         val viewModel = viewModel(GameMode.PRACTICE, analyticsLogger = analytics, levelNumber = 30)
         advanceToReconstruct(viewModel)
@@ -1835,7 +2078,8 @@ class GameplayViewModelTest {
         viewModel.watchRewatchAd(fakeActivity)
         testDispatcher.scheduler.runCurrent()
 
-        assertTrue(analytics.events.any { it.name == "rewatch_used" })
+        assertTrue(analytics.events.any { it.name == "rewarded_rewatch_used" })
+        assertTrue(analytics.events.none { it.name == "rewatch_used" })
     }
 
     @Test

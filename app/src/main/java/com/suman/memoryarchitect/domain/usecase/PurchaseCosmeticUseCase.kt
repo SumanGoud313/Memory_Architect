@@ -10,6 +10,6 @@ import javax.inject.Inject
 class PurchaseCosmeticUseCase @Inject constructor(
     private val repository: ShopRepository,
 ) {
-    suspend operator fun invoke(id: CosmeticId): Outcome<PurchaseResult> =
-        repository.purchase(id, UUID.randomUUID().toString())
+    suspend operator fun invoke(id: CosmeticId, useDiscountCoupon: Boolean = false): Outcome<PurchaseResult> =
+        repository.purchase(id, UUID.randomUUID().toString(), useDiscountCoupon)
 }

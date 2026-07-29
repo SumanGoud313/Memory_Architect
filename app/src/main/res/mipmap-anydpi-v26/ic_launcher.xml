@@ -1,6 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  No <monochrome> entry: Android 13+ themed icons tint a monochrome layer with a single system
+  color based on its alpha shape, but memory_architect_logo.png is a fully opaque raster
+  illustration with no meaningful alpha silhouette - tinting it would render as a single solid
+  colored square, not a recognizable mark. Producing a proper hand-cut monochrome silhouette would
+  mean redesigning the artwork, which was explicitly ruled out. Omitting <monochrome> is the
+  standard, safe choice for detailed multi-color logos without one - the icon simply keeps its full
+  color version even when the device has icon theming enabled, same as many published apps.
+-->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
     <background android:drawable="@drawable/ic_launcher_background" />
     <foreground android:drawable="@drawable/ic_launcher_foreground" />
-    <monochrome android:drawable="@drawable/ic_launcher_foreground" />
 </adaptive-icon>

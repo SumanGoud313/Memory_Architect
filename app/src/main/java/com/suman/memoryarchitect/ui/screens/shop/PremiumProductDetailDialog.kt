@@ -21,13 +21,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.suman.memoryarchitect.R
 import com.suman.memoryarchitect.core.common.toDisplayName
-import com.suman.memoryarchitect.domain.model.PremiumProduct
+import com.suman.memoryarchitect.domain.model.BillingCatalogProduct
 import com.suman.memoryarchitect.domain.progression.AllCosmeticsCatalog
 import com.suman.memoryarchitect.ui.components.BenefitRow
 import com.suman.memoryarchitect.ui.theme.MemoryArchitectColors
 
 /** The Premium Shop's sibling of [CosmeticPreviewDialog] - a multi-item live preview + Buy for one
- * [PremiumProduct] bundle, never a modification of [CosmeticPreviewDialog] itself (that dialog stays
+ * [BillingCatalogProduct] bundle, never a modification of [CosmeticPreviewDialog] itself (that dialog stays
  * single-item, Coin-tab only). Reuses [PreviewVisual] (promoted to `internal` for exactly this) so
  * every granted cosmetic gets the same animated per-category preview a Coin Shop item already gets -
  * a border shimmers, a timer sweeps, a victory/confetti effect loops, a background theme washes its
@@ -35,12 +35,14 @@ import com.suman.memoryarchitect.ui.theme.MemoryArchitectColors
  * dialog's fixed width. */
 @Composable
 fun PremiumProductDetailDialog(
-    product: PremiumProduct,
+    product: BillingCatalogProduct,
     formattedPrice: String?,
+    priceLoadFailed: Boolean,
     isOwned: Boolean,
     isLoading: Boolean,
     onBuy: () -> Unit,
     onDismiss: () -> Unit,
+    onRetryPriceLoad: () -> Unit,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -81,19 +83,43 @@ fun PremiumProductDetailDialog(
                     }
                 }
 
-                Text(
-                    text = if (isOwned) stringResource(R.string.shop_owned_product) else (formattedPrice ?: "…"),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MemoryArchitectColors.accentGold,
-                    modifier = Modifier.padding(top = 20.dp),
-                )
+                when {
+                    isOwned -> Text(
+                        text = stringResource(R.string.shop_owned_product),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MemoryArchitectColors.accentGold,
+                        modifier = Modifier.padding(top = 20.dp),
+                    )
+                    formattedPrice != null -> Text(
+                        text = formattedPrice,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MemoryArchitectColors.accentGold,
+                        modifier = Modifier.padding(top = 20.dp),
+                    )
+                    priceLoadFailed -> Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(top = 20.dp)) {
+                        Text(
+                            text = stringResource(R.string.shop_premium_price_load_failed),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MemoryArchitectColors.textTertiary,
+                        )
+                        TextButton(onClick = onRetryPriceLoad) {
+                            Text(text = stringResource(R.string.action_retry), color = MemoryArchitectColors.accentGold)
+                        }
+                    }
+                    else -> Text(
+                        text = stringResource(R.string.shop_premium_price_loading),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MemoryArchitectColors.textTertiary,
+                        modifier = Modifier.padding(top = 20.dp),
+                    )
+                }
             }
         },
         confirmButton = {
-            if (!isOwned) {
-                TextButton(onClick = { onBuy(); onDismiss() }, enabled = !isLoading && formattedPrice != null) {
+            if (!isOwned && formattedPrice != null) {
+                TextButton(onClick = { onBuy(); onDismiss() }, enabled = !isLoading) {
                     Text(
-                        text = if (isLoading) "…" else stringResource(R.string.shop_premium_buy, formattedPrice ?: "…"),
+                        text = if (isLoading) "…" else stringResource(R.string.shop_premium_buy, formattedPrice),
                         color = MemoryArchitectColors.accentGold,
                     )
                 }

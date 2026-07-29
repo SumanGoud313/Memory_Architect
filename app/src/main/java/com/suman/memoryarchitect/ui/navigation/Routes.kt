@@ -25,26 +25,27 @@ sealed interface Route {
     @Serializable
     data object Leaderboard : Route
 
+    /** Also hosts the "Unlocks" tab (the former standalone Rewards screen) - see
+     * `AchievementsScreen.kt`'s doc. */
     @Serializable
     data object Achievements : Route
 
-    @Serializable
-    data object Rewards : Route
-
-    /** The full Memory Journey tier showcase - reached via a Profile button, alongside
-     * Achievements/Rewards. See `MemoryJourneyBar.kt`'s doc for the slim Profile-embedded version. */
+    /** The full Memory Journey tier showcase - reached via Profile's own big Memory Journey
+     * button. See `MemoryJourneyBar.kt`'s doc for the slim Profile-embedded version. */
     @Serializable
     data object MemoryJourney : Route
 
     @Serializable
     data object RemoveAds : Route
 
-    /** The cosmetics hub - Shop/Collections as tabs within one screen (Shop selected by default),
-     * reached via the round "Cosmetics" corner button on [com.suman.memoryarchitect.ui.screens.modeselect.ModeSelectScreen].
-     * Shop/Collections no longer have their own routes - see `CosmeticsHubScreen.kt`. Lucky Spin
-     * is its own route again (below) - it moved out of this tab shell onto Mode Select directly. */
+    /** The cosmetics hub - Shop/Collections as tabs within one screen (Shop selected by default
+     * unless [startOnCollectionsTab] is set - see `CosmeticsHubScreen.kt`), reached via the round
+     * "Cosmetics" corner button on [com.suman.memoryarchitect.ui.screens.modeselect.ModeSelectScreen]
+     * or, with [startOnCollectionsTab] = true, from [LuckySpin]'s "go equip it" nudge after
+     * winning a cosmetic. Shop/Collections no longer have their own routes. Lucky Spin is its own
+     * route again (below) - it moved out of this tab shell onto Mode Select directly. */
     @Serializable
-    data object CosmeticsHub : Route
+    data class CosmeticsHub(val startOnCollectionsTab: Boolean = false) : Route
 
     /** Lucky Spin - its own icon on [com.suman.memoryarchitect.ui.screens.modeselect.ModeSelectScreen],
      * between Cosmetics and Remove Ads. Not part of [CosmeticsHub]'s tab shell. */

@@ -5,30 +5,33 @@
 // price validation here; the full catalog (names/rarity/rendering) lives client-side only, same
 // as every other reward/achievement catalog in this app.
 const CATALOG_PRICES = {
-  FRAME_WOVEN_CORD: 180, FRAME_SILVER_LAUREL: 500, FRAME_MOLTEN_BRONZE: 1100, FRAME_CELESTIAL_HALO: 2800,
+  FRAME_WOVEN_CORD: 560, FRAME_SILVER_LAUREL: 1070, FRAME_MOLTEN_BRONZE: 2070, FRAME_CELESTIAL_HALO: 4570,
   // Premium Borders (flagship category) - 12 items, 3 per rarity. Mirrors ShopCatalog.kt exactly.
-  BORDER_CLASSIC_SILVER: 170, BORDER_PEARL_WHITE: 210, BORDER_OBSIDIAN: 260,
-  BORDER_PLATINUM: 450, BORDER_EMERALD: 550, BORDER_SAPPHIRE: 650,
-  BORDER_RUBY: 1000, BORDER_CYBER_NEON: 1200, BORDER_LAVA: 1400,
-  BORDER_ROYAL_GOLD: 2400, BORDER_DIAMOND_GLOW: 2900, BORDER_GALAXY: 3400,
-  NAME_COLOR_SLATE: 150, NAME_COLOR_OCEAN_FADE: 420, NAME_COLOR_SUNSET_GRADIENT: 950, NAME_COLOR_PRISM_SHIFT: 2400,
-  TIMER_CLASSIC_DOT: 200, TIMER_PULSE_RING: 480, TIMER_EMBER_SWEEP: 1050, TIMER_STARLIGHT_ARC: 2900,
-  VICTORY_CONFETTI_POP: 220, VICTORY_GOLDEN_SPARKS: 550, VICTORY_FIREWORK_BURST: 1200, VICTORY_SUPERNOVA: 3200,
-  CONFETTI_PAPER_TOSS: 170, CONFETTI_RIBBON_FALL: 430, CONFETTI_STAR_SHOWER: 980, CONFETTI_RAINBOW_CASCADE: 2500,
-  STICKERS_DOODLE_PACK: 190, STICKERS_ADVENTURE_PACK: 470, STICKERS_COSMIC_PACK: 1150, STICKERS_MYTHIC_PACK: 3000,
-  TROPHY_BRONZE_CUP: 210, TROPHY_SILVER_COMPASS: 520, TROPHY_GOLDEN_HOURGLASS: 1300, TROPHY_DIAMOND_CROWN: 3500,
-  BACKGROUND_MISTY_DAWN: 190, BACKGROUND_TWILIGHT_HAZE: 480, BACKGROUND_AURORA_DRIFT: 1050, BACKGROUND_STARFIELD_DEEP: 2900,
-  BADGE_BRONZE_LAUREL: 200, BADGE_SILVER_SEAL: 500, BADGE_GOLDEN_CREST: 1100, BADGE_ARCHITECT_SIGIL: 2800,
+  BORDER_CLASSIC_SILVER: 540, BORDER_PEARL_WHITE: 620, BORDER_OBSIDIAN: 720,
+  BORDER_PLATINUM: 980, BORDER_EMERALD: 1150, BORDER_SAPPHIRE: 1320,
+  BORDER_RUBY: 1930, BORDER_CYBER_NEON: 2200, BORDER_LAVA: 2470,
+  BORDER_ROYAL_GOLD: 4030, BORDER_DIAMOND_GLOW: 4700, BORDER_GALAXY: 5370,
+  NAME_COLOR_SLATE: 500, NAME_COLOR_OCEAN_FADE: 930, NAME_COLOR_SUNSET_GRADIENT: 1870, NAME_COLOR_PRISM_SHIFT: 4030,
+  TIMER_CLASSIC_DOT: 600, TIMER_PULSE_RING: 1030, TIMER_EMBER_SWEEP: 2000, TIMER_STARLIGHT_ARC: 4700,
+  VICTORY_CONFETTI_POP: 640, VICTORY_GOLDEN_SPARKS: 1150, VICTORY_FIREWORK_BURST: 2200, VICTORY_SUPERNOVA: 5100,
+  CONFETTI_PAPER_TOSS: 540, CONFETTI_RIBBON_FALL: 950, CONFETTI_STAR_SHOWER: 1910, CONFETTI_RAINBOW_CASCADE: 4170,
+  STICKERS_DOODLE_PACK: 580, STICKERS_ADVENTURE_PACK: 1020, STICKERS_COSMIC_PACK: 2130, STICKERS_MYTHIC_PACK: 4830,
+  TROPHY_BRONZE_CUP: 620, TROPHY_SILVER_COMPASS: 1100, TROPHY_GOLDEN_HOURGLASS: 2330, TROPHY_DIAMOND_CROWN: 5500,
+  BACKGROUND_MISTY_DAWN: 580, BACKGROUND_TWILIGHT_HAZE: 1030, BACKGROUND_AURORA_DRIFT: 2000, BACKGROUND_STARFIELD_DEEP: 4700,
+  BADGE_BRONZE_LAUREL: 600, BADGE_SILVER_SEAL: 1070, BADGE_GOLDEN_CREST: 2070, BADGE_ARCHITECT_SIGIL: 4570,
 };
 
-const SPIN_COST_COINS = 150;
 const SPIN_DUPLICATE_REFUND_FRACTION = 0.5;
+// Mirrors DiscountCouponRules.Default.discountFraction (domain/progression/DiscountCouponRules.kt).
+const DISCOUNT_COUPON_FRACTION = 0.25;
 
 function priceOf(sku) {
   return CATALOG_PRICES[sku];
 }
 
-function purchaseCosmetic(profile, cosmeticsState, sku) {
+// inventory/useDiscountCoupon are optional - omitting them (or passing useDiscountCoupon=false)
+// behaves exactly as before. Mirrors FirestoreShopRemoteSource.purchase's own coupon handling.
+function purchaseCosmetic(profile, cosmeticsState, sku, inventory, useDiscountCoupon) {
   const price = priceOf(sku);
   if (price === undefined) {
     return { error: 'unknown_sku' };
@@ -36,28 +39,67 @@ function purchaseCosmetic(profile, cosmeticsState, sku) {
   if ((cosmeticsState.ownedSkus || []).includes(sku)) {
     return { error: 'already_owned' };
   }
-  if ((profile.coins || 0) < price) {
+  let updatedInventory = inventory;
+  let effectivePrice = price;
+  if (useDiscountCoupon) {
+    const owned = (inventory && inventory.DISCOUNT_COUPON) || 0;
+    if (owned < 1) return { error: 'insufficient_inventory' };
+    effectivePrice = Math.floor(price * (1 - DISCOUNT_COUPON_FRACTION));
+    updatedInventory = { ...inventory, DISCOUNT_COUPON: owned - 1 };
+  }
+  if ((profile.coins || 0) < effectivePrice) {
     return { error: 'insufficient_coins' };
   }
-  const updatedProfile = { ...profile, coins: profile.coins - price };
+  const updatedProfile = { ...profile, coins: profile.coins - effectivePrice };
   const updatedState = { ...cosmeticsState, ownedSkus: [...(cosmeticsState.ownedSkus || []), sku] };
-  return { profile: updatedProfile, state: updatedState };
+  return { profile: updatedProfile, state: updatedState, inventory: updatedInventory };
 }
 
-function spinLuckySpin(profile, cosmeticsState, chosenSku) {
-  const price = priceOf(chosenSku);
+// Spins are free - gated by source ('FREE'/'AD'/'TICKET') instead of a coin cost. Mirrors
+// FirestoreShopRemoteSource.spin's gating exactly: FREE/AD each allow one spin per todayEpochDay
+// (re-checked against luckySpinState, not trusted from the caller), TICKET instead atomically
+// consumes one LUCKY_SPIN_TICKET and skips the daily gate entirely. request is either
+// { rewardKind: 'COINS', coinsAmount } or { rewardKind: 'COSMETIC', chosenSku, rarity } - the
+// client-computed LuckySpinEngine roll, already resolved to one shape before this is ever called.
+function spinLuckySpin(profile, cosmeticsState, luckySpinState, request, inventory, source, todayEpochDay) {
+  let updatedInventory = inventory;
+  if (source === 'FREE') {
+    if (luckySpinState.lastFreeSpinEpochDay === todayEpochDay) return { error: 'spin_not_available' };
+  } else if (source === 'AD') {
+    if (luckySpinState.lastAdSpinEpochDay === todayEpochDay) return { error: 'spin_not_available' };
+  } else if (source === 'TICKET') {
+    const owned = (inventory && inventory.LUCKY_SPIN_TICKET) || 0;
+    if (owned < 1) return { error: 'insufficient_inventory' };
+    updatedInventory = { ...inventory, LUCKY_SPIN_TICKET: owned - 1 };
+  }
+
+  const updatedLuckySpinState = {
+    lastFreeSpinEpochDay: source === 'FREE' ? todayEpochDay : luckySpinState.lastFreeSpinEpochDay,
+    lastAdSpinEpochDay: source === 'AD' ? todayEpochDay : luckySpinState.lastAdSpinEpochDay,
+    hasEverSpun: true,
+  };
+
+  if (request.rewardKind === 'COINS') {
+    const updatedProfile = { ...profile, coins: (profile.coins || 0) + request.coinsAmount };
+    return {
+      profile: updatedProfile, state: cosmeticsState, luckySpinState: updatedLuckySpinState,
+      wasDuplicate: false, coinsRefunded: 0, inventory: updatedInventory,
+    };
+  }
+
+  const price = priceOf(request.chosenSku);
   if (price === undefined) {
     return { error: 'unknown_sku' };
   }
-  if ((profile.coins || 0) < SPIN_COST_COINS) {
-    return { error: 'insufficient_coins' };
-  }
   const owned = cosmeticsState.ownedSkus || [];
-  const wasDuplicate = owned.includes(chosenSku);
+  const wasDuplicate = owned.includes(request.chosenSku);
   const coinsRefunded = wasDuplicate ? Math.round(price * SPIN_DUPLICATE_REFUND_FRACTION) : 0;
-  const updatedProfile = { ...profile, coins: profile.coins - SPIN_COST_COINS + coinsRefunded };
-  const updatedState = wasDuplicate ? cosmeticsState : { ...cosmeticsState, ownedSkus: [...owned, chosenSku] };
-  return { profile: updatedProfile, state: updatedState, wasDuplicate, coinsRefunded };
+  const updatedProfile = { ...profile, coins: (profile.coins || 0) + coinsRefunded };
+  const updatedState = wasDuplicate ? cosmeticsState : { ...cosmeticsState, ownedSkus: [...owned, request.chosenSku] };
+  return {
+    profile: updatedProfile, state: updatedState, luckySpinState: updatedLuckySpinState,
+    wasDuplicate, coinsRefunded, inventory: updatedInventory,
+  };
 }
 
 function equipCosmetic(cosmeticsState, category, sku) {
@@ -71,7 +113,6 @@ function unequipCosmetic(cosmeticsState, category) {
 
 module.exports = {
   CATALOG_PRICES,
-  SPIN_COST_COINS,
   purchaseCosmetic,
   spinLuckySpin,
   equipCosmetic,

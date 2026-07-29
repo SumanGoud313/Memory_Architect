@@ -20,6 +20,9 @@ data class MemoryJourneyRules(
     val pointsPerDailyMissionClaimed: Long = 5L,
     val pointsPerWeeklyMissionClaimed: Long = 15L,
     val pointsPerMonthlyMissionClaimed: Long = 50L,
+    // Between Daily and Weekly - a typical event window runs a few days, longer than one Daily
+    // reset but shorter than a full Weekly cycle.
+    val pointsPerEventMissionClaimed: Long = 10L,
 ) {
     companion object {
         val Default = MemoryJourneyRules()

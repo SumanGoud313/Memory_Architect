@@ -19,6 +19,8 @@ fun CosmeticId.toDisplayName(): String {
         CosmeticCategory.TROPHY_RELIC -> "TROPHY_"
         CosmeticCategory.BACKGROUND_THEME -> "BACKGROUND_"
         CosmeticCategory.PROFILE_BADGE -> "BADGE_"
+        CosmeticCategory.ROOM_SKIN -> "ROOM_"
+        CosmeticCategory.OBJECT_MATERIAL -> "MATERIAL_"
     }
     return name.removePrefix(prefix)
         .split("_")
@@ -30,7 +32,7 @@ fun CosmeticId.category(): CosmeticCategory =
 
 fun CosmeticCategory.toDisplayName(): String = when (this) {
     CosmeticCategory.AVATAR_FRAME -> "Avatar Frames"
-    CosmeticCategory.PROFILE_BORDER -> "Profile Borders"
+    CosmeticCategory.PROFILE_BORDER -> "Button Borders"
     CosmeticCategory.NAME_COLOR -> "Name Colors"
     CosmeticCategory.TIMER_STYLE -> "Timer Styles"
     CosmeticCategory.VICTORY_ANIMATION -> "Victory Animations"
@@ -39,4 +41,6 @@ fun CosmeticCategory.toDisplayName(): String = when (this) {
     CosmeticCategory.TROPHY_RELIC -> "Trophy & Relics"
     CosmeticCategory.BACKGROUND_THEME -> "Background Themes"
     CosmeticCategory.PROFILE_BADGE -> "Profile Badges"
+    CosmeticCategory.ROOM_SKIN -> "Room Skins"
+    CosmeticCategory.OBJECT_MATERIAL -> "Object Materials"
 }

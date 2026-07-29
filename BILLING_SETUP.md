@@ -21,32 +21,17 @@ an app that's already been uploaded to at least an internal testing track.
 
 ## Regional pricing
 
-Set a base price, then let Play Console auto-convert regional prices, or override the ones you
-care about directly. Suggested starting points (all one-time, all the same tier as the ₹299 India
-price):
+Set the **base price in USD** under **Play Console → the product → Price** to:
 
-| Region | Suggested price |
+| Product | Base price (USD) |
 |---|---|
-| India | ₹299 |
-| United States | US$4.99 |
-| Canada | CA$6.99 |
-| United Kingdom | £3.99 |
-| Eurozone | €4.99 |
-| Australia | A$7.99 |
-| New Zealand | NZ$8.99 |
-| Saudi Arabia | SAR 18.99 |
-| UAE | AED 18.99 |
-| Singapore | SGD 6.98 |
-| Malaysia | MYR 19.99 |
-| Indonesia | IDR 79,000 |
-| Philippines | PHP 249 |
-| Thailand | THB 179 |
-| Vietnam | VND 119,000 |
-| Japan | ¥700 |
-| South Korea | ₩6,500 |
-| Brazil | R$24.90 |
-| Mexico | MXN 89 |
-| South Africa | ZAR 89 |
+| Remove Ads (Lifetime) | $3.99 |
+
+Then let Play Console auto-convert every other region's price from that base using its own current
+exchange rates and local pricing patterns (e.g. psychological rounding), rather than typing in
+converted values yourself - that auto-conversion is what makes every player automatically see their
+own local currency and a region-appropriate price with Google Play handling tax, with no
+per-country price ever hardcoded in this app.
 
 **Nothing in the app hardcodes any of this.** `BillingManagerImpl` only ever reads
 `ProductDetails.oneTimePurchaseOfferDetails.formattedPrice` - Play's own already-localized price

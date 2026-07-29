@@ -1,5 +1,7 @@
 package com.suman.memoryarchitect.ui.screens.gameplay
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Column
@@ -10,9 +12,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -44,14 +48,29 @@ fun RewatchButton(
     onWatchAd: () -> Unit,
     modifier: Modifier = Modifier,
     compact: Boolean = false,
+    maxRewardedRewatches: Int = 0,
+    rewardedRemaining: Int = 0,
+    hasInventoryToken: Boolean = false,
+    inventoryTokenCount: Int = 0,
+    isRedeemingToken: Boolean = false,
+    onUseToken: () -> Unit = {},
 ) {
     val tick = rememberHapticsTick()
     val interactionSource = remember { MutableInteractionSource() }
     val hasFreeUses = remaining > 0
-    val isLoading = !hasFreeUses && adState is RewardedAdUiState.Loading
+    val isExhausted = !hasFreeUses && !hasInventoryToken && rewardedRemaining <= 0 && maxRewardedRewatches > 0
+    val isLoading = !hasFreeUses && !hasInventoryToken && !isExhausted && adState is RewardedAdUiState.Loading
+    val disabledAlpha by animateFloatAsState(
+        targetValue = if (isExhausted) 0.45f else 1f,
+        animationSpec = tween(200),
+        label = "rewatchExhaustedAlpha",
+    )
 
     val description = when {
-        hasFreeUses -> stringResource(R.string.gameplay_rewatch_free_description, remaining)
+        hasFreeUses -> stringResource(R.string.gameplay_rewatch_free_description, remaining + inventoryTokenCount)
+        isRedeemingToken -> stringResource(R.string.gameplay_rewatch_redeeming_token_description)
+        hasInventoryToken -> stringResource(R.string.gameplay_rewatch_use_token_description, inventoryTokenCount)
+        isExhausted -> stringResource(R.string.gameplay_rewatch_reward_exhausted_description)
         adState is RewardedAdUiState.Loading -> stringResource(R.string.gameplay_rewatch_loading_description)
         adState is RewardedAdUiState.Failed -> stringResource(
             when (adState.reason) {
@@ -66,13 +85,18 @@ fun RewatchButton(
     GlassCard(
         modifier = modifier
             .pressableScale(interactionSource)
+            .graphicsLayer { alpha = disabledAlpha }
             .clearAndSetSemantics {
                 role = Role.Button
                 contentDescription = description
             }
-            .clickable(interactionSource = interactionSource, indication = null, enabled = !isLoading) {
+            .clickable(interactionSource = interactionSource, indication = null, enabled = !isLoading && !isRedeemingToken && !isExhausted) {
                 tick()
-                if (hasFreeUses) onClick() else onWatchAd()
+                when {
+                    hasFreeUses -> onClick()
+                    hasInventoryToken -> onUseToken()
+                    else -> onWatchAd()
+                }
             },
         tint = MemoryArchitectColors.accentSage.copy(alpha = 0.12f),
         shape = RoundedCornerShape(MemoryArchitectRadii.chip),
@@ -87,7 +111,10 @@ fun RewatchButton(
                 icon = Icons.Filled.Visibility,
                 iconTint = MemoryArchitectColors.accentSage,
                 remaining = remaining,
-                isLoading = isLoading,
+                isLoading = isLoading || isRedeemingToken,
+                isExhausted = isExhausted,
+                hasInventoryToken = hasInventoryToken,
+                inventoryTokenCount = inventoryTokenCount,
             )
             Text(
                 text = stringResource(R.string.gameplay_rewatch_name),
@@ -96,6 +123,19 @@ fun RewatchButton(
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier.padding(top = 3.dp),
             )
+            if (!hasFreeUses && (hasInventoryToken || maxRewardedRewatches > 0)) {
+                Text(
+                    text = when {
+                        hasInventoryToken -> stringResource(R.string.gameplay_assist_use_token_caption)
+                        isExhausted -> stringResource(R.string.gameplay_reward_exhausted_caption)
+                        else -> stringResource(R.string.gameplay_reward_progress_caption, maxRewardedRewatches - rewardedRemaining, maxRewardedRewatches)
+                    },
+                    color = MemoryArchitectColors.textTertiary,
+                    fontSize = 8.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                )
+            }
         }
     }
 }

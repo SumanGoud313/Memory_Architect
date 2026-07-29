@@ -1,14 +1,18 @@
 package com.suman.memoryarchitect.data.repository
 
 import com.suman.memoryarchitect.core.analytics.CrashReporter
+import com.suman.memoryarchitect.core.analytics.FirebaseAvailabilityProvider
 import com.suman.memoryarchitect.core.auth.PlayerIdentityManager
 import com.suman.memoryarchitect.core.common.ImmediateDispatcherProvider
+import com.suman.memoryarchitect.core.database.InventoryItemDao
+import com.suman.memoryarchitect.core.database.InventoryItemEntity
 import com.suman.memoryarchitect.core.database.PendingScoreSubmissionDao
 import com.suman.memoryarchitect.core.database.PendingScoreSubmissionEntity
 import com.suman.memoryarchitect.core.database.PlayerProgressCacheEntity
 import com.suman.memoryarchitect.core.database.PlayerProgressDao
 import com.suman.memoryarchitect.core.database.StatisticsCacheEntity
 import com.suman.memoryarchitect.core.database.StatisticsDao
+import com.suman.memoryarchitect.core.sync.PendingScoreSyncScheduler
 import com.suman.memoryarchitect.core.database.UnlockedAchievementDao
 import com.suman.memoryarchitect.core.database.UnlockedAchievementEntity
 import com.suman.memoryarchitect.core.database.UnlockedRewardDao
@@ -16,7 +20,10 @@ import com.suman.memoryarchitect.core.database.UnlockedRewardEntity
 import com.suman.memoryarchitect.data.remote.ProgressionApi
 import com.suman.memoryarchitect.data.remote.dto.ClaimDailyRewardRequestDto
 import com.suman.memoryarchitect.data.remote.dto.ClaimDailyRewardResponseDto
+import com.suman.memoryarchitect.data.remote.dto.ClaimReturningPlayerGiftRequestDto
+import com.suman.memoryarchitect.data.remote.dto.ClaimReturningPlayerGiftResponseDto
 import com.suman.memoryarchitect.data.remote.dto.DailyRewardStatusDto
+import com.suman.memoryarchitect.data.remote.dto.InventoryDto
 import com.suman.memoryarchitect.data.remote.dto.PlayerProfileDto
 import com.suman.memoryarchitect.data.remote.dto.ScoreSubmissionRequestDto
 import com.suman.memoryarchitect.domain.model.AchievementId
@@ -44,11 +51,16 @@ private object ProgressionRepoNoopCrashReporter : CrashReporter {
     override fun setCustomKey(key: String, value: String) = Unit
 }
 
+/** Forces the mock-backend path deterministically, independent of whether this machine's local
+ * `app/google-services.json` happens to exist - see [FirebaseAvailabilityProvider]'s doc. */
+private class FakeProgressionFirebaseAvailabilityProvider(override val isConfigured: Boolean = false) : FirebaseAvailabilityProvider
+
 private class FakeProgressionApi(
     private val profile: PlayerProfileDto? = null,
     private val error: Throwable? = null,
     private val dailyRewardStatus: DailyRewardStatusDto? = null,
     private val claimResponse: ClaimDailyRewardResponseDto? = null,
+    private val claimReturningPlayerGiftResponse: ClaimReturningPlayerGiftResponseDto? = null,
 ) : ProgressionApi {
     override suspend fun getProfile(): PlayerProfileDto {
         error?.let { throw it }
@@ -70,6 +82,11 @@ private class FakeProgressionApi(
         return requireNotNull(claimResponse)
     }
 
+    override suspend fun claimReturningPlayerGift(body: ClaimReturningPlayerGiftRequestDto): ClaimReturningPlayerGiftResponseDto {
+        error?.let { throw it }
+        return requireNotNull(claimReturningPlayerGiftResponse)
+    }
+
     override suspend fun resetProfile(): PlayerProfileDto {
         error?.let { throw it }
         return requireNotNull(profile)
@@ -87,6 +104,27 @@ private class FakePlayerProgressDao : PlayerProgressDao {
 
     override suspend fun clearAll() {
         stored = null
+    }
+}
+
+private class FakeProgressionInventoryItemDao : InventoryItemDao {
+    private val stored = mutableMapOf<String, InventoryItemEntity>()
+    override suspend fun getAll(): List<InventoryItemEntity> = stored.values.toList()
+    override suspend fun get(kind: String): InventoryItemEntity? = stored[kind]
+    override suspend fun upsert(entity: InventoryItemEntity) {
+        stored[entity.kind] = entity
+    }
+    override suspend fun clearAll() = stored.clear()
+}
+
+/** No-op by default - these tests never need a real WorkManager instance, only to verify
+ * submitScore/retryPendingSubmissions' own queuing/flushing logic. See PendingScoreSyncScheduler's
+ * doc. Tracks call count for the one test that cares whether a retry was actually scheduled. */
+private class FakePendingScoreSyncScheduler : PendingScoreSyncScheduler {
+    var scheduleRetryCallCount = 0
+        private set
+    override fun scheduleRetry() {
+        scheduleRetryCallCount++
     }
 }
 
@@ -184,6 +222,8 @@ class ProgressionRepositoryImplTest {
         unlockedAchievementDao: UnlockedAchievementDao = FakeUnlockedAchievementDao(),
         unlockedRewardDao: UnlockedRewardDao = FakeUnlockedRewardDao(),
         levelCampaignRepository: LevelCampaignRepository = FakeLevelCampaignRepository(),
+        inventoryItemDao: InventoryItemDao = FakeProgressionInventoryItemDao(),
+        pendingSyncScheduler: PendingScoreSyncScheduler = FakePendingScoreSyncScheduler(),
     ) = ProgressionRepositoryImpl(
         mockBackendSource = MockBackendProgressionRemoteSource(api),
         firestoreSource = FirestoreProgressionRemoteSource(FakePlayerIdentityManager(), Clock.systemUTC()),
@@ -194,8 +234,11 @@ class ProgressionRepositoryImplTest {
         unlockedAchievementDao = unlockedAchievementDao,
         unlockedRewardDao = unlockedRewardDao,
         levelCampaignRepository = levelCampaignRepository,
+        inventoryItemDao = inventoryItemDao,
         dispatchers = ImmediateDispatcherProvider,
         errorMapper = ErrorMapper(ProgressionRepoNoopCrashReporter),
+        firebaseAvailabilityProvider = FakeProgressionFirebaseAvailabilityProvider(),
+        pendingSyncScheduler = pendingSyncScheduler,
     )
 
     @Test
@@ -253,12 +296,15 @@ class ProgressionRepositoryImplTest {
     }
 
     @Test
-    fun `submitScore failure queues the submission and returns an optimistic pending result`() = runTest {
+    fun `submitScore failure queues the submission, schedules a retry, and returns an optimistic pending result`() = runTest {
         val dao = FakePlayerProgressDao().apply {
             upsert(PlayerProgressCacheEntity(xp = 0L, coins = 0L, currentStreak = 0, longestStreak = 0, lastPlayedEpochDay = null, lastSyncedAt = 0L))
         }
         val pendingDao = FakePendingScoreSubmissionDao()
-        val repository = buildRepository(api = FakeProgressionApi(error = IOException("offline")), progressDao = dao, pendingDao = pendingDao)
+        val scheduler = FakePendingScoreSyncScheduler()
+        val repository = buildRepository(
+            api = FakeProgressionApi(error = IOException("offline")), progressDao = dao, pendingDao = pendingDao, pendingSyncScheduler = scheduler,
+        )
 
         val result = repository.submitScore(GameMode.CLASSIC, levelSeed = 1L, score = sampleScore, playedOnEpochDay = 10L, submissionNonce = "nonce-10")
 
@@ -267,7 +313,77 @@ class ProgressionRepositoryImplTest {
         assertTrue(submission.isPendingSync)
         assertEquals(150L, submission.profile.xp)
         assertEquals(1, pendingDao.inserted.size)
+        assertEquals(sampleScore.comboCount, pendingDao.inserted.single().comboCount)
         assertEquals(150L, dao.get()?.xp)
+        assertEquals(1, scheduler.scheduleRetryCallCount)
+    }
+
+    @Test
+    fun `retryPendingSubmissions flushes a queued entry, updates the cache, and removes it from the queue`() = runTest {
+        val dao = FakePlayerProgressDao()
+        val pendingDao = FakePendingScoreSubmissionDao().apply {
+            insert(
+                PendingScoreSubmissionEntity(
+                    mode = GameMode.CLASSIC.name, levelSeed = 1L, finalScore = 150, sceneAccuracy = 0.8f,
+                    playedOnEpochDay = 10L, createdAt = 10L, submissionNonce = "nonce-10", comboCount = 3, newlyUnlockedAchievementCount = 1,
+                ),
+            )
+        }
+        val repository = buildRepository(
+            api = FakeProgressionApi(profile = PlayerProfileDto(xp = 150, coins = 40, currentStreak = 1, longestStreak = 1, lastPlayedEpochDay = 10L)),
+            progressDao = dao,
+            pendingDao = pendingDao,
+        )
+
+        repository.retryPendingSubmissions()
+
+        assertTrue(pendingDao.inserted.isEmpty())
+        assertEquals(150L, dao.get()?.xp)
+        assertEquals(40L, dao.get()?.coins)
+    }
+
+    @Test
+    fun `retryPendingSubmissions drops an entry the server already has, not just leaves it queued`() = runTest {
+        // FakeProgressionApi's `error` applies uniformly to every method, including the
+        // reconciliation getProfile() call retryPendingSubmissions makes in this branch - so this
+        // also exercises that reconciliation failing gracefully (runCatching + getOrNull) rather
+        // than crashing, while still confirming the actual point: a confirmed-duplicate entry is
+        // removed from the queue, never retried forever.
+        val pendingDao = FakePendingScoreSubmissionDao().apply {
+            insert(
+                PendingScoreSubmissionEntity(
+                    mode = GameMode.CLASSIC.name, levelSeed = 1L, finalScore = 150, sceneAccuracy = 0.8f,
+                    playedOnEpochDay = 10L, createdAt = 10L, submissionNonce = "already-landed",
+                ),
+            )
+        }
+        val repository = buildRepository(api = FakeProgressionApi(error = DuplicateSubmissionException()), pendingDao = pendingDao)
+
+        repository.retryPendingSubmissions()
+
+        assertTrue(pendingDao.inserted.isEmpty())
+    }
+
+    @Test
+    fun `retryPendingSubmissions leaves the queue intact while still offline`() = runTest {
+        val pendingDao = FakePendingScoreSubmissionDao().apply {
+            insert(
+                PendingScoreSubmissionEntity(
+                    mode = GameMode.CLASSIC.name, levelSeed = 1L, finalScore = 150, sceneAccuracy = 0.8f,
+                    playedOnEpochDay = 10L, createdAt = 10L, submissionNonce = "still-offline",
+                ),
+            )
+        }
+        val repository = buildRepository(api = FakeProgressionApi(error = IOException("still offline")), pendingDao = pendingDao)
+
+        try {
+            repository.retryPendingSubmissions()
+            org.junit.Assert.fail("expected the IOException to propagate so the caller can back off and retry")
+        } catch (_: IOException) {
+            // expected
+        }
+
+        assertEquals(1, pendingDao.inserted.size)
     }
 
     @Test
@@ -437,7 +553,9 @@ class ProgressionRepositoryImplTest {
             api = FakeProgressionApi(profile = PlayerProfileDto(xp = 0, currentStreak = 0, longestStreak = 0, lastPlayedEpochDay = null)),
             unlockedRewardDao = rewardDao,
         )
-        val bigScore = sampleScore.copy(finalScore = 700)
+        // Reward unlocks at level 5, which under the current XpCurve (500 * (level-1)^1.5) needs
+        // 4000 XP - was 700 back when the curve was 100 * (level-1)^1.4 and level 5 needed ~697.
+        val bigScore = sampleScore.copy(finalScore = 4000)
 
         val firstResult = repository.submitScore(GameMode.CLASSIC, levelSeed = 1L, score = bigScore, playedOnEpochDay = 1L, submissionNonce = "nonce-1")
         val firstSubmission = (firstResult as Outcome.Success).data
@@ -549,5 +667,47 @@ class ProgressionRepositoryImplTest {
         assertEquals(2, claim.cycleDay)
         assertEquals(60L, claim.coinsAwarded)
         assertEquals(260L, dao.get()?.coins)
+    }
+
+    @Test
+    fun `claimReturningPlayerGift writes the granted inventory through to the local cache`() = runTest {
+        val inventoryDao = FakeProgressionInventoryItemDao()
+        val repository = buildRepository(
+            api = FakeProgressionApi(
+                claimReturningPlayerGiftResponse = ClaimReturningPlayerGiftResponseDto(
+                    inventory = InventoryDto(mapOf("MYSTERY_CHEST" to 1)),
+                ),
+            ),
+            inventoryItemDao = inventoryDao,
+        )
+
+        val result = repository.claimReturningPlayerGift(todayEpochDay = 100L)
+
+        assertTrue(result is Outcome.Success)
+        assertEquals(1, inventoryDao.get("MYSTERY_CHEST")?.quantity)
+    }
+
+    @Test
+    fun `claimReturningPlayerGift maps an already-claimed rejection to a routine 409`() = runTest {
+        val repository = buildRepository(api = FakeProgressionApi(error = ReturningPlayerGiftAlreadyClaimedException()))
+
+        val result = repository.claimReturningPlayerGift(todayEpochDay = 100L)
+
+        assertTrue(result is Outcome.Error)
+        val error = (result as Outcome.Error).error
+        assertTrue(error is AppError.Server)
+        assertEquals(409, (error as AppError.Server).code)
+    }
+
+    @Test
+    fun `claimReturningPlayerGift maps a not-eligible rejection to a 400`() = runTest {
+        val repository = buildRepository(api = FakeProgressionApi(error = ReturningPlayerGiftNotEligibleException("gap too short")))
+
+        val result = repository.claimReturningPlayerGift(todayEpochDay = 100L)
+
+        assertTrue(result is Outcome.Error)
+        val error = (result as Outcome.Error).error
+        assertTrue(error is AppError.Server)
+        assertEquals(400, (error as AppError.Server).code)
     }
 }

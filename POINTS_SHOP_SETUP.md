@@ -74,17 +74,21 @@ render case in `CosmeticGlyph.kt`, and add its display name in `CosmeticDisplay.
 
 ## Live Events (seasonal drops)
 
-`domain/progression/LiveEventCatalog.kt` ships with one permanently-expired template entry - the
-framework is proven (unit-tested) but no seasonal content exists yet. To run a real event
-(Halloween/Christmas/New Year/Summer/Anniversary): add the new cosmetics to `ShopCatalog` as above,
-then add one `LiveEvent(id, startEpochSecond, endEpochSecond, featuredCosmeticIds)` entry to
+`domain/progression/LiveEventCatalog.kt` ships nine real templates (New Year, Valentine's Day,
+Holi, Summer, Independence Day, Halloween, Diwali, Christmas, Anniversary), each with a default
+window and a curated `featuredCosmeticIds` list drawn from existing `ShopCatalog`/`PremiumCatalog`
+entries - no exclusive-to-event cosmetics. Which template (if any) is actually live is decided at
+runtime by Remote Config, not by this file's default windows - see `FIREBASE_SETUP.md`'s Remote
+Config table. To add a tenth event: add its cosmetics to `ShopCatalog` as above, then add one
+`LiveEvent(id, startEpochSecond, endEpochSecond, featuredCosmeticIds)` entry to
 `LiveEventCatalog.events`. No new screens, no new code paths.
 
 ## Out of scope by design (see the implementation plan for the full reasoning)
 
 - Only 8 cosmetic categories ship (not the full 18-category wishlist) - all data-driven, easy to
   extend per above.
-- No real seasonal content yet - the framework is proven, empty.
+- Nine seasonal templates ship with real windows/featured cosmetics, but going live in production
+  is still a Remote Config action (see `FIREBASE_SETUP.md`), not automatic.
 - No "Prestige" mechanic - "Memory Rank" (Profile) is a pure display-tier label derived from
   existing level, not a new earned/stored value.
 - No offline purchase/spin retry queue - purchases/spins fail cleanly offline rather than queuing.

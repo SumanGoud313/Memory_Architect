@@ -11,7 +11,6 @@ import com.suman.memoryarchitect.core.datastore.UserPreferencesDataStore
 import com.suman.memoryarchitect.domain.model.GameMode
 import com.suman.memoryarchitect.domain.model.Outcome
 import com.suman.memoryarchitect.domain.model.PlayerProfile
-import com.suman.memoryarchitect.domain.progression.XpCurve
 import com.suman.memoryarchitect.domain.usecase.GetPlayerProfileUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,10 +20,10 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * Backs the quiet progress footer at the bottom of Mode Select — level, XP, coins, streak, no
- * more. It is deliberately not a second Profile: a failed fetch never surfaces an error or blocks
- * the screen (mode selection is why the player is here, not this), it just falls back to
- * [PlayerProfile.EMPTY] so the footer is always populated instead of ever going blank.
+ * Backs the Daily/Weekly Challenge post-win lock countdowns on Mode Select's mode cards. It is
+ * deliberately not a second Profile: a failed fetch never surfaces an error or blocks the screen
+ * (mode selection is why the player is here, not this), it just falls back to
+ * [PlayerProfile.EMPTY] (both unlock timestamps null, i.e. "not locked") instead of ever blocking.
  */
 @HiltViewModel
 class ModeSelectViewModel @Inject constructor(
@@ -33,8 +32,6 @@ class ModeSelectViewModel @Inject constructor(
     private val preferences: UserPreferencesDataStore,
     billingManager: BillingManager,
 ) : ViewModel() {
-
-    private val xpCurve = XpCurve()
 
     private val _progress = MutableStateFlow(toProgressUiState(PlayerProfile.EMPTY))
     val progress: StateFlow<ModeSelectProgressUiState> = _progress.asStateFlow()
@@ -68,18 +65,11 @@ class ModeSelectViewModel @Inject constructor(
         }
     }
 
-    private fun toProgressUiState(profile: PlayerProfile): ModeSelectProgressUiState {
-        val (xpIntoLevel, xpForNextLevel) = xpCurve.xpProgressWithinLevel(profile.xp)
-        return ModeSelectProgressUiState(
-            level = xpCurve.levelForXp(profile.xp),
-            xpIntoLevel = xpIntoLevel,
-            xpForNextLevel = xpForNextLevel,
-            coins = profile.coins,
-            currentStreak = profile.currentStreak,
+    private fun toProgressUiState(profile: PlayerProfile): ModeSelectProgressUiState =
+        ModeSelectProgressUiState(
             dailyChallengeUnlockAtEpochSecond = profile.dailyChallengeWonAtEpochSecond
                 ?.plus(GameMode.DAILY_CHALLENGE.challengeLockDurationSeconds()!!),
             weeklyChallengeUnlockAtEpochSecond = profile.weeklyChallengeWonAtEpochSecond
                 ?.plus(GameMode.WEEKLY_CHALLENGE.challengeLockDurationSeconds()!!),
         )
-    }
 }

@@ -2,6 +2,7 @@ package com.suman.memoryarchitect.data.repository
 
 import com.suman.memoryarchitect.data.remote.ShopApi
 import com.suman.memoryarchitect.data.remote.dto.EquipCosmeticRequestDto
+import com.suman.memoryarchitect.data.remote.dto.LuckySpinStateDto
 import com.suman.memoryarchitect.data.remote.dto.PlayerProfileDto
 import com.suman.memoryarchitect.data.remote.dto.PurchaseCosmeticRequestDto
 import com.suman.memoryarchitect.data.remote.dto.SpinLuckySpinRequestDto
@@ -9,7 +10,10 @@ import com.suman.memoryarchitect.data.remote.dto.UnequipCosmeticRequestDto
 import com.suman.memoryarchitect.domain.model.CosmeticCategory
 import com.suman.memoryarchitect.domain.model.CosmeticId
 import com.suman.memoryarchitect.domain.model.CosmeticRarity
+import com.suman.memoryarchitect.domain.model.LuckySpinState
 import com.suman.memoryarchitect.domain.model.PlayerProfile
+import com.suman.memoryarchitect.domain.model.SpinRewardKind
+import com.suman.memoryarchitect.domain.repository.SpinSource
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -24,19 +28,35 @@ class MockBackendShopRemoteSource @Inject constructor(
 
     override suspend fun getEquipped(): Map<String, String> = api.getCosmeticsState().equipped
 
-    override suspend fun purchase(id: CosmeticId, purchaseNonce: String): Pair<PlayerProfile, Set<String>> {
-        val response = api.purchase(PurchaseCosmeticRequestDto(id.name, purchaseNonce))
+    override suspend fun getLuckySpinState(): LuckySpinState = api.getLuckySpinState().toDomain()
+
+    override suspend fun purchase(id: CosmeticId, purchaseNonce: String, useDiscountCoupon: Boolean): Pair<PlayerProfile, Set<String>> {
+        val response = api.purchase(PurchaseCosmeticRequestDto(id.name, purchaseNonce, useDiscountCoupon))
         return response.profile.toDomain() to response.cosmetics.ownedSkus.toSet()
     }
 
-    override suspend fun spin(chosenId: CosmeticId, rarity: CosmeticRarity, spinNonce: String): SpinOutcome {
-        val response = api.spin(SpinLuckySpinRequestDto(chosenId.name, rarity.name, spinNonce))
+    override suspend fun spin(request: SpinRequest, spinNonce: String, source: SpinSource, todayEpochDay: Long): SpinOutcome {
+        val requestDto = when (request) {
+            is SpinRequest.Coins -> SpinLuckySpinRequestDto(
+                rewardKind = "COINS", coinsAmount = request.amount, spinNonce = spinNonce, source = source.name, todayEpochDay = todayEpochDay,
+            )
+            is SpinRequest.Cosmetic -> SpinLuckySpinRequestDto(
+                rewardKind = "COSMETIC", chosenSku = request.id.name, rarity = request.rarity.name, spinNonce = spinNonce, source = source.name, todayEpochDay = todayEpochDay,
+            )
+        }
+        val response = api.spin(requestDto)
+        val reward = if (response.rewardKind == "COINS") {
+            SpinRewardKind.Coins(response.coinsAwarded ?: 0L)
+        } else {
+            SpinRewardKind.Cosmetic(CosmeticId.valueOf(requireNotNull(response.awardedSku)), CosmeticRarity.valueOf(requireNotNull(response.rarity)))
+        }
         return SpinOutcome(
-            awardedId = CosmeticId.valueOf(response.awardedSku),
+            reward = reward,
             wasDuplicate = response.wasDuplicate,
             coinsRefunded = response.coinsRefunded,
             profile = response.profile.toDomain(),
             ownedSkus = response.cosmetics.ownedSkus.toSet(),
+            spinState = response.luckySpinState.toDomain(),
         )
     }
 
@@ -46,13 +66,22 @@ class MockBackendShopRemoteSource @Inject constructor(
     override suspend fun unequip(category: CosmeticCategory): Map<String, String> =
         api.unequip(UnequipCosmeticRequestDto(category.name)).equipped
 
+    private fun LuckySpinStateDto.toDomain() = LuckySpinState(
+        lastFreeSpinEpochDay = lastFreeSpinEpochDay,
+        lastAdSpinEpochDay = lastAdSpinEpochDay,
+        hasEverSpun = hasEverSpun,
+    )
+
     private fun PlayerProfileDto.toDomain() = PlayerProfile(
         xp = xp,
         coins = coins,
         currentStreak = currentStreak,
         longestStreak = longestStreak,
         lastPlayedEpochDay = lastPlayedEpochDay,
+        streakShields = streakShields,
         dailyChallengeWonAtEpochSecond = dailyChallengeWonAtEpochSecond,
         weeklyChallengeWonAtEpochSecond = weeklyChallengeWonAtEpochSecond,
+        // Previously omitted - see FirestoreShopRemoteSource.toProfile's identical fix and doc.
+        journeyPoints = journeyPoints,
     )
 }

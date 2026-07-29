@@ -8,6 +8,10 @@ enum class ShopFailureReason {
     INSUFFICIENT_COINS,
     NO_CONNECTIVITY,
     ALREADY_OWNED,
+    /** [com.suman.memoryarchitect.data.repository.SpinNotAvailableException] - a Free/Ad Lucky
+     * Spin allowance was already spent today. The Spin button is already disabled for this case
+     * on the client, so this only ever surfaces from a stale/race-condition retry. */
+    SPIN_NOT_AVAILABLE,
     GENERIC,
 }
 
@@ -17,6 +21,7 @@ fun AppError.toShopFailureReason(): ShopFailureReason = when (this) {
     is AppError.Server -> when (code) {
         402 -> ShopFailureReason.INSUFFICIENT_COINS
         409 -> ShopFailureReason.ALREADY_OWNED
+        429 -> ShopFailureReason.SPIN_NOT_AVAILABLE
         else -> ShopFailureReason.GENERIC
     }
     else -> ShopFailureReason.GENERIC

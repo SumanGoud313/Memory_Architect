@@ -13,14 +13,22 @@ import com.suman.memoryarchitect.core.analytics.PerformanceTracer
 import com.suman.memoryarchitect.core.analytics.logAchievementUnlocked
 import com.suman.memoryarchitect.core.analytics.logFrustrationSignal
 import com.suman.memoryarchitect.core.analytics.logHintUsed
+import com.suman.memoryarchitect.core.analytics.logInventoryItemConsumed
+import com.suman.memoryarchitect.core.analytics.logLevelAbandonedAfterRewardLimit
 import com.suman.memoryarchitect.core.analytics.logLevelCompleted
 import com.suman.memoryarchitect.core.analytics.logLevelQuitMidway
 import com.suman.memoryarchitect.core.analytics.logLevelRestarted
 import com.suman.memoryarchitect.core.analytics.logLevelStarted
+import com.suman.memoryarchitect.core.analytics.logMemoryJourneyPointsEarned
+import com.suman.memoryarchitect.core.analytics.logMemoryJourneyTierReached
 import com.suman.memoryarchitect.core.analytics.logMemorizeFinished
 import com.suman.memoryarchitect.core.analytics.logMemorizeStarted
 import com.suman.memoryarchitect.core.analytics.logRebuildStarted
 import com.suman.memoryarchitect.core.analytics.logRedoUsed
+import com.suman.memoryarchitect.core.analytics.logRewardLimitReached
+import com.suman.memoryarchitect.core.analytics.logRewardedHintUsed
+import com.suman.memoryarchitect.core.analytics.logRewardedRedoUsed
+import com.suman.memoryarchitect.core.analytics.logRewardedRewatchUsed
 import com.suman.memoryarchitect.core.analytics.logRewatchUsed
 import com.suman.memoryarchitect.core.analytics.logSessionEnded
 import com.suman.memoryarchitect.core.analytics.logStreakMilestoneReached
@@ -36,6 +44,7 @@ import com.suman.memoryarchitect.domain.model.DifficultyTier
 import com.suman.memoryarchitect.domain.model.GameMode
 import com.suman.memoryarchitect.domain.model.GamePhase
 import com.suman.memoryarchitect.domain.model.GlobalLeaderboardStats
+import com.suman.memoryarchitect.domain.model.InventoryItemKind
 import com.suman.memoryarchitect.domain.model.LevelSpec
 import com.suman.memoryarchitect.domain.model.MissionEvent
 import com.suman.memoryarchitect.domain.model.Outcome
@@ -43,16 +52,22 @@ import com.suman.memoryarchitect.domain.model.PeriodicLeaderboardSubmission
 import com.suman.memoryarchitect.domain.model.PlacedObject
 import com.suman.memoryarchitect.domain.model.PlayerStatistics
 import com.suman.memoryarchitect.domain.model.RedoRules
+import com.suman.memoryarchitect.domain.model.RewardedAssistLimits
 import com.suman.memoryarchitect.domain.model.RewatchRules
 import com.suman.memoryarchitect.domain.model.ScoreResult
 import com.suman.memoryarchitect.domain.progression.LevelCampaignEngine
 import com.suman.memoryarchitect.domain.scoring.ScoringEngine
 import com.suman.memoryarchitect.domain.scoring.StarRatingCalculator
 import com.suman.memoryarchitect.domain.security.LeaderboardAntiCheat
+import com.suman.memoryarchitect.domain.usecase.ConsumeInventoryItemUseCase
 import com.suman.memoryarchitect.domain.usecase.GenerateLevelUseCase
 import com.suman.memoryarchitect.domain.usecase.GetHintsUsedUseCase
+import com.suman.memoryarchitect.domain.usecase.GetInventoryUseCase
 import com.suman.memoryarchitect.domain.usecase.GetLevelCampaignProgressUseCase
 import com.suman.memoryarchitect.domain.usecase.GetRedosUsedUseCase
+import com.suman.memoryarchitect.domain.usecase.GetRewardedHintsUsedUseCase
+import com.suman.memoryarchitect.domain.usecase.GetRewardedRedosUsedUseCase
+import com.suman.memoryarchitect.domain.usecase.GetRewardedRewatchesUsedUseCase
 import com.suman.memoryarchitect.domain.usecase.GetRewatchesUsedUseCase
 import com.suman.memoryarchitect.domain.usecase.GetUnlockedAchievementsUseCase
 import com.suman.memoryarchitect.domain.usecase.GrantBonusHintUseCase
@@ -61,6 +76,7 @@ import com.suman.memoryarchitect.domain.usecase.RecordHintUsedUseCase
 import com.suman.memoryarchitect.domain.usecase.RecordLevelCompletionUseCase
 import com.suman.memoryarchitect.domain.usecase.RecordMissionEventUseCase
 import com.suman.memoryarchitect.domain.usecase.RecordRedoUsedUseCase
+import com.suman.memoryarchitect.domain.usecase.RecordRewardedRewatchUsedUseCase
 import com.suman.memoryarchitect.domain.usecase.RecordRewatchUsedUseCase
 import com.suman.memoryarchitect.domain.usecase.ResetHintUsageUseCase
 import com.suman.memoryarchitect.domain.usecase.ResetRedoUsageUseCase
@@ -105,16 +121,20 @@ class GameplayViewModel @Inject constructor(
     private val getUnlockedAchievements: GetUnlockedAchievementsUseCase,
     private val resetWinStreak: ResetWinStreakUseCase,
     private val getHintsUsed: GetHintsUsedUseCase,
+    private val getRewardedHintsUsed: GetRewardedHintsUsedUseCase,
     private val recordHintUsed: RecordHintUsedUseCase,
     private val grantBonusHint: GrantBonusHintUseCase,
     private val resetHintUsage: ResetHintUsageUseCase,
     private val rewardedAdController: RewardedAdController,
     private val getRedosUsed: GetRedosUsedUseCase,
+    private val getRewardedRedosUsed: GetRewardedRedosUsedUseCase,
     private val recordRedoUsed: RecordRedoUsedUseCase,
     private val grantBonusRedo: GrantBonusRedoUseCase,
     private val resetRedoUsage: ResetRedoUsageUseCase,
     private val getRewatchesUsed: GetRewatchesUsedUseCase,
+    private val getRewardedRewatchesUsed: GetRewardedRewatchesUsedUseCase,
     private val recordRewatchUsed: RecordRewatchUsedUseCase,
+    private val recordRewardedRewatchUsed: RecordRewardedRewatchUsedUseCase,
     private val resetRewatchUsage: ResetRewatchUsageUseCase,
     private val recordMissionEvent: RecordMissionEventUseCase,
     private val clock: Clock,
@@ -122,6 +142,8 @@ class GameplayViewModel @Inject constructor(
     private val performanceTracer: PerformanceTracer,
     private val frustrationTracker: FrustrationTracker,
     private val feedback: FeedbackManager,
+    private val getInventory: GetInventoryUseCase,
+    private val consumeInventoryItem: ConsumeInventoryItemUseCase,
     private val savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -201,8 +223,28 @@ class GameplayViewModel @Inject constructor(
     private val hintEngine = HintEngine()
     private val redoRules = RedoRules.Default
     private val rewatchRules = RewatchRules.Default
+    private val rewardedLimits = RewardedAssistLimits.Default
     private var reconstructStartedAt: Instant? = null
     private var hintExpiryJob: Job? = null
+
+    /** True from the moment any of Hint/Redo/Rewatch's rewarded-ad budget is fully spent for this
+     * attempt (see [rewardedLimits]) until the next fresh attempt ([loadLevel] resets it) - lets
+     * [onCleared] tell "quit after hitting a reward wall" apart from an ordinary quit, without
+     * threading that distinction through every one of the three watchX methods that can set it. */
+    private var rewardLimitReachedThisAttempt = false
+
+    /** Fires once, the instant Hint/Redo/Rewatch's rewarded-ad budget is fully spent for this
+     * attempt - the trigger for the "No more X rewards available for this level" Snackbar (see
+     * [GameplayScreen]), distinct from the ordinary [hintDenied]/[redoDenied]/[rewatchDenied]
+     * defensive-fallback flows above, which cover a *free*-budget denial instead. */
+    private val _hintRewardLimitReached = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val hintRewardLimitReached: SharedFlow<Unit> = _hintRewardLimitReached.asSharedFlow()
+
+    private val _redoRewardLimitReached = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val redoRewardLimitReached: SharedFlow<Unit> = _redoRewardLimitReached.asSharedFlow()
+
+    private val _rewatchRewardLimitReached = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val rewatchRewardLimitReached: SharedFlow<Unit> = _rewatchRewardLimitReached.asSharedFlow()
 
     // Domain models (LevelSpec/PlacedObject/GamePhase) stay free of @JsonClass annotations - this
     // adapter is scoped locally to session-snapshot persistence rather than pulling serialization
@@ -341,6 +383,94 @@ class GameplayViewModel @Inject constructor(
         viewModelScope.launch { recordRedoUsed(levelNumber) }
     }
 
+    /** Refreshes [HintUiState.hasInventoryToken]/[RedoUiState.hasInventoryToken]/
+     * [RewatchUiState.hasInventoryToken] against the player's current Inventory - called once
+     * after a fresh level load or session restore (see [loadLevel]/[restoreFromSnapshot]) and
+     * again after each token redemption below, since Inventory's balance can change between level
+     * attempts (a mission claimed, a token just spent) in a way this ViewModel doesn't otherwise
+     * observe. */
+    private fun refreshInventoryTokenFlags() {
+        viewModelScope.launch {
+            val inventory = (getInventory() as? Outcome.Success)?.data ?: return@launch
+            _hintState.value = _hintState.value.copy(inventoryTokenCount = inventory.quantityOf(InventoryItemKind.HINT_TOKEN))
+            _redoState.value = _redoState.value.copy(inventoryTokenCount = inventory.quantityOf(InventoryItemKind.REDO_TOKEN))
+            _rewatchState.value = _rewatchState.value.copy(inventoryTokenCount = inventory.quantityOf(InventoryItemKind.REWATCH_TICKET))
+        }
+    }
+
+    /** Redeems one [InventoryItemKind.HINT_TOKEN] for one free hint - fills the exact same slot a
+     * rewarded ad would (see [HintUiState.canUseInventoryToken]), reusing [grantBonusHint] (the
+     * same grant [watchRewardedAd] itself calls) rather than a separate token-specific mechanism.
+     * No-op unless [HintUiState.canUseInventoryToken] is already true. [HintUiState.isRedeemingToken]
+     * is set for the whole redemption and checked up front, so a second rapid tap arriving before
+     * this one's state update lands is a no-op too, not a second concurrent [consumeInventoryItem]
+     * call - the one exactly-once guarantee this method must hold. */
+    fun useInventoryHintToken() {
+        val hint = _hintState.value
+        if (!hint.canUseInventoryToken || hint.isRedeemingToken) return
+        _hintState.value = hint.copy(isRedeemingToken = true)
+        viewModelScope.launch {
+            try {
+                if (consumeInventoryItem(InventoryItemKind.HINT_TOKEN) !is Outcome.Success) return@launch
+                grantBonusHint(levelNumber)
+                _hintState.value = _hintState.value.copy(hintsUsed = (_hintState.value.hintsUsed - 1).coerceAtLeast(0))
+                analytics.logInventoryItemConsumed(InventoryItemKind.HINT_TOKEN.name, 1)
+                refreshInventoryTokenFlags()
+            } finally {
+                _hintState.value = _hintState.value.copy(isRedeemingToken = false)
+            }
+        }
+    }
+
+    /** Redeems one [InventoryItemKind.REDO_TOKEN] for one free redo - see [useInventoryHintToken]'s
+     * doc for the same reasoning (including the [RedoUiState.isRedeemingToken] re-entrancy guard),
+     * reusing [grantBonusRedo]. */
+    fun useInventoryRedoToken() {
+        val redo = _redoState.value
+        if (!redo.canUseInventoryToken || redo.isRedeemingToken) return
+        _redoState.value = redo.copy(isRedeemingToken = true)
+        viewModelScope.launch {
+            try {
+                if (consumeInventoryItem(InventoryItemKind.REDO_TOKEN) !is Outcome.Success) return@launch
+                grantBonusRedo(levelNumber)
+                _redoState.value = _redoState.value.copy(redosUsed = (_redoState.value.redosUsed - 1).coerceAtLeast(0))
+                analytics.logInventoryItemConsumed(InventoryItemKind.REDO_TOKEN.name, 1)
+                refreshInventoryTokenFlags()
+            } finally {
+                _redoState.value = _redoState.value.copy(isRedeemingToken = false)
+            }
+        }
+    }
+
+    /** Redeems one [InventoryItemKind.REWATCH_TICKET] for one free scene replay - mirrors
+     * [watchRewatchAd]'s reward callback exactly (same [recordRewardedRewatchUsed] bucket, since
+     * there's no separate token-granted counter - a ticket-granted rewatch is bounded by
+     * [RewardedAssistLimits.maxRewardedRewatches] the same way an ad-granted one is), just without
+     * the ad round-trip. No-op unless [RewatchUiState.canUseInventoryToken] is already true, or
+     * the round has since left Reconstruct. Same [RewatchUiState.isRedeemingToken] re-entrancy
+     * guard as [useInventoryHintToken]. */
+    fun useInventoryRewatchToken() {
+        val gameplay = _uiState.value
+        if (gameplay !is GameplayUiState.InProgress || gameplay.phase != GamePhase.RECONSTRUCT) return
+        val rewatch = _rewatchState.value
+        if (!rewatch.canUseInventoryToken || rewatch.isRedeemingToken) return
+        _rewatchState.value = rewatch.copy(isRedeemingToken = true)
+        viewModelScope.launch {
+            try {
+                if (consumeInventoryItem(InventoryItemKind.REWATCH_TICKET) !is Outcome.Success) return@launch
+                val rewardedUsed = rewatch.rewardedRewatchesUsed + 1
+                _rewatchState.value = _rewatchState.value.copy(rewardedRewatchesUsed = rewardedUsed)
+                recordRewardedRewatchUsed(levelNumber)
+                analytics.logInventoryItemConsumed(InventoryItemKind.REWATCH_TICKET.name, 1)
+                logExcessiveRewatchIfNeeded(rewatch.rewatchesUsed + rewardedUsed)
+                refreshInventoryTokenFlags()
+                replayScene(gameplay)
+            } finally {
+                _rewatchState.value = _rewatchState.value.copy(isRedeemingToken = false)
+            }
+        }
+    }
+
     /** Arms/disarms hint-selection mode - only meaningful during Reconstruct, and only when at
      * least one hint remains. Requesting arm with none remaining is the defensive-denial path
      * ([hintDenied]); the UI's Hint control should already be disabled at that point. */
@@ -392,12 +522,32 @@ class GameplayViewModel @Inject constructor(
      * [activity] is only ever passed through to [RewardedAdController.loadAndShow] (via
      * [hintAdFlow]) for the duration of that single call, never retained on this ViewModel.
      * [pauseTimerForAd]/[resumeTimerAfterAd] freeze/restore the Reconstruct countdown around the
-     * whole ad lifecycle - see their own docs for why. */
+     * whole ad lifecycle - see their own docs for why.
+     *
+     * The pre-check below (bail before ever starting the ad) and the re-check inside the reward
+     * callback (bail before granting) are both needed for the same reason [watchRewatchAd]'s
+     * doc explains: the ad's own load/show round-trip can outlast the cap being hit some other
+     * way in the meantime, so re-validating only once wouldn't be airtight. Once
+     * [HintUiState.rewardedRemaining] hits zero, no further ad can ever grant another hint for
+     * this level attempt - see [RewardedAssistLimits]. */
     fun watchRewardedAd(activity: Activity) {
+        if (!_hintState.value.canWatchRewardedAd) return
         hintAdFlow.watch(activity, onBeforeStart = ::pauseTimerForAd, onAfterResolve = ::resumeTimerAfterAd) {
+            val hint = _hintState.value
+            if (!hint.canWatchRewardedAd) return@watch
             grantBonusHint(levelNumber)
-            _hintState.value = _hintState.value.copy(hintsUsed = (_hintState.value.hintsUsed - 1).coerceAtLeast(0))
+            val rewardedUsed = hint.rewardedHintsUsed + 1
+            _hintState.value = hint.copy(
+                hintsUsed = (hint.hintsUsed - 1).coerceAtLeast(0),
+                rewardedHintsUsed = rewardedUsed,
+            )
+            analytics.logRewardedHintUsed(mode, levelNumber, rewardedUsed)
             recordMissionEvent(MissionEvent.RewardedAdWatched)
+            if (rewardedUsed >= rewardedLimits.maxRewardedHints) {
+                rewardLimitReachedThisAttempt = true
+                analytics.logRewardLimitReached("hint", mode, levelNumber)
+                _hintRewardLimitReached.tryEmit(Unit)
+            }
         }
     }
 
@@ -406,12 +556,26 @@ class GameplayViewModel @Inject constructor(
      * [HintButton]. Reuses the exact same [RewardedAdController] as the Hint flow - watching an
      * ad is watching an ad, regardless of which resource the reward ultimately grants - but is
      * tracked by its own [redoAdFlow] instance so the two ad flows never interfere with each
-     * other. */
+     * other. Capped the same way [watchRewardedAd] is - see its doc for why both the pre-check and
+     * the re-check inside the reward callback are needed. */
     fun watchRewardedRedoAd(activity: Activity) {
+        if (!_redoState.value.canWatchRewardedAd) return
         redoAdFlow.watch(activity, onBeforeStart = ::pauseTimerForAd, onAfterResolve = ::resumeTimerAfterAd) {
+            val redo = _redoState.value
+            if (!redo.canWatchRewardedAd) return@watch
             grantBonusRedo(levelNumber)
-            _redoState.value = _redoState.value.copy(redosUsed = (_redoState.value.redosUsed - 1).coerceAtLeast(0))
+            val rewardedUsed = redo.rewardedRedosUsed + 1
+            _redoState.value = redo.copy(
+                redosUsed = (redo.redosUsed - 1).coerceAtLeast(0),
+                rewardedRedosUsed = rewardedUsed,
+            )
+            analytics.logRewardedRedoUsed(mode, levelNumber, rewardedUsed)
             recordMissionEvent(MissionEvent.RewardedAdWatched)
+            if (rewardedUsed >= rewardedLimits.maxRewardedRedos) {
+                rewardLimitReachedThisAttempt = true
+                analytics.logRewardLimitReached("redo", mode, levelNumber)
+                _redoRewardLimitReached.tryEmit(Unit)
+            }
         }
     }
 
@@ -448,17 +612,31 @@ class GameplayViewModel @Inject constructor(
      * (load + show) can take long enough that a short Reconstruct countdown auto-submits while
      * it's still showing, so the round can go stale either before the ad starts or while it's in
      * flight - re-validating only once wouldn't cover both windows. A reward that resolves too
-     * late to matter can never resurrect an already-Finished round. */
+     * late to matter can never resurrect an already-Finished round.
+     *
+     * Also capped by [RewatchUiState.rewardedRemaining] (see [RewardedAssistLimits]) the same way
+     * [watchRewardedAd]/[watchRewardedRedoAd] are - checked both before the ad ever starts and
+     * again inside the reward callback, for the same "the round can go stale either before or
+     * during the ad" reason already covered above. */
     fun watchRewatchAd(activity: Activity) {
         val gameplay = _uiState.value
         if (gameplay !is GameplayUiState.InProgress || gameplay.phase != GamePhase.RECONSTRUCT) return
+        if (!_rewatchState.value.canWatchRewardedAd) return
         rewatchAdFlow.watch(activity, onBeforeStart = ::pauseTimerForAd, onAfterResolve = ::resumeTimerAfterAd) {
             val current = _uiState.value
-            if (current is GameplayUiState.InProgress && current.phase == GamePhase.RECONSTRUCT) {
-                analytics.logRewatchUsed(mode, levelNumber)
-                logExcessiveRewatchIfNeeded(_rewatchState.value.rewatchesUsed + 1)
-                recordRewatchUsed(levelNumber)
+            val rewatch = _rewatchState.value
+            if (current is GameplayUiState.InProgress && current.phase == GamePhase.RECONSTRUCT && rewatch.canWatchRewardedAd) {
+                val rewardedUsed = rewatch.rewardedRewatchesUsed + 1
+                _rewatchState.value = rewatch.copy(rewardedRewatchesUsed = rewardedUsed)
+                analytics.logRewardedRewatchUsed(mode, levelNumber, rewardedUsed)
+                logExcessiveRewatchIfNeeded(rewatch.rewatchesUsed + rewardedUsed)
+                recordRewardedRewatchUsed(levelNumber)
                 recordMissionEvent(MissionEvent.RewardedAdWatched)
+                if (rewardedUsed >= rewardedLimits.maxRewardedRewatches) {
+                    rewardLimitReachedThisAttempt = true
+                    analytics.logRewardLimitReached("rewatch", mode, levelNumber)
+                    _rewatchRewardLimitReached.tryEmit(Unit)
+                }
                 replayScene(current)
             }
         }
@@ -603,7 +781,7 @@ class GameplayViewModel @Inject constructor(
             analytics.logSubmitPressed(mode, levelNumber, objectsPlaced)
         }
         val result = scoringEngine.score(level, current.placements.values.toList(), current.placementOrder, current.remainingMs)
-        val stars = StarRatingCalculator.calculate(result)
+        val stars = StarRatingCalculator.calculate(result, level.objects.size)
         val timeTakenMs = reconstructStartedAt?.let { Duration.between(it, clock.instant()).toMillis() } ?: 0L
         val passedThisLevel = campaignEngine.passed(result.sceneAccuracy)
         val mistakesCount = result.objectScores.count { it.positionAccuracy < 1f }
@@ -633,9 +811,12 @@ class GameplayViewModel @Inject constructor(
             passed = if (mode == GameMode.CLASSIC) passedThisLevel else null,
             timeTakenMs = timeTakenMs,
             mistakesCount = mistakesCount,
-            hintsUsed = _hintState.value.hintsUsed,
-            redosUsed = _redoState.value.redosUsed,
-            rewatchesUsed = _rewatchState.value.rewatchesUsed,
+            // Total assist uses this attempt (free + rewarded-ad-granted) - each grant nets to
+            // zero-sum with the extra use it enables (see grantBonusHint/grantBonusRedo's "refund"
+            // model), so summing the two counters back out is what recovers the true total.
+            hintsUsed = _hintState.value.hintsUsed + _hintState.value.rewardedHintsUsed,
+            redosUsed = _redoState.value.redosUsed + _redoState.value.rewardedRedosUsed,
+            rewatchesUsed = _rewatchState.value.rewatchesUsed + _rewatchState.value.rewardedRewatchesUsed,
             xpAwarded = xpAwarded,
             coinsAwarded = coinsAwarded,
         )
@@ -672,8 +853,14 @@ class GameplayViewModel @Inject constructor(
             // (see ProgressionRules.challengeWinAccuracyThreshold's doc), so this one check is
             // correct for Classic and both Challenge modes alike. A failed attempt intentionally
             // skips submission entirely rather than awarding partial credit for it.
+            // Classic only - a level's genuine first clear (or any Daily/Weekly Challenge win,
+            // which is already naturally rate-limited to once per day/week) awards XP normally; a
+            // repeat clear of an already-completed Classic level doesn't - XP rewards campaign
+            // progress, not farming the same level over and over. Coins/stars/leaderboard rank/
+            // streak/achievements are all entirely unaffected either way.
+            val awardXp = mode != GameMode.CLASSIC || levelOutcome?.isFirstCompletion == true
             val submission = if (passedThisLevel) {
-                when (val outcome = submitScore(mode, level.seed, result, playedOnEpochDay, timeTakenMs, submissionNonce)) {
+                when (val outcome = submitScore(mode, level.seed, result, playedOnEpochDay, timeTakenMs, submissionNonce, awardXp)) {
                     is Outcome.Success -> outcome.data
                     is Outcome.Error -> null
                 }
@@ -707,6 +894,8 @@ class GameplayViewModel @Inject constructor(
                 submission.streakMilestoneReached?.let { analytics.logStreakMilestoneReached(it, shields) }
                 if (submission.streakShieldGranted) analytics.logStreakShieldEarned(requireNotNull(submission.streakMilestoneReached), shields)
                 if (submission.streakShieldConsumed) analytics.logStreakShieldConsumed(shields)
+                if (submission.journeyPointsAwarded > 0) analytics.logMemoryJourneyPointsEarned(source = "level_completed", points = submission.journeyPointsAwarded)
+                submission.journeyTierReached?.let { analytics.logMemoryJourneyTierReached(it.name) }
             }
             _uiState.value = GameplayUiState.Finished(
                 result = result,
@@ -729,7 +918,7 @@ class GameplayViewModel @Inject constructor(
         recordMissionEvent(completionEvent)
         recordMissionEvent(MissionEvent.StarsEarned(stars))
         if (coinsAwarded != null && coinsAwarded > 0) recordMissionEvent(MissionEvent.CoinsEarned(coinsAwarded))
-        if (_hintState.value.hintsUsed == 0) recordMissionEvent(MissionEvent.ZeroHintLevelClear)
+        if (_hintState.value.hintsUsed + _hintState.value.rewardedHintsUsed == 0) recordMissionEvent(MissionEvent.ZeroHintLevelClear)
         if (result.sceneAccuracy >= HIGH_ACCURACY_MISSION_THRESHOLD) recordMissionEvent(MissionEvent.HighAccuracyClear)
     }
 
@@ -748,7 +937,7 @@ class GameplayViewModel @Inject constructor(
             GlobalLeaderboardStats(
                 highestLevel = campaignProgress.maxUnlockedLevel,
                 totalStars = campaignProgress.bestStars.values.sum(),
-                totalScore = statistics.totalScore,
+                bestScore = statistics.bestScore.toLong(),
                 perfectLevels = statistics.perfectGames,
                 averageAccuracy = statistics.averageAccuracy,
                 averageCompletionTimeMs = statistics.averageCompletionTimeMs,
@@ -844,15 +1033,22 @@ class GameplayViewModel @Inject constructor(
             _hintState.value = HintUiState(
                 maxHints = hintEngine.maxHintsForLevel(levelNumber),
                 hintsUsed = getHintsUsed(levelNumber),
+                maxRewardedHints = rewardedLimits.maxRewardedHints,
+                rewardedHintsUsed = getRewardedHintsUsed(levelNumber),
             )
             _redoState.value = RedoUiState(
                 maxRedos = redoRules.redosAllowedForLevel(levelNumber),
                 redosUsed = getRedosUsed(levelNumber),
+                maxRewardedRedos = rewardedLimits.maxRewardedRedos,
+                rewardedRedosUsed = getRewardedRedosUsed(levelNumber),
             )
             _rewatchState.value = RewatchUiState(
                 maxRewatches = rewatchRules.rewatchesAllowedForLevel(levelNumber),
                 rewatchesUsed = getRewatchesUsed(levelNumber),
+                maxRewardedRewatches = rewardedLimits.maxRewardedRewatches,
+                rewardedRewatchesUsed = getRewardedRewatchesUsed(levelNumber),
             )
+            refreshInventoryTokenFlags()
             when (snapshot.phase) {
                 GamePhase.MEMORIZE -> {
                     val deadline = snapshot.phaseDeadlineEpochMs
@@ -1039,18 +1235,30 @@ class GameplayViewModel @Inject constructor(
                     resetHintUsage(levelNumber)
                     resetRedoUsage(levelNumber)
                     resetRewatchUsage(levelNumber)
+                    // A fresh attempt also gets a full rewarded-ad budget for each helper (see
+                    // RewardedAssistLimits) - resetHintUsage/resetRedoUsage/resetRewatchUsage above
+                    // each clear their whole persisted row, including the rewarded counter column,
+                    // so this flag is the only piece of in-memory state that needs its own reset.
+                    rewardLimitReachedThisAttempt = false
                     _hintState.value = HintUiState(
                         maxHints = hintEngine.maxHintsForLevel(levelNumber),
                         hintsUsed = 0,
+                        maxRewardedHints = rewardedLimits.maxRewardedHints,
+                        rewardedHintsUsed = 0,
                     )
                     _redoState.value = RedoUiState(
                         maxRedos = redoRules.redosAllowedForLevel(levelNumber),
                         redosUsed = 0,
+                        maxRewardedRedos = rewardedLimits.maxRewardedRedos,
+                        rewardedRedosUsed = 0,
                     )
                     _rewatchState.value = RewatchUiState(
                         maxRewatches = rewatchRules.rewatchesAllowedForLevel(levelNumber),
                         rewatchesUsed = 0,
+                        maxRewardedRewatches = rewardedLimits.maxRewardedRewatches,
+                        rewardedRewatchesUsed = 0,
                     )
+                    refreshInventoryTokenFlags()
                     val mechanic = pendingMechanicIntro()
                     when {
                         shouldShowTutorial() -> _uiState.value = GameplayUiState.TutorialPending(level)
@@ -1107,7 +1315,7 @@ class GameplayViewModel @Inject constructor(
         analytics.logMemorizeStarted(mode, levelNumber, level)
         val startCount = frustrationTracker.recordLevelStart(levelNumber)
         if (startCount > 1) {
-            analytics.logLevelRestarted(mode, levelNumber)
+            analytics.logLevelRestarted(mode, levelNumber, attemptNumber = startCount)
             if (startCount >= REPEATED_RETRY_THRESHOLD) {
                 analytics.logFrustrationSignal("repeated_retry", mode, levelNumber, detail = startCount.toString())
             }
@@ -1160,6 +1368,9 @@ class GameplayViewModel @Inject constructor(
                 else -> null
             }
             signalType?.let { analytics.logFrustrationSignal(it, mode, levelNumber) }
+            if (rewardLimitReachedThisAttempt) {
+                analytics.logLevelAbandonedAfterRewardLimit(mode, levelNumber)
+            }
         }
         analytics.logSessionEnded(mode, sessionDurationMs)
     }

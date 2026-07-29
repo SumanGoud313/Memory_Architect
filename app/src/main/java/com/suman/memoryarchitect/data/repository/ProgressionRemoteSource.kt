@@ -4,6 +4,7 @@ import com.suman.memoryarchitect.domain.model.DailyRewardClaimResult
 import com.suman.memoryarchitect.domain.model.DailyRewardStatus
 import com.suman.memoryarchitect.domain.model.GameMode
 import com.suman.memoryarchitect.domain.model.PlayerProfile
+import com.suman.memoryarchitect.domain.model.ReturningPlayerGiftClaimResult
 import com.suman.memoryarchitect.domain.model.ScoreResult
 
 /**
@@ -45,6 +46,10 @@ interface ProgressionRemoteSource {
      * transaction that grants XP/coins, so a replayed/duplicated call can never grant credit twice.
      * [MockBackendProgressionRemoteSource] ignores it (dev-only, single-shared-profile backend has
      * no per-submission identity to guard). */
+    /** [awardXp] is `false` only for a repeat clear of an already-completed Classic level - see
+     * [com.suman.memoryarchitect.domain.repository.ProgressionRepository.submitScore]'s doc. Both
+     * implementations zero out the xp contribution when `false`; coins/streak/achievements/rewards
+     * are entirely unaffected. */
     suspend fun submitScore(
         mode: GameMode,
         score: ScoreResult,
@@ -52,6 +57,7 @@ interface ProgressionRemoteSource {
         playedOnEpochDay: Long,
         submissionNonce: String,
         newlyUnlockedAchievementCount: Int,
+        awardXp: Boolean,
     ): PlayerProfile
 
     suspend fun getDailyRewardStatus(todayEpochDay: Long): DailyRewardStatus
@@ -60,4 +66,10 @@ interface ProgressionRemoteSource {
      * timeout) - both implementations guarantee this, the mock backend via its single-threaded
      * Node event loop, Firestore via [com.google.firebase.firestore.FirebaseFirestore.runTransaction]. */
     suspend fun claimDailyReward(claimedOnEpochDay: Long): DailyRewardClaimResult
+
+    /** Independently re-derives eligibility from the stored profile/claim-dedup state rather than
+     * trusting the client's own [com.suman.memoryarchitect.domain.usecase.GetReturningPlayerWelcomeUseCase]
+     * check - throws [ReturningPlayerGiftNotEligibleException] if the gap isn't actually long
+     * enough, or [ReturningPlayerGiftAlreadyClaimedException] if today's gift was already claimed. */
+    suspend fun claimReturningPlayerGift(claimedOnEpochDay: Long): ReturningPlayerGiftClaimResult
 }

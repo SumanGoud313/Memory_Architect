@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -51,12 +53,22 @@ fun MemoryJourneyScreen(onBack: () -> Unit, viewModel: MemoryJourneyViewModel = 
                     modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    MemoryJourneyBar(standing = currentStanding, modifier = Modifier.fillMaxWidth().staggeredReveal(0))
+                    // The single biggest source of "why doesn't tapping this do anything" -
+                    // MemoryJourneyBar's own doc already explains there's deliberately no claim
+                    // affordance anywhere on this screen, but nothing told the *player* that until
+                    // now. One short explainer up top, once, rather than repeating it per tier row.
+                    Text(
+                        text = stringResource(R.string.memory_journey_explainer),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MemoryArchitectColors.textSecondary,
+                        modifier = Modifier.fillMaxWidth().staggeredReveal(0),
+                    )
+                    MemoryJourneyBar(standing = currentStanding, modifier = Modifier.fillMaxWidth().staggeredReveal(1))
                     MemoryJourneyCatalog.tiers.forEachIndexed { index, tier ->
                         MemoryJourneyTierRow(
                             tier = tier,
                             isUnlocked = currentStanding.totalPoints >= tier.thresholdPoints,
-                            modifier = Modifier.staggeredReveal(index + 1),
+                            modifier = Modifier.staggeredReveal(index + 2),
                         )
                     }
                 }

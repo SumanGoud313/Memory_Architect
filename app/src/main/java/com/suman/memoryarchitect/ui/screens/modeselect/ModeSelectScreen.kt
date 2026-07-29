@@ -1,5 +1,8 @@
 package com.suman.memoryarchitect.ui.screens.modeselect
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,16 +17,20 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Assignment
+import androidx.compose.material.icons.filled.Attractions
 import androidx.compose.material.icons.filled.Block
-import androidx.compose.material.icons.filled.Casino
 import androidx.compose.material.icons.filled.Inventory2
-import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,14 +42,17 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.suman.memoryarchitect.R
+import com.suman.memoryarchitect.core.ads.AdaptiveBannerAd
 import com.suman.memoryarchitect.domain.model.DifficultyTier
 import com.suman.memoryarchitect.domain.model.GameMode
 import com.suman.memoryarchitect.feature.modeselect.ModeSelectViewModel
 import com.suman.memoryarchitect.ui.components.AmbientBackground
 import com.suman.memoryarchitect.ui.components.IconGlassButton
 import com.suman.memoryarchitect.ui.components.confettiBurst
+import com.suman.memoryarchitect.ui.components.rememberHapticsTick
 import com.suman.memoryarchitect.ui.components.rememberParticleFieldState
 import com.suman.memoryarchitect.ui.components.staggeredReveal
+import com.suman.memoryarchitect.ui.theme.MemoryArchitectColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -52,10 +62,20 @@ private val ScreenHorizontalMargin = 24.dp
 private val TopExtraPadding = 28.dp
 private val BottomExtraPadding = 24.dp
 
-/** Compose replacement for ModeSelectFragment — one card per [GameMode], plus a progress footer
- * so the screen never trails off into empty space. Safe-area aware: top/bottom padding starts
- * from the status/navigation bar insets and adds breathing room on top of them, never instead of
- * them, since the app draws edge-to-edge (targetSdk 36) with no other inset handling to match. */
+// Extra breathing room above Missions/Inventory, on top of the CardVerticalSpacing every other
+// gap in this list already gets - visually separates "pick a mode" from "everything else" rather
+// than reading as just one more item in the same list.
+private val FooterButtonsExtraTopSpacing = 20.dp
+
+// IconGlassButton's own fixed 56dp circle + its label's top padding/line height - there's no
+// shared layout primitive to measure this from, so it's hand-tuned to clear the Cosmetics/Lucky
+// Spin/Remove Ads row above without overlapping it.
+private val TopIconRowHeight = 92.dp
+
+/** Compose replacement for ModeSelectFragment — one card per [GameMode], plus a Missions/Inventory
+ * row anchored under the last card. Safe-area aware: top/bottom padding starts from the status/
+ * navigation bar insets and adds breathing room on top of them, never instead of them, since the
+ * app draws edge-to-edge (targetSdk 36) with no other inset handling to match. */
 @Composable
 fun ModeSelectScreen(
     onClassicSelected: () -> Unit,
@@ -65,6 +85,7 @@ fun ModeSelectScreen(
     onOpenLuckySpin: () -> Unit = {},
     onOpenMissions: () -> Unit = {},
     onOpenInventory: () -> Unit = {},
+    onOpenLeaderboard: () -> Unit = {},
     viewModel: ModeSelectViewModel = hiltViewModel(),
 ) {
     val particles = rememberParticleFieldState()
@@ -130,13 +151,39 @@ fun ModeSelectScreen(
                         modifier = Modifier.heightIn(min = ModeCardMinHeight).staggeredReveal(index),
                     )
                 }
-                ModeSelectProgressCard(progress = progress, modifier = Modifier.staggeredReveal(modes.size))
+                // Missions/Inventory live here, directly under the last mode card (Weekly
+                // Challenge), rather than in the floating top-row icon strip with Cosmetics/Lucky
+                // Spin/Remove Ads - both open a full progression list, not a quick shortcut, so
+                // they read better anchored to the mode list itself.
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = FooterButtonsExtraTopSpacing).staggeredReveal(modes.size),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    IconGlassButton(
+                        icon = Icons.AutoMirrored.Filled.Assignment,
+                        contentDescription = stringResource(R.string.missions_header),
+                        onClick = onOpenMissions,
+                        label = stringResource(R.string.missions_header),
+                    )
+                    // Labeled "Rewards" here per this session's request, even though it still opens
+                    // the same Inventory screen (consumables: Hint/Redo/Rewatch tokens, Lucky Spin
+                    // Tickets, Mystery Chests) - only the Mode Select label changed, not the
+                    // destination or its own header.
+                    IconGlassButton(
+                        icon = Icons.Filled.Inventory2,
+                        contentDescription = stringResource(R.string.profile_rewards_header),
+                        onClick = onOpenInventory,
+                        label = stringResource(R.string.profile_rewards_header),
+                    )
+                }
             }
 
             // One evenly-spaced row (Cosmetics / Lucky Spin / Remove Ads) rather than the old
             // two-corner-pinned layout - Arrangement.SpaceBetween naturally keeps equal spacing
             // whether Remove Ads is showing (3 icons) or already owned and hidden (2 icons), with
-            // no extra layout branching needed either way.
+            // no extra layout branching needed either way. Missions/Inventory used to live here
+            // too - see the Row placed directly under the mode card list below for where they
+            // moved and why.
             Row(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
@@ -149,31 +196,15 @@ fun ModeSelectScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 IconGlassButton(
-                    icon = Icons.AutoMirrored.Filled.Assignment,
-                    contentDescription = stringResource(R.string.missions_header),
-                    onClick = onOpenMissions,
-                    label = stringResource(R.string.missions_header),
-                    modifier = Modifier.staggeredReveal(0),
-                )
-
-                IconGlassButton(
-                    icon = Icons.Filled.Inventory2,
-                    contentDescription = stringResource(R.string.inventory_header),
-                    onClick = onOpenInventory,
-                    label = stringResource(R.string.inventory_header),
-                    modifier = Modifier.staggeredReveal(0),
-                )
-
-                IconGlassButton(
-                    icon = Icons.Filled.Palette,
-                    contentDescription = stringResource(R.string.profile_cosmetics_header),
+                    icon = Icons.Filled.ShoppingCart,
+                    contentDescription = stringResource(R.string.profile_shop_header),
                     onClick = onOpenCosmetics,
-                    label = stringResource(R.string.profile_cosmetics_header),
+                    label = stringResource(R.string.profile_shop_header),
                     modifier = Modifier.staggeredReveal(0),
                 )
 
                 IconGlassButton(
-                    icon = Icons.Filled.Casino,
+                    icon = Icons.Filled.Attractions,
                     contentDescription = stringResource(R.string.lucky_spin_title),
                     onClick = onOpenLuckySpin,
                     label = stringResource(R.string.lucky_spin_title),
@@ -190,6 +221,51 @@ fun ModeSelectScreen(
                     )
                 }
             }
+
+            // Sits in the gap between the icon row above and Classic (the first mode card) below,
+            // right-aligned - a small utility shortcut, not another primary action, so it
+            // deliberately doesn't match IconGlassButton's round/labeled treatment.
+            LeaderboardMiniButton(
+                onClick = onOpenLeaderboard,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(
+                        end = ScreenHorizontalMargin + systemBarPadding.calculateEndPadding(layoutDirection),
+                        top = systemBarPadding.calculateTopPadding() + TopExtraPadding + TopIconRowHeight,
+                    )
+                    .staggeredReveal(0),
+            )
+
+            // Bottom-anchored, never overlapping the scrollable mode-card column above (which
+            // already reserves its own bottom padding) - a non-gameplay screen, exactly the
+            // placement this ad format is meant for. Renders nothing at all for a Remove Ads
+            // purchaser or if Remote Config has banners off - see AdaptiveBannerAd's own doc.
+            AdaptiveBannerAd(
+                placement = "mode_select",
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = systemBarPadding.calculateBottomPadding()),
+            )
         }
+    }
+}
+
+@Composable
+private fun LeaderboardMiniButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val tick = rememberHapticsTick()
+    Box(
+        modifier = modifier
+            .background(MemoryArchitectColors.glassFill, RoundedCornerShape(6.dp))
+            .clickable(interactionSource = interactionSource, indication = null) {
+                tick()
+                onClick()
+            }
+            .padding(horizontal = 10.dp, vertical = 5.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.profile_view_leaderboards),
+            style = MaterialTheme.typography.labelSmall,
+            color = MemoryArchitectColors.textPrimary,
+            maxLines = 1,
+        )
     }
 }

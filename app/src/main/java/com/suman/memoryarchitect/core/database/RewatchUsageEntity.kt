@@ -7,4 +7,5 @@ import androidx.room.PrimaryKey
 data class RewatchUsageEntity(
     @PrimaryKey val levelNumber: Int,
     val rewatchesUsed: Int,
+    val rewardedRewatchesUsed: Int = 0,
 )

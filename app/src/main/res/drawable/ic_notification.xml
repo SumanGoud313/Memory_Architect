@@ -1,0 +1,13 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="#FFFFFF">
+    <!-- Small-icon requirement: a flat white silhouette, no color - the system tints it per-theme.
+         A simple brain/thought shape, matching the app's "Memory Architect" identity without
+         needing a full icon-design pass for a status-bar-only asset. -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M12,2 C9.5,2 7.5,3.8 7.1,6.2 C5.3,6.7 4,8.4 4,10.4 C4,11.4 4.3,12.3 4.9,13 C4.3,13.7 4,14.6 4,15.6 C4,17.8 5.8,19.6 8,19.6 C8.3,19.6 8.6,19.6 8.9,19.5 C9.6,20.9 11.1,21.9 12.8,21.9 C15.1,21.9 17,20 17,17.6 L17,15.9 C18.7,15.3 20,13.6 20,11.6 C20,9.9 19.1,8.4 17.7,7.6 C17.6,4.5 15.1,2 12,2 Z" />
+</vector>

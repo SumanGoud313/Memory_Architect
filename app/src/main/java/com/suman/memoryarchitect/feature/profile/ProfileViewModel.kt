@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.suman.memoryarchitect.core.analytics.AnalyticsLogger
 import com.suman.memoryarchitect.core.analytics.logDailyRewardClaimed
+import com.suman.memoryarchitect.core.analytics.logInventoryItemGranted
 import com.suman.memoryarchitect.core.analytics.setHighestCampaignLevelProperty
 import com.suman.memoryarchitect.core.analytics.setLifetimeCoinsProperty
 import com.suman.memoryarchitect.core.analytics.setLifetimeLevelsCompletedProperty
@@ -133,7 +134,7 @@ class ProfileViewModel @Inject constructor(
     fun claimDailyReward() {
         val current = _uiState.value as? ProfileUiState.Content ?: return
         if (current.isClaimingDailyReward || current.dailyRewardStatus?.canClaimToday != true) return
-        _uiState.value = current.copy(isClaimingDailyReward = true)
+        _uiState.value = current.copy(isClaimingDailyReward = true, dailyRewardError = null)
         viewModelScope.launch {
             when (val outcome = claimDailyRewardUseCase()) {
                 is Outcome.Success -> {
@@ -151,11 +152,16 @@ class ProfileViewModel @Inject constructor(
                     )
                     _claimEvents.emit(result)
                     feedback.onDailyRewardClaimed()
-                    val kind = DailyRewardCatalog.entryForDay(result.cycleDay).kind
-                    analytics.logDailyRewardClaimed(result.cycleDay, kind.name, result.coinsAwarded, result.xpAwarded, result.shieldAwarded)
+                    val entry = DailyRewardCatalog.entryForDay(result.cycleDay)
+                    analytics.logDailyRewardClaimed(result.cycleDay, entry.kind.name, result.coinsAwarded, result.xpAwarded, result.shieldAwarded)
+                    entry.inventoryGrants.forEach { (kind, quantity) ->
+                        analytics.logInventoryItemGranted(kind.name, quantity, source = "daily_reward")
+                    }
                 }
                 is Outcome.Error -> {
-                    _uiState.value = (_uiState.value as? ProfileUiState.Content)?.copy(isClaimingDailyReward = false) ?: _uiState.value
+                    _uiState.value = (_uiState.value as? ProfileUiState.Content)
+                        ?.copy(isClaimingDailyReward = false, dailyRewardError = outcome.error)
+                        ?: _uiState.value
                 }
             }
         }

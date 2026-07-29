@@ -1,6 +1,7 @@
 package com.suman.memoryarchitect.core.feedback
 
 import com.suman.memoryarchitect.core.common.DispatcherProvider
+import com.suman.memoryarchitect.core.cosmetics.EquippedCosmeticsStore
 import com.suman.memoryarchitect.core.feedback.audio.GameAudioManager
 import com.suman.memoryarchitect.core.feedback.audio.MusicManager
 import com.suman.memoryarchitect.core.feedback.audio.MusicTrack
@@ -8,6 +9,9 @@ import com.suman.memoryarchitect.core.feedback.audio.SfxId
 import com.suman.memoryarchitect.core.feedback.audio.TimerAudioManager
 import com.suman.memoryarchitect.core.feedback.haptics.HapticPattern
 import com.suman.memoryarchitect.core.feedback.haptics.HapticsManager
+import com.suman.memoryarchitect.domain.model.CosmeticCategory
+import com.suman.memoryarchitect.domain.model.SfxMaterialFamily
+import com.suman.memoryarchitect.domain.progression.ObjectMaterialSfxCatalog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.launchIn
@@ -27,6 +31,7 @@ class FeedbackManagerImpl @Inject constructor(
     private val hapticsManager: HapticsManager,
     private val timerAudioManager: TimerAudioManager,
     private val audioSettingsManager: AudioSettingsManager,
+    private val equippedCosmeticsStore: EquippedCosmeticsStore,
     private val dispatchers: DispatcherProvider,
 ) : FeedbackManager {
 
@@ -57,11 +62,18 @@ class FeedbackManagerImpl @Inject constructor(
 
     private val settings get() = audioSettingsManager.settings.value
 
-    private fun sfx(id: SfxId, volumeScale: Float = 1f) {
+    private fun sfx(id: SfxId, volumeScale: Float = 1f, family: SfxMaterialFamily? = null) {
         val effectsVolume = settings.effectiveEffectsVolume
         if (effectsVolume <= 0f) return
-        audioManager.play(id, (effectsVolume * volumeScale).coerceIn(0f, 1f))
+        audioManager.play(id, (effectsVolume * volumeScale).coerceIn(0f, 1f), family)
     }
+
+    /** Which premium `OBJECT_MATERIAL` sound family, if any, is currently equipped - read fresh on
+     * every gameplay-object sfx call (not cached) since equipping is instant via
+     * [EquippedCosmeticsStore] and a mid-round change (Collections isn't reachable during
+     * gameplay, but this stays correct even if that ever changes) should apply immediately. */
+    private fun currentObjectMaterialFamily(): SfxMaterialFamily? =
+        equippedCosmeticsStore.equipped.value[CosmeticCategory.OBJECT_MATERIAL]?.let(ObjectMaterialSfxCatalog::get)
 
     private fun haptic(pattern: HapticPattern) {
         val current = settings
@@ -122,17 +134,17 @@ class FeedbackManagerImpl @Inject constructor(
     // --- Gameplay --------------------------------------------------------------------------
 
     override fun onObjectPickup() {
-        sfx(SfxId.OBJECT_PICKUP, 0.6f)
+        sfx(SfxId.OBJECT_PICKUP, 0.6f, currentObjectMaterialFamily())
         haptic(HapticPattern.PICKUP)
     }
 
     override fun onObjectRotate() {
-        sfx(SfxId.OBJECT_ROTATE, 0.4f)
+        sfx(SfxId.OBJECT_ROTATE, 0.4f, currentObjectMaterialFamily())
         haptic(HapticPattern.ROTATE)
     }
 
     override fun onObjectPlace() {
-        sfx(SfxId.OBJECT_PLACE, 0.75f)
+        sfx(SfxId.OBJECT_PLACE, 0.75f, currentObjectMaterialFamily())
         haptic(HapticPattern.PLACE)
     }
 
@@ -303,6 +315,16 @@ class FeedbackManagerImpl @Inject constructor(
     override fun onWeeklyRewardClaimed() {
         sfx(SfxId.WEEKLY_REWARD_CLAIMED, 0.9f)
         haptic(HapticPattern.UNLOCK)
+    }
+
+    override fun onLuckySpinStarted() {
+        sfx(SfxId.LUCKY_SPIN_ROTATE, 0.75f)
+        haptic(HapticPattern.TAP)
+    }
+
+    override fun onLuckySpinRevealed() {
+        sfx(SfxId.LUCKY_SPIN_WIN, 0.9f)
+        haptic(HapticPattern.VICTORY)
     }
 
     // --- Denials / warnings ------------------------------------------------------------------

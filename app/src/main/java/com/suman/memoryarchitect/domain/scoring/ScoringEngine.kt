@@ -47,7 +47,7 @@ class ScoringEngine(private val rules: ScoringRules = ScoringRules.Default) {
             0f
         }
 
-        val timeBonus = computeTimeBonus(level.timeLimitMs, remainingReconstructMs)
+        val timeBonus = computeTimeBonus(level.objects.size, level.timeLimitMs, remainingReconstructMs)
         val comboCount = longestCorrectPlacementStreak(objectScores, placementOrder)
         val comboBonus = if (comboCount >= rules.comboBonusMinStreak) comboCount * rules.comboBonusPerStreakObject else 0
 
@@ -148,10 +148,13 @@ class ScoringEngine(private val rules: ScoringRules = ScoringRules.Default) {
         return min(diff, 360 - diff).toFloat()
     }
 
-    private fun computeTimeBonus(timeLimitMs: Long?, remainingMs: Long?): Int {
+    /** [objectCount]-scaled, not a flat pool - see [ScoringRules.timeBonusPerObject]'s doc for why.
+     * `sqrt(ratio)` (rather than a linear ratio) rewards finishing with *any* real time to spare
+     * fairly generously, only tailing off sharply right at the very end of the clock - a player
+     * who finishes with half the time left already earns ~71% of the max bonus, not 50%. */
+    private fun computeTimeBonus(objectCount: Int, timeLimitMs: Long?, remainingMs: Long?): Int {
         if (timeLimitMs == null || timeLimitMs <= 0 || remainingMs == null) return 0
         val ratio = (remainingMs.toFloat() / timeLimitMs).coerceIn(0f, 1f)
-        val raw = rules.maxTimeBonusPoints * sqrt(ratio)
-        return (raw * rules.timeBonusWeight).roundToInt()
+        return (objectCount * rules.timeBonusPerObject * sqrt(ratio)).roundToInt()
     }
 }

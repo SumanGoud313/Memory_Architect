@@ -8,20 +8,21 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.suman.memoryarchitect.R
-import com.suman.memoryarchitect.domain.model.PremiumProduct
+import com.suman.memoryarchitect.domain.model.BillingCatalogProduct
 import com.suman.memoryarchitect.domain.progression.AllCosmeticsCatalog
 import com.suman.memoryarchitect.ui.components.GlassCard
 import com.suman.memoryarchitect.ui.components.PillBadge
 import com.suman.memoryarchitect.ui.components.PrimaryButton
 import com.suman.memoryarchitect.ui.theme.MemoryArchitectColors
 
-/** One card per [PremiumProduct] in the Premium Shop tab - a visually distinct sibling of
+/** One card per [BillingCatalogProduct] in the Premium Shop tab - a visually distinct sibling of
  * [ShopItemRow], never sharing layout with it, so a coin item and a real-money bundle can never be
  * mistaken for each other at a glance (the redesign's "never mixing Coin/Premium products"
  * requirement). Deliberately gold-washed and larger than a coin row: this is where the "I don't
@@ -29,12 +30,14 @@ import com.suman.memoryarchitect.ui.theme.MemoryArchitectColors
  * button) opens [PremiumProductDetailDialog] for the full live preview. */
 @Composable
 fun PremiumProductCard(
-    product: PremiumProduct,
+    product: BillingCatalogProduct,
     formattedPrice: String?,
+    priceLoadFailed: Boolean,
     isOwned: Boolean,
     isLoading: Boolean,
     onBuy: () -> Unit,
     onOpenDetail: () -> Unit,
+    onRetryPriceLoad: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     GlassCard(
@@ -75,18 +78,37 @@ fun PremiumProductCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    text = formattedPrice ?: "…",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MemoryArchitectColors.accentGold,
-                )
+                if (formattedPrice != null) {
+                    Text(
+                        text = formattedPrice,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MemoryArchitectColors.accentGold,
+                    )
+                } else if (priceLoadFailed) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            text = stringResource(R.string.shop_premium_price_load_failed),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MemoryArchitectColors.textTertiary,
+                        )
+                        TextButton(onClick = onRetryPriceLoad) {
+                            Text(text = stringResource(R.string.action_retry), color = MemoryArchitectColors.accentGold)
+                        }
+                    }
+                } else {
+                    Text(
+                        text = stringResource(R.string.shop_premium_price_loading),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MemoryArchitectColors.textTertiary,
+                    )
+                }
                 if (isOwned) {
                     Text(text = stringResource(R.string.shop_owned_product), color = MemoryArchitectColors.accentGold, style = MaterialTheme.typography.labelLarge)
-                } else {
+                } else if (formattedPrice != null) {
                     PrimaryButton(
-                        text = if (isLoading) "…" else stringResource(R.string.shop_premium_buy, formattedPrice ?: "…"),
+                        text = if (isLoading) "…" else stringResource(R.string.shop_premium_buy, formattedPrice),
                         onClick = onBuy,
-                        enabled = !isLoading && formattedPrice != null,
+                        enabled = !isLoading,
                     )
                 }
             }

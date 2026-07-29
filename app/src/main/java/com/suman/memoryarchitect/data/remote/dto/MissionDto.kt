@@ -27,3 +27,24 @@ data class ConsumeInventoryItemRequestDto(
     val kind: String,
     val quantity: Int,
 )
+
+/** [coinsAwarded] is client-rolled (see [com.suman.memoryarchitect.domain.progression.MysteryChestOdds]'s
+ * doc for why the server doesn't need to independently re-derive it). */
+@JsonClass(generateAdapter = true)
+data class OpenMysteryChestRequestDto(
+    val coinsAwarded: Long,
+)
+
+/** [xpAwarded] is always [com.suman.memoryarchitect.domain.progression.XpBoostRules.xpGrantedPerBoost] -
+ * sent rather than hardcoded server-side purely so the mock-backend/Firestore write shapes match
+ * [ClaimMissionRewardResponseDto]'s existing "client states the amount, server applies it" style. */
+@JsonClass(generateAdapter = true)
+data class ApplyXpBoostRequestDto(
+    val xpAwarded: Long,
+)
+
+@JsonClass(generateAdapter = true)
+data class InventoryEconomyResponseDto(
+    val profile: PlayerProfileDto,
+    val inventory: InventoryDto,
+)

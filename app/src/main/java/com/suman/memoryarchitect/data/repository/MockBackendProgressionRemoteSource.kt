@@ -2,12 +2,17 @@ package com.suman.memoryarchitect.data.repository
 
 import com.suman.memoryarchitect.data.remote.ProgressionApi
 import com.suman.memoryarchitect.data.remote.dto.ClaimDailyRewardRequestDto
+import com.suman.memoryarchitect.data.remote.dto.ClaimReturningPlayerGiftRequestDto
+import com.suman.memoryarchitect.data.remote.dto.InventoryDto
 import com.suman.memoryarchitect.data.remote.dto.PlayerProfileDto
 import com.suman.memoryarchitect.data.remote.dto.ScoreSubmissionRequestDto
 import com.suman.memoryarchitect.domain.model.DailyRewardClaimResult
 import com.suman.memoryarchitect.domain.model.DailyRewardStatus
 import com.suman.memoryarchitect.domain.model.GameMode
+import com.suman.memoryarchitect.domain.model.Inventory
+import com.suman.memoryarchitect.domain.model.InventoryItemKind
 import com.suman.memoryarchitect.domain.model.PlayerProfile
+import com.suman.memoryarchitect.domain.model.ReturningPlayerGiftClaimResult
 import com.suman.memoryarchitect.domain.model.ScoreResult
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -32,12 +37,13 @@ class MockBackendProgressionRemoteSource @Inject constructor(
         playedOnEpochDay: Long,
         submissionNonce: String,
         newlyUnlockedAchievementCount: Int,
+        awardXp: Boolean,
     ): PlayerProfile {
         // submissionNonce is intentionally unused here - this dev-only backend has no per-submission
         // replay protection (see ProgressionRemoteSource's doc), same as its single-shared-profile
         // design has no per-player identity at all.
         val request = ScoreSubmissionRequestDto(
-            mode.name, levelSeed, score.finalScore, score.sceneAccuracy, score.comboCount, playedOnEpochDay, newlyUnlockedAchievementCount,
+            mode.name, levelSeed, score.finalScore, score.sceneAccuracy, score.comboCount, playedOnEpochDay, newlyUnlockedAchievementCount, awardXp,
         )
         return api.submitScore(request).toDomain()
     }
@@ -49,8 +55,19 @@ class MockBackendProgressionRemoteSource @Inject constructor(
 
     override suspend fun claimDailyReward(claimedOnEpochDay: Long): DailyRewardClaimResult {
         val dto = api.claimDailyReward(ClaimDailyRewardRequestDto(claimedOnEpochDay))
-        return DailyRewardClaimResult(dto.cycleDay, dto.coinsAwarded, dto.xpAwarded, dto.profile.toDomain(), dto.shieldAwarded)
+        return DailyRewardClaimResult(dto.cycleDay, dto.coinsAwarded, dto.xpAwarded, dto.profile.toDomain(), dto.shieldAwarded, dto.inventory.toDomain())
     }
+
+    override suspend fun claimReturningPlayerGift(claimedOnEpochDay: Long): ReturningPlayerGiftClaimResult {
+        val dto = api.claimReturningPlayerGift(ClaimReturningPlayerGiftRequestDto(claimedOnEpochDay))
+        return ReturningPlayerGiftClaimResult(dto.inventory.toDomain())
+    }
+
+    private fun InventoryDto.toDomain(): Inventory = Inventory(
+        quantities.mapNotNull { (key, value) ->
+            runCatching { InventoryItemKind.valueOf(key) }.getOrNull()?.let { it to value }
+        }.toMap(),
+    )
 
     private fun PlayerProfileDto.toDomain() = PlayerProfile(
         xp = xp,

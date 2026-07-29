@@ -2,6 +2,8 @@ package com.suman.memoryarchitect.data.remote
 
 import com.suman.memoryarchitect.data.remote.dto.ClaimDailyRewardRequestDto
 import com.suman.memoryarchitect.data.remote.dto.ClaimDailyRewardResponseDto
+import com.suman.memoryarchitect.data.remote.dto.ClaimReturningPlayerGiftRequestDto
+import com.suman.memoryarchitect.data.remote.dto.ClaimReturningPlayerGiftResponseDto
 import com.suman.memoryarchitect.data.remote.dto.DailyRewardStatusDto
 import com.suman.memoryarchitect.data.remote.dto.PlayerProfileDto
 import com.suman.memoryarchitect.data.remote.dto.ScoreSubmissionRequestDto
@@ -22,6 +24,9 @@ interface ProgressionApi {
 
     @POST("v1/rewards/daily/claim")
     suspend fun claimDailyReward(@Body body: ClaimDailyRewardRequestDto): ClaimDailyRewardResponseDto
+
+    @POST("v1/rewards/returning-player/claim")
+    suspend fun claimReturningPlayerGift(@Body body: ClaimReturningPlayerGiftRequestDto): ClaimReturningPlayerGiftResponseDto
 
     /** Dev-only counterpart to [com.suman.memoryarchitect.data.repository.LocalProgressResetRepositoryImpl]'s local wipe - without this,
      * the next online-first [getProfile] call would silently re-fetch and restore the

@@ -13,18 +13,20 @@ import kotlinx.coroutines.launch
 
 /**
  * Real Firebase Crashlytics-backed [CrashReporter]. Same "no-op, never throw, never block" shape
- * as [FirebaseAnalyticsLogger] - see that class for the full reasoning ([FirebaseAvailability],
+ * as [FirebaseAnalyticsLogger] - see that class for the full reasoning ([FirebaseAvailabilityProvider],
  * background dispatch, try/catch).
  */
 @Singleton
-class FirebaseCrashReporter @Inject constructor() : CrashReporter {
+class FirebaseCrashReporter @Inject constructor(
+    private val firebaseAvailabilityProvider: FirebaseAvailabilityProvider,
+) : CrashReporter {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val crashlytics: FirebaseCrashlytics? by lazy {
-        if (FirebaseAvailability.isConfigured) Firebase.crashlytics else null
+        if (firebaseAvailabilityProvider.isConfigured) Firebase.crashlytics else null
     }
 
     override fun recordException(throwable: Throwable) {
-        if (!FirebaseAvailability.isConfigured) return
+        if (!firebaseAvailabilityProvider.isConfigured) return
         scope.launch {
             try {
                 crashlytics?.recordException(throwable)
@@ -35,7 +37,7 @@ class FirebaseCrashReporter @Inject constructor() : CrashReporter {
     }
 
     override fun log(message: String) {
-        if (!FirebaseAvailability.isConfigured) return
+        if (!firebaseAvailabilityProvider.isConfigured) return
         scope.launch {
             try {
                 crashlytics?.log(message)
@@ -46,7 +48,7 @@ class FirebaseCrashReporter @Inject constructor() : CrashReporter {
     }
 
     override fun setCustomKey(key: String, value: String) {
-        if (!FirebaseAvailability.isConfigured) return
+        if (!firebaseAvailabilityProvider.isConfigured) return
         scope.launch {
             try {
                 crashlytics?.setCustomKey(key, value)

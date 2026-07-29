@@ -6,6 +6,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,6 +19,7 @@ import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.MonetizationOn
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -453,7 +455,12 @@ private fun StreakAndRecordSection(
     val isNewRecord = levelOutcome?.let { it.isNewBest || it.isNewBestStars }
         ?: (submission.statistics.bestScore == result.finalScore && result.finalScore > 0)
 
-    Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    // FlowRow, not Row - same fix as ProfileScreen's coins/streak/shields row: a plain Row has no
+    // way to wrap, so once more than 2-3 of these badges appear together (streak + new record +
+    // milestone + shield can all fire on the same win) it just keeps squeezing the last one into an
+    // ever-narrower sliver, forcing its text to wrap letter-by-letter into a vertical column at the
+    // screen edge. Wrapping onto a second line instead is the fix.
+    FlowRow(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (submission.profile.currentStreak > 0) {
             PillBadge(
                 text = context.getString(R.string.profile_streak, submission.profile.currentStreak, submission.profile.longestStreak),
@@ -469,6 +476,30 @@ private fun StreakAndRecordSection(
                     contentColor = MemoryArchitectColors.accentGold,
                 )
             }
+        }
+        submission.streakMilestoneReached?.let { milestoneDay ->
+            UnlockBurst {
+                PillBadge(
+                    text = context.getString(R.string.results_streak_milestone, milestoneDay),
+                    icon = Icons.Filled.LocalFireDepartment,
+                    contentColor = MemoryArchitectColors.accentTerracotta,
+                )
+            }
+        }
+        if (submission.streakShieldGranted) {
+            UnlockBurst {
+                PillBadge(
+                    text = context.getString(R.string.results_streak_shield_earned),
+                    icon = Icons.Filled.Shield,
+                    contentColor = MemoryArchitectColors.accentSage,
+                )
+            }
+        } else if (submission.streakShieldConsumed) {
+            PillBadge(
+                text = context.getString(R.string.results_streak_shield_consumed),
+                icon = Icons.Filled.Shield,
+                contentColor = MemoryArchitectColors.accentSage,
+            )
         }
     }
 }

@@ -2,8 +2,10 @@ package com.suman.memoryarchitect.domain.model
 
 enum class LeaderboardType { GLOBAL, DAILY, WEEKLY, MONTHLY }
 
-/** One row of a leaderboard list. [primaryValue] is whichever metric that board is sorted by
- * (lifetime total score for [LeaderboardType.GLOBAL], that period's score for Daily/Weekly/Monthly).
+/** One row of a leaderboard list. [primaryValue] is whichever metric that board is sorted by (the
+ * best single-round score ever achieved for [LeaderboardType.GLOBAL], that period's best score for
+ * Daily/Weekly/Monthly) - deliberately never a lifetime-cumulative total for any board, so a newer,
+ * more skilled player can always take the top spot regardless of how much a veteran has played.
  * [league]/[verified]/[avatarId]/[country] are denormalized onto every entry doc at submission time
  * (see `LeaderboardRepositoryImpl.writePeriodicEntry`) specifically so rendering a leaderboard page
  * never needs a second per-row lookup into `players/{uid}` - one list read is the whole cost. */
@@ -34,7 +36,10 @@ data class LeaderboardResult(
 /** Denormalized snapshot written to Firestore's `players/{uid}` doc after every scored round
  * resolves - see `LeaderboardRepository.submitGlobalStats`. Mirrors the Global Leaderboard
  * requirements directly; [PlayerStatistics] stays the local-only source most of these are computed
- * from. Deliberately does NOT carry `league`/`verified`/`avatarId`/`country` - those aren't
+ * from. [bestScore] is [PlayerStatistics.bestScore] - the highest single-round score ever achieved
+ * (a running max, never a lifetime sum), what the Global board actually ranks by - see
+ * [LeaderboardEntry.primaryValue]'s doc for why a running max was chosen over a cumulative total.
+ * Deliberately does NOT carry `league`/`verified`/`avatarId`/`country` - those aren't
  * game-round-derived the way everything below is, they're identity/settings state the *repository*
  * attaches at write time (verified from [com.suman.memoryarchitect.core.auth.PlayerIdentityManager],
  * avatarId/country from [com.suman.memoryarchitect.core.datastore.UserPreferencesDataStore], league
@@ -44,7 +49,7 @@ data class LeaderboardResult(
 data class GlobalLeaderboardStats(
     val highestLevel: Int,
     val totalStars: Int,
-    val totalScore: Long,
+    val bestScore: Long,
     val perfectLevels: Int,
     val averageAccuracy: Float,
     val averageCompletionTimeMs: Long,

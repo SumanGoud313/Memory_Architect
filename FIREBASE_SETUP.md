@@ -65,9 +65,55 @@ and works today.
 
 ## Remote Config note
 
-This project's live remote-config values (ad cadence, difficulty base, etc.) currently come from
-the dev mock backend (`RemoteConfigRepositoryImpl`, `mock-backend/index.js`), not Firebase Remote
-Config — that's real, working infrastructure and this integration doesn't replace it. A
-Firebase-backed source (`core/analytics/FirebaseRemoteConfigSource.kt`) is wired and ready
-alongside it (per the "prepare architecture even if not immediately used" ask) for whenever you
-want to migrate off the mock backend for a production release.
+`RemoteConfigRepositoryImpl` now picks between two backends per call (`activeRemoteSource()`),
+the same pattern `ProgressionRepositoryImpl`/`MissionRepositoryImpl` already use for their own
+dual sources:
+
+- **`data/repository/FirebaseRemoteConfigSource.kt`** — real Firebase Remote Config, used
+  automatically once this setup is complete. Currently the *only* keys actually served from it are
+  the three the Seasonal Event framework reads (`event_active_id`, `event_start_epoch`,
+  `event_end_epoch`) — see `LiveEventCatalog.kt`'s doc for why event windows specifically were
+  chosen as the first value to migrate off the mock backend (they change often and benefit most
+  from not needing a release).
+- **`data/repository/MockBackendRemoteConfigSource.kt`** — the original dev mock backend
+  (`mock-backend/index.js`'s `/v1/config/remote`), still authoritative for every other key
+  (`ad_cadence`, `difficulty_curve_base`, and every ad key in the table below) and the fallback
+  whenever Firebase isn't configured.
+
+To actually turn an event on/off in production, define these three parameters under **Remote
+Config** in the Firebase console (Engage → Remote Config) and publish a change:
+
+| Parameter | Example value | Meaning |
+| --- | --- | --- |
+| `event_active_id` | `HALLOWEEN` | Must match one of `LiveEventCatalog.events`' ids, or empty for "no event." |
+| `event_start_epoch` | `1761955200` | Epoch-second window start - overrides the catalog entry's own default window. |
+| `event_end_epoch` | `1762819199` | Epoch-second window end. |
+
+Leaving all three unset (or `event_active_id` empty) is exactly the same as before this setup -
+`FirebaseRemoteConfigSource`'s own defaults match that inert state, so nothing breaks if you
+connect Firebase without ever touching these parameters.
+
+## Ad monetization Remote Config keys
+
+`core/ads/AdRemoteConfig.kt` reads the following keys — same raw string map, same per-key
+fallback-to-default convention as everything else on this page. **These are not yet migrated to
+`FirebaseRemoteConfigSource`** (same status as `ad_cadence`/`difficulty_curve_base` above) — until
+that migration happens, tuning them means editing `mock-backend/index.js`'s `remoteConfig` object
+and restarting the mock backend, not the Firebase console. Migrating them is a small, mechanical
+follow-up (add each key to `FirebaseRemoteConfigSource` the same way the three event keys were
+added) once you want console-based tuning without a mock-backend redeploy.
+
+| Parameter | Default | Meaning |
+| --- | --- | --- |
+| `emergency_ads_disabled` | `false` | Master kill switch — `true` disables banner + interstitial + rewarded everywhere, instantly, no release needed. |
+| `banner_ads_enabled` | `true` | Banner ads master toggle. |
+| `interstitial_ads_enabled` | `true` | Interstitial ads master toggle. |
+| `rewarded_ads_enabled` | `true` | Rewarded ads master toggle. |
+| `interstitial_cooldown_seconds` | `180` | Minimum real time between two interstitials. |
+| `interstitial_min_level_completions_before_first` | `3` | Levels completed required since the last interstitial (also protects brand-new installs, since the baseline starts at 0). |
+| `interstitial_min_session_count` | `2` | App sessions required before any interstitial can show (first-session protection). |
+| `interstitial_session_cap` | `4` | Max interstitials shown in one app session. |
+| `interstitial_daily_cap` | `6` | Max interstitials shown in one calendar day, independent of the session cap — several short sessions in one day can't dodge a session-only limit. |
+| `interstitial_cooldown_after_rewarded_seconds` | `60` | Minimum time after any rewarded ad before an interstitial can show. |
+| `reward_multiplier_enabled` | `false` | Gates the "Optional Reward Multiplier" rewarded placement. |
+| `reward_multiplier_value` | `2.0` | Multiplier applied when that rewarded ad completes. |

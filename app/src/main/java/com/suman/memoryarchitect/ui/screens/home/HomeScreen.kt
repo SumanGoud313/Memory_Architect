@@ -28,6 +28,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.suman.memoryarchitect.R
 import com.suman.memoryarchitect.domain.model.CosmeticCategory
 import com.suman.memoryarchitect.feature.home.DailyRewardBadgeViewModel
+import com.suman.memoryarchitect.feature.home.ReturningPlayerViewModel
 import com.suman.memoryarchitect.ui.components.AmbientBackground
 import com.suman.memoryarchitect.ui.components.IconGlassButton
 import com.suman.memoryarchitect.ui.components.rememberParticleFieldState
@@ -46,10 +47,13 @@ fun HomeScreen(
     onProfile: () -> Unit,
     onSettings: () -> Unit,
     dailyRewardBadgeViewModel: DailyRewardBadgeViewModel = hiltViewModel(),
+    returningPlayerViewModel: ReturningPlayerViewModel = hiltViewModel(),
 ) {
     val particles = rememberParticleFieldState()
     val hasClaimableReward by dailyRewardBadgeViewModel.hasClaimableReward.collectAsStateWithLifecycle()
     val currentStreak by dailyRewardBadgeViewModel.currentStreak.collectAsStateWithLifecycle()
+    val returningPlayerWelcome by returningPlayerViewModel.welcome.collectAsStateWithLifecycle()
+    val isClaimingReturningGift by returningPlayerViewModel.isClaiming.collectAsStateWithLifecycle()
     // Fades the surrounding chrome the instant a tap is confirmed, concurrent with the circle's
     // own press/ripple/burst animation, so the whole screen reads as dissolving into the button
     // rather than the button animating alone while everything else sits static.
@@ -95,6 +99,15 @@ fun HomeScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Bottom,
             ) {
+                returningPlayerWelcome?.let { welcome ->
+                    ReturningPlayerBanner(
+                        welcome = welcome,
+                        isClaiming = isClaimingReturningGift,
+                        onClaimGift = returningPlayerViewModel::claimGift,
+                        onDismiss = returningPlayerViewModel::dismiss,
+                        modifier = Modifier.padding(bottom = 16.dp),
+                    )
+                }
                 Text(
                     text = stringResource(R.string.home_title),
                     style = MaterialTheme.typography.displayLarge,

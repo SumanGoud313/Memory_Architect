@@ -57,22 +57,16 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.credentials.CredentialManager
-import androidx.credentials.GetCredentialRequest
-import androidx.credentials.exceptions.GetCredentialCancellationException
-import androidx.credentials.exceptions.GetCredentialException
-import androidx.credentials.exceptions.NoCredentialException
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
-import com.google.android.libraries.identity.googleid.GetGoogleIdOption
-import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.suman.memoryarchitect.BuildConfig
 import com.suman.memoryarchitect.R
+import com.suman.memoryarchitect.core.auth.GoogleLinkError
+import com.suman.memoryarchitect.core.auth.signInWithGoogle
 import com.suman.memoryarchitect.core.feedback.ui.rememberFeedback
 import com.suman.memoryarchitect.domain.model.AvatarCatalog
 import com.suman.memoryarchitect.domain.model.CosmeticId
 import com.suman.memoryarchitect.feature.profile.AccountViewModel
-import com.suman.memoryarchitect.feature.profile.GoogleLinkError
 import com.suman.memoryarchitect.ui.components.GlassCard
 import com.suman.memoryarchitect.ui.components.pressableScale
 import com.suman.memoryarchitect.ui.components.rememberHapticsTick
@@ -188,37 +182,6 @@ fun AccountSection(
                 TextButton(onClick = viewModel::dismissLinkError) { Text(stringResource(R.string.action_close)) }
             },
         )
-    }
-}
-
-/** Launches Credential Manager's Google ID flow and reports the outcome via exactly one of
- * [onIdToken]/[onFailure] - never neither, which is what made the sign-in button read as "just
- * doing nothing" before this existed: [GetCredentialException] has several real-failure subtypes
- * (most commonly [NoCredentialException] - no Google account available on this device at all) that
- * used to be caught by the same broad handler as a genuine user-cancellation and silently dropped.
- * Only an actual [GetCredentialCancellationException] (the player backed out of the picker) stays
- * silent now - every other failure reaches [onFailure] so [AccountViewModel.linkError] can show it.
- * [BuildConfig.GOOGLE_WEB_CLIENT_ID] blank means Google Sign-In hasn't been configured for this
- * Firebase project yet (see LEADERBOARD_SETUP.md), which [AccountStatusCard] already guards against
- * by hiding the button entirely, so this function is never reached in that state. */
-private suspend fun signInWithGoogle(context: Context, onIdToken: (String) -> Unit, onFailure: (GoogleLinkError) -> Unit) {
-    val googleIdOption = GetGoogleIdOption.Builder()
-        .setFilterByAuthorizedAccounts(false)
-        .setServerClientId(BuildConfig.GOOGLE_WEB_CLIENT_ID)
-        .build()
-    val request = GetCredentialRequest.Builder().addCredentialOption(googleIdOption).build()
-    try {
-        val response = CredentialManager.create(context).getCredential(context, request)
-        val credential = GoogleIdTokenCredential.createFrom(response.credential.data)
-        onIdToken(credential.idToken)
-    } catch (cancelled: GetCredentialCancellationException) {
-        Log.i("AccountSection", "Google Sign-In cancelled by the player")
-    } catch (noAccount: NoCredentialException) {
-        Log.i("AccountSection", "No Google account available on this device for sign-in")
-        onFailure(GoogleLinkError.NO_GOOGLE_ACCOUNT)
-    } catch (other: GetCredentialException) {
-        Log.w("AccountSection", "Google Sign-In failed", other)
-        onFailure(GoogleLinkError.UNKNOWN)
     }
 }
 

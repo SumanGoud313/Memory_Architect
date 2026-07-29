@@ -3,13 +3,17 @@ package com.suman.memoryarchitect.di
 import android.content.Context
 import androidx.room.Room
 import com.suman.memoryarchitect.core.database.AppDatabase
+import com.suman.memoryarchitect.core.database.Migrations
 import com.suman.memoryarchitect.core.database.EquippedCosmeticDao
 import com.suman.memoryarchitect.core.database.HintUsageDao
 import com.suman.memoryarchitect.core.database.InventoryItemDao
 import com.suman.memoryarchitect.core.database.LevelBestTimeDao
 import com.suman.memoryarchitect.core.database.LevelCampaignProgressDao
+import com.suman.memoryarchitect.core.database.LuckySpinStateDao
 import com.suman.memoryarchitect.core.database.MissionProgressDao
+import com.suman.memoryarchitect.core.database.MissionRefreshStateDao
 import com.suman.memoryarchitect.core.database.OwnedCosmeticDao
+import com.suman.memoryarchitect.core.database.PendingMissionClaimDao
 import com.suman.memoryarchitect.core.database.PendingScoreSubmissionDao
 import com.suman.memoryarchitect.core.database.PlayerProgressDao
 import com.suman.memoryarchitect.core.database.RedoUsageDao
@@ -33,9 +37,14 @@ object DatabaseModule {
     @Singleton
     fun provideAppDatabase(@ApplicationContext context: Context): AppDatabase =
         Room.databaseBuilder(context, AppDatabase::class.java, "memory_architect.db")
-            // Pre-1.0, no shipped schema to preserve yet. Replace with real Migrations
-            // before release.
-            .fallbackToDestructiveMigration(dropAllTables = true)
+            // See Migrations' own doc for the full policy this pair of calls implements: only the
+            // enumerated pre-release dev versions (1-19, none of which was ever a single stable
+            // schema to migrate from - see Migrations' doc for the real-device crash that proved
+            // this) may be destructively wiped on upgrade; anything from Migrations.CURRENT_VERSION
+            // onward with no matching entry in Migrations.ALL fails loudly instead of silently
+            // deleting data.
+            .fallbackToDestructiveMigrationFrom(*Migrations.LEGACY_DESTRUCTIBLE_VERSIONS)
+            .addMigrations(*Migrations.ALL)
             .build()
 
     @Provides
@@ -85,4 +94,13 @@ object DatabaseModule {
 
     @Provides
     fun provideInventoryItemDao(database: AppDatabase): InventoryItemDao = database.inventoryItemDao()
+
+    @Provides
+    fun providePendingMissionClaimDao(database: AppDatabase): PendingMissionClaimDao = database.pendingMissionClaimDao()
+
+    @Provides
+    fun provideLuckySpinStateDao(database: AppDatabase): LuckySpinStateDao = database.luckySpinStateDao()
+
+    @Provides
+    fun provideMissionRefreshStateDao(database: AppDatabase): MissionRefreshStateDao = database.missionRefreshStateDao()
 }

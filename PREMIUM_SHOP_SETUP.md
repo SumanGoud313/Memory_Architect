@@ -37,11 +37,12 @@ do either step for you.
 Google Play Billing refuses to return real product details/prices for a product ID Play Console
 doesn't know about, and `verifyPremiumPurchase` cannot call the Play Developer API at all until
 this Firebase project's Cloud Functions service account is granted read access to your app's
-purchase data. Until both are done: `productPrices` in `PremiumShopManagerImpl` stays empty (every
-`PremiumProductCard` shows "…" instead of a price and its Buy button stays disabled), and
-`verifyPremiumPurchase` would fail even if a purchase somehow completed. **Developer Test Mode
-(below) is unaffected by any of this** - it's the intended way to build/test/demo the whole feature
-before Play Console is touched at all.
+purchase data. Until both are done: `productPrices` in `PremiumShopManagerImpl` stays empty, every
+`PremiumProductCard` shows a "Loading price…" state that - after the query genuinely fails, which
+it always will with no product configured - flips to a "Price unavailable" message with a Retry
+button (its Buy button stays disabled throughout), and `verifyPremiumPurchase` would fail even if a
+purchase somehow completed. **Developer Test Mode (below) is unaffected by any of this** - it's the
+intended way to build/test/demo the whole feature before Play Console is touched at all.
 
 ## What you need to create
 
@@ -117,19 +118,25 @@ dashboard. A release build (`BuildConfig.DEBUG == false`) never compiles that UI
 all, so there is no toggle to flip, no build flavor to switch, and no risk of shipping a build where
 Developer Test Mode is accidentally reachable.
 
-## Regional pricing (suggested)
+## Regional pricing
 
-Each bundle's suggested India base price and Play Console's auto-converted equivalents - override
-any of these directly in Play Console if you want different psychology per region. Priced to feel
-like genuine premium purchases without ever approaching real-money-for-power territory (nothing
-sold here touches score/timer/hints/leaderboard rank - see `domain/progression/PremiumCatalog.kt`'s
-doc).
+Set each product's **base price in USD** exactly as below under **Play Console → the product →
+Price** - Play Console then auto-converts to every other supported currency/region using its own
+current exchange rates and local pricing patterns (e.g. psychological rounding like ₹399 instead of
+a raw conversion). Do not type in converted values for other countries yourself; let Play Console's
+own regional pricing template do that, so every player automatically sees their local currency, a
+region-appropriate price, and Google Play-handled local taxes with no per-country logic anywhere in
+this app.
 
-| Product | India (₹) | US ($) | UK (£) | EU (€) |
-|---|---|---|---|---|
-| Starter Bundle | ₹149 | $2.49 | £1.99 | €2.49 |
-| Royal / Cyber / Space / Nature / Luxury Collection (each) | ₹249 | $3.99 | £3.49 | €3.99 |
-| Founder's Pack | ₹499 | $7.99 | £6.99 | €7.99 |
+| Product | Base price (USD) |
+|---|---|
+| Starter Bundle | $2.99 |
+| Royal Collection | $4.99 |
+| Cyber Collection | $4.99 |
+| Space Collection | $4.99 |
+| Nature Collection | $4.99 |
+| Luxury Collection | $6.99 |
+| Founder's Pack | $5.99 |
 
 Founder's Pack is priced above any single themed collection deliberately (it bundles 8 items across
 every category plus the one-time "Founder" identity) but below buying multiple collections

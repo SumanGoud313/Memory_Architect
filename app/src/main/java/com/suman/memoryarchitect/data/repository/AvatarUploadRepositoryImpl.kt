@@ -2,7 +2,7 @@ package com.suman.memoryarchitect.data.repository
 
 import com.google.firebase.Firebase
 import com.google.firebase.storage.storage
-import com.suman.memoryarchitect.core.analytics.FirebaseAvailability
+import com.suman.memoryarchitect.core.analytics.FirebaseAvailabilityProvider
 import com.suman.memoryarchitect.core.auth.PlayerIdentityManager
 import com.suman.memoryarchitect.core.common.DispatcherProvider
 import com.suman.memoryarchitect.domain.model.AppError
@@ -25,12 +25,13 @@ import javax.inject.Singleton
 class AvatarUploadRepositoryImpl @Inject constructor(
     private val playerIdentityManager: PlayerIdentityManager,
     private val dispatchers: DispatcherProvider,
+    private val firebaseAvailabilityProvider: FirebaseAvailabilityProvider,
 ) : AvatarUploadRepository {
 
     private val storage by lazy { Firebase.storage }
 
     override suspend fun uploadAvatar(jpegBytes: ByteArray): Outcome<String> = withContext(dispatchers.io) {
-        if (!FirebaseAvailability.isConfigured) return@withContext Outcome.Error(AppError.FeatureUnavailable)
+        if (!firebaseAvailabilityProvider.isConfigured) return@withContext Outcome.Error(AppError.FeatureUnavailable)
         val uid = playerIdentityManager.awaitUid() ?: return@withContext Outcome.Error(AppError.FeatureUnavailable)
         try {
             val ref = storage.reference.child("avatars/$uid/avatar.jpg")

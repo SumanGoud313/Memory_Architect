@@ -18,14 +18,30 @@ class RedoRepositoryImpl @Inject constructor(
         redoUsageDao.get(levelNumber)?.redosUsed ?: 0
     }
 
+    override suspend fun getRewardedRedosUsed(levelNumber: Int): Int = withContext(dispatchers.io) {
+        redoUsageDao.get(levelNumber)?.rewardedRedosUsed ?: 0
+    }
+
     override suspend fun recordRedoUsed(levelNumber: Int) = withContext(dispatchers.io) {
-        val current = redoUsageDao.get(levelNumber)?.redosUsed ?: 0
-        redoUsageDao.upsert(RedoUsageEntity(levelNumber = levelNumber, redosUsed = current + 1))
+        val existing = redoUsageDao.get(levelNumber)
+        redoUsageDao.upsert(
+            RedoUsageEntity(
+                levelNumber = levelNumber,
+                redosUsed = (existing?.redosUsed ?: 0) + 1,
+                rewardedRedosUsed = existing?.rewardedRedosUsed ?: 0,
+            ),
+        )
     }
 
     override suspend fun grantBonusRedo(levelNumber: Int) = withContext(dispatchers.io) {
-        val current = redoUsageDao.get(levelNumber)?.redosUsed ?: 0
-        redoUsageDao.upsert(RedoUsageEntity(levelNumber = levelNumber, redosUsed = (current - 1).coerceAtLeast(0)))
+        val existing = redoUsageDao.get(levelNumber)
+        redoUsageDao.upsert(
+            RedoUsageEntity(
+                levelNumber = levelNumber,
+                redosUsed = ((existing?.redosUsed ?: 0) - 1).coerceAtLeast(0),
+                rewardedRedosUsed = (existing?.rewardedRedosUsed ?: 0) + 1,
+            ),
+        )
     }
 
     override suspend fun resetRedoUsage(levelNumber: Int) = withContext(dispatchers.io) {

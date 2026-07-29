@@ -7,4 +7,5 @@ import androidx.room.PrimaryKey
 data class HintUsageEntity(
     @PrimaryKey val levelNumber: Int,
     val hintsUsed: Int,
+    val rewardedHintsUsed: Int = 0,
 )

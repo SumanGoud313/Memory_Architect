@@ -42,6 +42,10 @@ private class Particle(
     val isRect: Boolean = false,
     val isAmbient: Boolean = false,
     val seedPhase: Float = 0f,
+    /** How many seconds [life] takes to decay from [maxLife] to 0 - a [burst]'s quick 0.7s pop
+     * versus [ParticleFieldState.celebrationRain]'s much longer full-screen fall use the same
+     * gravity/drag physics in [step], just stretched or compressed in time. */
+    val lifeDecaySeconds: Float = 0.7f,
 )
 
 /**
@@ -85,6 +89,44 @@ class ParticleFieldState(
         }
     }
 
+    /** A full-screen "confetti rain" - the Lucky Spin reward celebration. Unlike [burst] (a
+     * radial pop from one point, gone in ~0.7s), this seeds a wide band of particles just above
+     * the visible top edge, staggered in starting height so they don't all begin falling in the
+     * same instant, with a much longer [Particle.lifeDecaySeconds] so the existing gravity/drag
+     * physics in [step] has time to carry them visibly down and across the whole screen rather
+     * than fading before they've fallen far - the "flowing down over the whole screen" effect,
+     * built entirely from physics [step] already runs for every other particle. */
+    fun celebrationRain(
+        width: Float,
+        colors: List<Color> = listOf(
+            MemoryArchitectColors.accentGold,
+            MemoryArchitectColors.accentTerracotta,
+            MemoryArchitectColors.accentSage,
+            MemoryArchitectColors.textPrimary,
+        ),
+        count: Int = 140,
+        fallDurationSeconds: Float = 2.6f,
+    ) {
+        repeat(count) {
+            particles.add(
+                Particle(
+                    x = Random.nextFloat() * width,
+                    y = -Random.nextFloat() * 400f,
+                    vx = (Random.nextFloat() - 0.5f) * 4f,
+                    vy = Random.nextFloat() * 2f,
+                    life = 1f,
+                    maxLife = 1f,
+                    radius = Random.nextFloat() * 5f + 3f,
+                    color = colors[Random.nextInt(colors.size)],
+                    rotation = Random.nextFloat() * 360f,
+                    vRotation = (Random.nextFloat() - 0.5f) * 10f,
+                    isRect = true,
+                    lifeDecaySeconds = fallDurationSeconds,
+                ),
+            )
+        }
+    }
+
     private fun seedAmbient(size: IntSize, colors: List<Color>) {
         if (ambientSeeded || size.width == 0 || size.height == 0) return
         ambientSeeded = true
@@ -123,7 +165,7 @@ class ParticleFieldState(
             p.x += p.vx * dtSeconds * 60f
             p.y += p.vy * dtSeconds * 60f
             p.rotation += p.vRotation
-            p.life -= dtSeconds / 0.7f
+            p.life -= dtSeconds / p.lifeDecaySeconds
             if (p.life <= 0f) iterator.remove()
         }
         frameTick++

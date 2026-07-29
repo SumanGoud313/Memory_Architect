@@ -1,14 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- A 3x3 memory grid with one "recalled" cell highlighted, the app's core motif. -->
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp"
-    android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
-    <path
-        android:fillColor="#F5F5F5"
-        android:pathData="M30,30h14v14h-14zM47,30h14v14h-14zM64,30h14v14h-14zM30,47h14v14h-14zM64,47h14v14h-14zM30,64h14v14h-14zM47,64h14v14h-14zM64,64h14v14h-14z" />
-    <path
-        android:fillColor="#FFC107"
-        android:pathData="M47,47h14v14h-14z" />
-</vector>
+<!--
+  Adaptive icon foreground layer - wraps the exact, unmodified production logo
+  (memory_architect_logo.png) rather than a redrawn/simplified motif, per the explicit "use exactly
+  this image, do not redesign" requirement.
+
+  The 22dp inset on every side is not a crop - it is the only way to guarantee zero clipping under
+  Android's adaptive icon system: every launcher (circle/squircle/rounded-square/OEM-specific) masks
+  the outer ring of the 108dp x 108dp canvas, and even mask-safe content can still be nudged by
+  launcher parallax. Google's own guidance is to keep all meaningful artwork inside a 66dp safe zone
+  centered in the 108dp canvas (66/108 = a ~21dp margin per side) - 22dp here gives a small extra
+  safety buffer over that minimum. The source artwork's own badge shape fills its 1254x1254 canvas
+  almost edge-to-edge (~1.5% built-in margin) - nowhere near enough on its own - so without this
+  inset, every circular-mask launcher would cut into the brain icon, the puzzle-piece mark, and the
+  "MEMORIZE - REBUILD - MASTER" wordmark at the bottom.
+
+  This inset is the ADAPTIVE launcher icon's own accommodation for a platform constraint - it is not
+  applied to the legacy mipmap-*dpi/ic_launcher.png icons (full-bleed, exact source image, no inset)
+  or to the splash screen/in-app usages (see SplashScreen.kt), which reference
+  memory_architect_logo.png directly since neither is system-masked. See the area outside this inset
+  is simply not drawn (transparent), letting ic_launcher_background.xml's matching dark gradient
+  show through with no visible seam - see that file's own doc.
+-->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/memory_architect_logo"
+    android:insetLeft="22dp"
+    android:insetTop="22dp"
+    android:insetRight="22dp"
+    android:insetBottom="22dp" />
+

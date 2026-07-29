@@ -24,9 +24,10 @@ import { onDocumentWritten } from "firebase-functions/v2/firestore";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { logger } from "firebase-functions";
 import { google } from "googleapis";
-import { SHOP_CATALOG_PRICES, SPIN_COST_COINS } from "./shopCatalog";
+import { SHOP_CATALOG_PRICES, SPIN_COIN_OUTCOME_AMOUNTS, SPIN_DUPLICATE_REFUND_FRACTION } from "./shopCatalog";
 import { PREMIUM_GRANTED_SKUS, PREMIUM_PRODUCT_GRANTS } from "./premiumCatalog";
 import { activeMissionIds, definitionFor, periodFor, MAX_MISSION_INVENTORY_GRANT_PER_KIND } from "./missions";
+import { nextDailyRewardCycleDay, canClaimDailyReward } from "./dailyReward";
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -38,6 +39,9 @@ const db = admin.firestore();
 // starting value, but confirm it against the real Play Console listing before deploying.
 const PACKAGE_NAME = "com.suman.memoryarchitect";
 const INTEGRITY_TTL_MS = 24 * 60 * 60_000; // 24h - a verdict older than this is treated as stale
+// Mirrors BillingManagerImpl.kt's own REMOVE_ADS_PRODUCT_ID - the legacy one-time "Remove Ads"
+// product, verified by verifyRemoveAdsPurchase below.
+const REMOVE_ADS_PRODUCT_ID = "remove_ads_lifetime";
 
 // Mirrors ScoringRules.Default (domain/scoring/ScoringRules.kt) - the same numbers
 // LeaderboardAntiCheat.kt's maxPlausibleScore uses, applied per-object rather than per-level here
@@ -45,7 +49,10 @@ const INTEGRITY_TTL_MS = 24 * 60 * 60_000; // 24h - a verdict older than this is
 // a fixed, generously-large per-round ceiling instead (see MAX_PLAUSIBLE_PERIODIC_SCORE).
 const MAX_PLAUSIBLE_PERIODIC_SCORE = 5000; // one Daily/Weekly/Monthly round, not a lifetime total
 const MAX_PLAUSIBLE_ROUND_DURATION_MS = 30 * 60_000; // 30 minutes
-const MAX_PLAUSIBLE_GLOBAL_SCORE = 100_000_000; // lifetime cumulative total, generous ceiling
+// Global's bestScore is a running max of one round's score (never a lifetime sum - see
+// GlobalLeaderboardStats.kt's doc for why a running max was chosen over a cumulative total), so it
+// shares the exact same per-round ceiling as the Daily/Weekly/Monthly boards.
+const MAX_PLAUSIBLE_GLOBAL_SCORE = MAX_PLAUSIBLE_PERIODIC_SCORE;
 const MIN_RESUBMISSION_INTERVAL_MS = 3_000; // reject writes from the same player faster than this
 
 // Mirrors ProgressionRules.Default (domain/progression/ProgressionRules.kt) - a generous ceiling on
@@ -76,6 +83,22 @@ const MAX_PLAUSIBLE_JOURNEY_POINTS_GAIN_PER_WRITE = 500;
 // second, independent check - this one alone doesn't correlate the decrease to a specific receipt.
 const MAX_PLAUSIBLE_COINS_SPEND_PER_WRITE = 4_000;
 
+// Every distinct client operation that writes playerProfiles/{uid} - mirrored against the
+// `lastWriteSource` string each one now tags its write with (FirestoreProgressionRemoteSource.submitScore/
+// claimDailyReward, FirestoreMissionRemoteSource.claimMissionReward, FirestoreShopRemoteSource.purchase/spin),
+// so validateProfileWrite below can rate-limit each independently instead of one shared bucket.
+const PROFILE_WRITE_SOURCES = new Set([
+  "submit_score",
+  "claim_daily_reward",
+  "claim_mission_reward",
+  "shop_purchase",
+  "shop_spin",
+  "mystery_chest_open",
+  "xp_boost_consumed",
+  "claim_mission_category_bonus",
+  "mission_unlock_all",
+]);
+
 /** Re-validates every `players/{uid}` write (the Global Leaderboard's source document). */
 export const validateGlobalStats = onDocumentWritten("players/{uid}", async (event) => {
   const after = event.data?.after;
@@ -85,8 +108,8 @@ export const validateGlobalStats = onDocumentWritten("players/{uid}", async (eve
   const uid = event.params.uid;
   const problems: string[] = [];
 
-  if (typeof data?.totalScore !== "number" || data.totalScore < 0 || data.totalScore > MAX_PLAUSIBLE_GLOBAL_SCORE) {
-    problems.push("totalScore out of range");
+  if (typeof data?.bestScore !== "number" || data.bestScore < 0 || data.bestScore > MAX_PLAUSIBLE_GLOBAL_SCORE) {
+    problems.push("bestScore out of range");
   }
   if (typeof data?.averageAccuracy !== "number" || data.averageAccuracy < 0 || data.averageAccuracy > 1) {
     problems.push("averageAccuracy out of range");
@@ -97,11 +120,11 @@ export const validateGlobalStats = onDocumentWritten("players/{uid}", async (eve
 
   const before = event.data?.before;
   if (before?.exists) {
-    const previousScore = before.data()?.totalScore ?? 0;
-    // A lifetime cumulative total should never go down - a decrease means either a client bug or
-    // a forged write, never a legitimate outcome of playing more rounds.
-    if (typeof data?.totalScore === "number" && data.totalScore < previousScore) {
-      problems.push(`totalScore decreased (${previousScore} -> ${data.totalScore})`);
+    const previousScore = before.data()?.bestScore ?? 0;
+    // A running max should never go down - a decrease means either a client bug or a forged write,
+    // never a legitimate outcome of playing more rounds (a worse round just leaves it unchanged).
+    if (typeof data?.bestScore === "number" && data.bestScore < previousScore) {
+      problems.push(`bestScore decreased (${previousScore} -> ${data.bestScore})`);
     }
   }
 
@@ -137,8 +160,9 @@ export const validateProfileWrite = onDocumentWritten("playerProfiles/{uid}", as
   if (before?.exists) {
     const previousXp = before.data()?.xp ?? 0;
     const previousCoins = before.data()?.coins ?? 0;
-    // xp/coins are lifetime-cumulative counters (see PlayerProfile.kt) - like totalScore above,
-    // they should only ever go up, and never by more than one write plausibly grants.
+    // xp/coins are lifetime-cumulative counters (see PlayerProfile.kt) - like bestScore above
+    // (a running max, monotonic for a different reason), they should only ever go up, and never by
+    // more than one write plausibly grants.
     if (typeof data?.xp === "number" && data.xp < previousXp) {
       problems.push(`xp decreased (${previousXp} -> ${data.xp})`);
     } else if (typeof data?.xp === "number" && data.xp - previousXp > MAX_PLAUSIBLE_XP_GAIN_PER_WRITE) {
@@ -176,7 +200,18 @@ export const validateProfileWrite = onDocumentWritten("playerProfiles/{uid}", as
     }
   }
 
-  if (await isRateLimited(uid, "profile")) {
+  // Scoped per write-source (see PROFILE_WRITE_SOURCES) rather than one shared "profile" bucket -
+  // without this, two *different* legitimate actions landing within the cooldown window (e.g.
+  // finishing a level, then immediately buying a shop item with the coins just earned) would
+  // revert the second write's entire profile doc, including a coin/xp change that had nothing to
+  // do with the first write. lastWriteSource is client-supplied, so it's checked against a known
+  // set rather than trusted outright: an unrecognized/missing value falls back to the original
+  // shared "profile" scope, preserving the old conservative behavior for anything that doesn't
+  // use this pattern (a stale client, a forged write omitting the field).
+  const source = typeof data?.lastWriteSource === "string" && PROFILE_WRITE_SOURCES.has(data.lastWriteSource)
+    ? data.lastWriteSource
+    : "unknown";
+  if (await isRateLimited(uid, `profile:${source}`)) {
     problems.push("resubmitted faster than the allowed interval");
   }
 
@@ -350,6 +385,98 @@ export const verifyPremiumPurchase = onCall(async (request) => {
   }
 });
 
+/** Same shape and reasoning as [verifyPremiumPurchase] immediately above, for the legacy
+ * `remove_ads_lifetime` one-time product instead of the 7 Premium Shop cosmetic bundles -
+ * production-readiness audit flagged that `BillingManagerImpl` granted `hasRemovedAds` from the
+ * raw client-reported [com.android.billingclient.api.Purchase.purchaseState] alone, unlike Premium
+ * Shop's already-server-verified path. `removeAdsPurchases/{uid}` is a new Admin-SDK-only
+ * collection (no `firestore.rules` entry needed, same as `premiumPurchases`/`claimedPurchaseTokens`
+ * above) - purely a server-side audit record; `hasRemovedAds` itself stays a local
+ * `UserPreferencesDataStore` flag exactly as it already was, restored on reinstall via Play
+ * Billing's own `queryPurchasesAsync` (Google's servers remember the purchase regardless of app
+ * reinstall) - this function only gates *whether the client is allowed to set that flag at all*,
+ * closing the "a patched client fakes PURCHASED without a real purchase" gap. */
+export const verifyRemoveAdsPurchase = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Sign-in required");
+  }
+  const uid = request.auth.uid;
+  const purchaseToken = request.data?.purchaseToken;
+  if (typeof purchaseToken !== "string" || purchaseToken.length === 0) {
+    throw new HttpsError("invalid-argument", "purchaseToken is required");
+  }
+
+  const tokenHash = crypto.createHash("sha256").update(purchaseToken).digest("hex");
+  const tokenRef = db.collection("claimedPurchaseTokens").doc(tokenHash);
+  const tokenSnapshot = await tokenRef.get();
+  if (tokenSnapshot.exists) {
+    const claim = tokenSnapshot.data()!;
+    if (claim.uid !== uid) {
+      logger.warn("verifyRemoveAdsPurchase: token already claimed by a different uid");
+      throw new HttpsError("permission-denied", "This purchase token belongs to a different account");
+    }
+    return { granted: true }; // Safe replay (retry/restore) - already verified and granted.
+  }
+
+  try {
+    const auth = new google.auth.GoogleAuth({ scopes: ["https://www.googleapis.com/auth/androidpublisher"] });
+    const androidpublisher = google.androidpublisher({ version: "v3", auth });
+    const response = await androidpublisher.purchases.products.get({
+      packageName: PACKAGE_NAME,
+      productId: REMOVE_ADS_PRODUCT_ID,
+      token: purchaseToken,
+    });
+
+    const purchase = response.data;
+    if (purchase.purchaseState !== 0) {
+      // 0 = purchased, 1 = canceled, 2 = pending - only a completed purchase grants anything.
+      throw new HttpsError("failed-precondition", "Purchase is not in a completed state");
+    }
+    const expectedAccountHash = crypto.createHash("sha256").update(uid).digest("hex");
+    if (purchase.obfuscatedExternalAccountId && purchase.obfuscatedExternalAccountId !== expectedAccountHash) {
+      logger.warn(`verifyRemoveAdsPurchase: account id mismatch for uid ${uid}`);
+      throw new HttpsError("permission-denied", "This purchase does not belong to the signed-in account");
+    }
+
+    await tokenRef.set({ uid, productId: REMOVE_ADS_PRODUCT_ID, claimedAtEpochMs: Date.now() });
+    await db.collection("removeAdsPurchases").doc(uid).set({ uid, purchasedAtEpochMs: Date.now() });
+
+    return { granted: true };
+  } catch (error) {
+    if (error instanceof HttpsError) throw error;
+    logger.warn(`verifyRemoveAdsPurchase failed for ${uid}`, error);
+    throw new HttpsError("internal", "Purchase verification failed");
+  }
+});
+
+/** Callable, admin-privileged reset for the calling player's own per-uid progress documents -
+ * the piece [com.suman.memoryarchitect.data.repository.LocalProgressResetRepositoryImpl]'s "Reset
+ * Progress" was always missing once a real Firebase project is configured: it only ever reset the
+ * dev mock backend and the local Room cache, so the next successful online read silently
+ * repopulated everything from Firestore. The client SDK has no way to do this itself - deleting a
+ * document is unconditionally denied by firestore.rules (no `allow delete` exists on any of these
+ * collections), and even a client write attempting to zero xp/coins/journeyPoints back to 0 would
+ * be rejected outright by validateProfileWrite's "these only ever increase" check. Deletes rather
+ * than writes a zeroed shape: an absent `playerProfiles/{uid}` doc already reads as
+ * [com.suman.memoryarchitect.domain.model.PlayerProfile.EMPTY] everywhere downstream (every
+ * `toProfile()` helper in this file already treats `!exists()` that way), so there's no second
+ * "empty" shape to construct and keep in sync with isValidProfile.
+ *
+ * Deliberately does not touch `players/{uid}` (the public leaderboard denormalization) or
+ * `playerCosmetics/{uid}` - a local progress reset isn't meant to also erase a player's
+ * competitive leaderboard history or owned cosmetics, matching this app's existing "Reset
+ * Progress" scope (statistics/profile/missions/inventory, not purchases or leaderboard standing).
+ */
+export const resetPlayerData = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Sign-in required");
+  }
+  const uid = request.auth.uid;
+  const collectionsToReset = ["playerProfiles", "dailyRewards", "inventory", "missionClaims", "returningPlayerGifts"];
+  await Promise.all(collectionsToReset.map((collection) => db.collection(collection).doc(uid).delete()));
+  return { reset: true };
+});
+
 /** Re-validates every Daily/Weekly/Monthly leaderboard entry write. */
 export const validatePeriodicEntry = onDocumentWritten(
   "{collection}/{period}/entries/{uid}",
@@ -409,7 +536,13 @@ export const validatePeriodicEntry = onDocumentWritten(
  * validateProfileWrite's coin-decrease bound above: this checks the receipt's own shape and price
  * against the mirrored catalog (shopCatalog.ts), so a forged receipt with a fabricated cheap price
  * can't pair with a real decrease to make an expensive item look paid-for. Cheap - no
- * cross-document query needed, the receipt already carries everything it claims. */
+ * cross-document query needed, the receipt already carries everything it claims.
+ *
+ * PURCHASE and SPIN are validated differently: PURCHASE's `sku` is always a real catalog item at
+ * its exact listed price. SPIN's `priceCoins` is a coins *delta*, not a cost (spins are free, see
+ * SpinRules.kt's doc) - `sku: "COINS"` (a coins-kind reward) is valid with `priceCoins` one of
+ * SPIN_COIN_OUTCOME_AMOUNTS, and a real catalog `sku` (a cosmetic-kind reward) is valid with
+ * `priceCoins` either 0 (a fresh grant) or the exact duplicate-refund amount for that sku's price. */
 export const validatePurchaseReceipt = onDocumentWritten("purchaseReceipts/{receiptId}", async (event) => {
   const after = event.data?.after;
   if (!after?.exists) return;
@@ -417,15 +550,32 @@ export const validatePurchaseReceipt = onDocumentWritten("purchaseReceipts/{rece
   const data = after.data();
   const problems: string[] = [];
 
-  if (typeof data?.sku !== "string" || !(data.sku in SHOP_CATALOG_PRICES)) {
-    problems.push("unknown sku");
-  }
   if (data?.kind !== "PURCHASE" && data?.kind !== "SPIN") {
     problems.push("invalid kind");
-  } else if (typeof data?.sku === "string" && data.sku in SHOP_CATALOG_PRICES) {
-    const expectedPrice = data.kind === "SPIN" ? SPIN_COST_COINS : SHOP_CATALOG_PRICES[data.sku];
-    if (typeof data?.priceCoins !== "number" || data.priceCoins !== expectedPrice) {
-      problems.push(`priceCoins mismatch (expected ${expectedPrice}, got ${data?.priceCoins})`);
+  } else if (data.kind === "PURCHASE") {
+    if (typeof data?.sku !== "string" || !(data.sku in SHOP_CATALOG_PRICES)) {
+      problems.push("unknown sku");
+    } else {
+      const expectedPrice = SHOP_CATALOG_PRICES[data.sku];
+      if (typeof data?.priceCoins !== "number" || data.priceCoins !== expectedPrice) {
+        problems.push(`priceCoins mismatch (expected ${expectedPrice}, got ${data?.priceCoins})`);
+      }
+    }
+  } else {
+    // SPIN
+    if (typeof data?.priceCoins !== "number") {
+      problems.push("priceCoins missing or not a number");
+    } else if (data?.sku === "COINS") {
+      if (!SPIN_COIN_OUTCOME_AMOUNTS.includes(data.priceCoins)) {
+        problems.push(`priceCoins ${data.priceCoins} not a configured spin coin-outcome amount`);
+      }
+    } else if (typeof data?.sku === "string" && data.sku in SHOP_CATALOG_PRICES) {
+      const expectedRefund = Math.round(SHOP_CATALOG_PRICES[data.sku] * SPIN_DUPLICATE_REFUND_FRACTION);
+      if (data.priceCoins !== 0 && data.priceCoins !== expectedRefund) {
+        problems.push(`priceCoins ${data.priceCoins} doesn't match 0 (fresh) or ${expectedRefund} (duplicate refund)`);
+      }
+    } else {
+      problems.push("unknown sku for SPIN receipt");
     }
   }
 
@@ -489,6 +639,63 @@ export const validateCosmeticsWrite = onDocumentWritten("playerCosmetics/{uid}",
   }
 });
 
+// How many epoch-days a claim's own lastClaimedEpochDay may differ from the server's real current
+// day - a small allowance for timezone/clock-skew edge cases right at day rollover, not a loophole:
+// nextDailyRewardCycleDay still only ever advances the cycle by one day per legitimate write, so
+// this bounds how far a forged write could ever "time travel" through the cycle in one shot.
+const MAX_DAILY_REWARD_CLOCK_SKEW_DAYS = 1;
+
+/** Re-validates every `dailyRewards/{uid}` write - unlike missionClaims/returningPlayerGifts, this
+ * collection previously had no independent server-side re-derivation at all: a forged write could
+ * repeatedly claim the richest day's payout, throttled only by the rate limiter below. Re-derives
+ * the expected cycleDay from the *stored previous* state (never trusted from the write itself, the
+ * same discipline validateMissionClaims already applies) and bounds the claimed day against the
+ * server's own clock, so a claim can never advance the cycle faster than one real day at a time. */
+export const validateDailyReward = onDocumentWritten("dailyRewards/{uid}", async (event) => {
+  const after = event.data?.after;
+  if (!after?.exists) return;
+
+  const data = after.data();
+  const uid = event.params.uid;
+  const problems: string[] = [];
+
+  const claimedOnEpochDay = data?.lastClaimedEpochDay;
+  const cycleDay = data?.cycleDay;
+  if (typeof claimedOnEpochDay !== "number" || typeof cycleDay !== "number") {
+    problems.push("lastClaimedEpochDay/cycleDay are not numbers");
+  } else {
+    const before = event.data?.before;
+    const previousClaimedOnEpochDay: number | null = before?.exists ? (before.data()?.lastClaimedEpochDay ?? null) : null;
+    const previousCycleDay: number = before?.exists ? (before.data()?.cycleDay ?? 0) : 0;
+
+    const nowEpochDay = Math.floor(Date.now() / 86_400_000);
+    if (Math.abs(claimedOnEpochDay - nowEpochDay) > MAX_DAILY_REWARD_CLOCK_SKEW_DAYS) {
+      problems.push(`lastClaimedEpochDay implausible vs server clock (${claimedOnEpochDay} vs ${nowEpochDay})`);
+    }
+    if (!canClaimDailyReward(previousClaimedOnEpochDay, claimedOnEpochDay)) {
+      problems.push("already claimed for this day");
+    }
+    const expectedCycleDay = nextDailyRewardCycleDay(previousClaimedOnEpochDay, previousCycleDay, claimedOnEpochDay);
+    if (cycleDay !== expectedCycleDay) {
+      problems.push(`cycleDay does not match the derived cycle (${cycleDay} vs expected ${expectedCycleDay})`);
+    }
+  }
+
+  if (await isRateLimited(uid, "dailyReward")) {
+    problems.push("resubmitted faster than the allowed interval");
+  }
+
+  if (problems.length > 0) {
+    logger.warn(`Reverting invalid dailyRewards/${uid} write: ${problems.join(", ")}`);
+    const before = event.data?.before;
+    if (before?.exists) {
+      await after.ref.set(before.data()!);
+    } else {
+      await after.ref.delete();
+    }
+  }
+});
+
 /** Re-validates every `missionClaims/{uid}` write - the double-claim guard
  * FirestoreMissionRemoteSource.claimMissionReward writes alongside the coin/xp/inventory grant.
  * Independent of validateProfileWrite/validateInventoryWrite's plausibility bounds below: this
@@ -539,6 +746,153 @@ export const validateMissionClaims = onDocumentWritten("missionClaims/{uid}", as
 
   if (problems.length > 0) {
     logger.warn(`Reverting invalid missionClaims/${uid} write: ${problems.join(", ")}`);
+    if (before?.exists) {
+      await after.ref.set(before.data()!);
+    } else {
+      await after.ref.delete();
+    }
+  }
+});
+
+const CATEGORY_BONUS_PERIODS = new Set(["DAILY", "WEEKLY", "MONTHLY"]);
+
+/** Re-validates every `missionCategoryBonusClaims/{uid}` write - the double-grant guard
+ * FirestoreMissionRemoteSource.claimCategoryBonus writes alongside the coin/xp/inventory grant.
+ * Deliberately its own collection/validator, not folded into validateMissionClaims above - a
+ * `"{period}_{periodKey}"` key would fail that function's MissionId-shaped check. Shape/format
+ * only (append-only, one new key per write, key parses as a known period + numeric periodKey) -
+ * unlike validateMissionClaims, this doesn't re-derive "was the whole set actually claimed"
+ * (that would need a cross-document read of missionClaims/{uid}); the Firestore *client*
+ * transaction already is the authoritative gate for that, the same "shape here, real gate in the
+ * transaction" split validateMissionRefreshState below also uses. */
+export const validateMissionCategoryBonusClaims = onDocumentWritten("missionCategoryBonusClaims/{uid}", async (event) => {
+  const after = event.data?.after;
+  if (!after?.exists) return;
+
+  const data = after.data();
+  const uid = event.params.uid;
+  const problems: string[] = [];
+
+  const claimedKeys: Record<string, unknown> = typeof data?.claimedKeys === "object" && data?.claimedKeys !== null ? data.claimedKeys : {};
+  const before = event.data?.before;
+  const previousKeys: Record<string, unknown> = before?.exists && typeof before.data()?.claimedKeys === "object" ? before.data()!.claimedKeys : {};
+
+  const missingKeys = Object.keys(previousKeys).filter((key) => !(key in claimedKeys));
+  if (missingKeys.length > 0) {
+    problems.push(`claimedKeys shrank: lost ${missingKeys.join(", ")}`);
+  }
+
+  const newKeys = Object.keys(claimedKeys).filter((key) => !(key in previousKeys));
+  if (newKeys.length > 1) {
+    problems.push("more than one new category bonus claimed in a single write");
+  }
+  for (const key of newKeys) {
+    const separatorIndex = key.lastIndexOf("_");
+    const period = key.slice(0, separatorIndex);
+    const periodKey = Number(key.slice(separatorIndex + 1));
+    if (!CATEGORY_BONUS_PERIODS.has(period) || Number.isNaN(periodKey)) {
+      problems.push(`malformed category bonus claim key: ${key}`);
+    }
+  }
+
+  if (await isRateLimited(uid, "missionCategoryBonusClaims")) {
+    problems.push("resubmitted faster than the allowed interval");
+  }
+
+  if (problems.length > 0) {
+    logger.warn(`Reverting invalid missionCategoryBonusClaims/${uid} write: ${problems.join(", ")}`);
+    if (before?.exists) {
+      await after.ref.set(before.data()!);
+    } else {
+      await after.ref.delete();
+    }
+  }
+});
+
+/** Re-validates every `missionRefreshState/{uid}` write - the "pay 1000 coins to skip the
+ * countdown" override FirestoreMissionRemoteSource.unlockAllMissionsEarly writes alongside the
+ * coin deduction (that deduction itself is already bounded by validateProfileWrite above). Shape
+ * plus a monotonic check only - each forced periodKey may only move forward, mirroring
+ * playerCosmetics.ownedSkus' "may only grow" discipline; the actual "was every mission in all
+ * three periods really claimed" eligibility lives in the Firestore transaction itself, same split
+ * validateMissionCategoryBonusClaims above documents. */
+export const validateMissionRefreshState = onDocumentWritten("missionRefreshState/{uid}", async (event) => {
+  const after = event.data?.after;
+  if (!after?.exists) return;
+
+  const data = after.data();
+  const uid = event.params.uid;
+  const problems: string[] = [];
+  const before = event.data?.before;
+  const previous = before?.exists ? before.data() : null;
+
+  for (const field of ["dailyForcedPeriodKey", "weeklyForcedPeriodKey", "monthlyForcedPeriodKey"]) {
+    const value = data?.[field];
+    if (value !== null && value !== undefined && typeof value !== "number") {
+      problems.push(`${field} is not a number or null`);
+      continue;
+    }
+    const previousValue = previous?.[field];
+    if (typeof previousValue === "number" && typeof value === "number" && value < previousValue) {
+      problems.push(`${field} decreased (${previousValue} -> ${value})`);
+    }
+  }
+
+  if (await isRateLimited(uid, "missionRefreshState")) {
+    problems.push("resubmitted faster than the allowed interval");
+  }
+
+  if (problems.length > 0) {
+    logger.warn(`Reverting invalid missionRefreshState/${uid} write: ${problems.join(", ")}`);
+    if (before?.exists) {
+      await after.ref.set(before.data()!);
+    } else {
+      await after.ref.delete();
+    }
+  }
+});
+
+// Mirrors ReturningPlayerRules.Default.mediumGapDays (domain/progression/ReturningPlayerRules.kt) -
+// the only threshold this function needs to re-validate; SHORT tier never grants anything.
+const RETURNING_PLAYER_MEDIUM_GAP_DAYS = 7;
+
+/** Re-validates every `returningPlayerGifts/{uid}` write - independently re-derives eligibility
+ * (a real gap since `playerProfiles/{uid}.lastPlayedEpochDay`, not already claimed for this exact
+ * day) from admin-privileged reads rather than trusting the client's own
+ * GetReturningPlayerWelcomeUseCase check, the same "re-verify after the fact" layer
+ * validateMissionClaims/validateProfileWrite already provide for their own collections. */
+export const validateReturningPlayerGiftWrite = onDocumentWritten("returningPlayerGifts/{uid}", async (event) => {
+  const after = event.data?.after;
+  if (!after?.exists) return;
+
+  const data = after.data();
+  const uid = event.params.uid;
+  const problems: string[] = [];
+
+  const lastClaimedOnEpochDay = data?.lastClaimedOnEpochDay;
+  if (typeof lastClaimedOnEpochDay !== "number") {
+    problems.push("lastClaimedOnEpochDay is not a number");
+  } else {
+    const before = event.data?.before;
+    const previousClaimedOnEpochDay = before?.exists ? before.data()?.lastClaimedOnEpochDay : undefined;
+    if (previousClaimedOnEpochDay === lastClaimedOnEpochDay) {
+      problems.push("gift already claimed for this exact day");
+    }
+    const profileSnapshot = await db.collection("playerProfiles").doc(uid).get();
+    const lastPlayedEpochDay = profileSnapshot.exists ? profileSnapshot.data()?.lastPlayedEpochDay : undefined;
+    const gapDays = typeof lastPlayedEpochDay === "number" ? lastClaimedOnEpochDay - lastPlayedEpochDay : null;
+    if (gapDays === null || gapDays < RETURNING_PLAYER_MEDIUM_GAP_DAYS) {
+      problems.push(`gap of ${gapDays} days is too short to be eligible`);
+    }
+  }
+
+  if (await isRateLimited(uid, "returningPlayerGift")) {
+    problems.push("resubmitted faster than the allowed interval");
+  }
+
+  if (problems.length > 0) {
+    logger.warn(`Reverting invalid returningPlayerGifts/${uid} write: ${problems.join(", ")}`);
+    const before = event.data?.before;
     if (before?.exists) {
       await after.ref.set(before.data()!);
     } else {

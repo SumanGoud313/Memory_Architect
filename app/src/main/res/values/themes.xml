@@ -21,9 +21,22 @@
         <item name="android:windowLightStatusBar">false</item>
     </style>
 
+    <!--
+      The native Android 12+ SplashScreen only bridges cold start - it shows a solid background
+      (the SplashScreen API has no gradient support) plus the icon below, then hands off to
+      MainActivity's Compose content almost immediately. The full "dark blue/black gradient
+      background, fade-in, 0.95->1.0 scale, soft glow, ~800ms" experience the game actually shows
+      the player is implemented in Compose (see ui/splash/SplashScreen.kt), which is the very first
+      thing rendered after this handoff - the two together read as one continuous premium splash,
+      not two competing animations (see MainActivity.kt's short, plain native exit fade).
+      windowSplashScreenAnimatedIcon references memory_architect_logo.png directly, NOT
+      ic_launcher_foreground - this native splash icon is never system-masked the way an adaptive
+      launcher icon is (the platform only scales it to fit, never crops it), so the full,
+      unmodified, uninset artwork can be used safely here.
+    -->
     <style name="Theme.MemoryArchitect.Splash" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/bg_deep_space</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/memory_architect_logo</item>
         <item name="postSplashScreenTheme">@style/Theme.MemoryArchitect</item>
     </style>
 

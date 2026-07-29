@@ -1,15 +1,22 @@
 package com.suman.memoryarchitect.data.repository
 
 import com.suman.memoryarchitect.data.remote.MissionApi
+import com.suman.memoryarchitect.data.remote.dto.ApplyXpBoostRequestDto
+import com.suman.memoryarchitect.data.remote.dto.ClaimCategoryBonusRequestDto
 import com.suman.memoryarchitect.data.remote.dto.ClaimMissionRewardRequestDto
 import com.suman.memoryarchitect.data.remote.dto.ConsumeInventoryItemRequestDto
 import com.suman.memoryarchitect.data.remote.dto.InventoryDto
+import com.suman.memoryarchitect.data.remote.dto.OpenMysteryChestRequestDto
+import com.suman.memoryarchitect.data.remote.dto.UnlockAllMissionsEarlyRequestDto
 import com.suman.memoryarchitect.domain.model.Inventory
 import com.suman.memoryarchitect.domain.model.InventoryItemKind
 import com.suman.memoryarchitect.domain.model.MissionClaimResult
 import com.suman.memoryarchitect.domain.model.MissionId
+import com.suman.memoryarchitect.domain.model.MissionPeriod
+import com.suman.memoryarchitect.domain.model.MissionRefreshState
 import com.suman.memoryarchitect.domain.model.MissionReward
 import com.suman.memoryarchitect.domain.model.PlayerProfile
+import com.suman.memoryarchitect.domain.progression.MysteryChestReward
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -29,17 +36,6 @@ class MockBackendMissionRemoteSource @Inject constructor(
 
     override suspend fun claimMissionReward(missionId: MissionId, periodKey: Long, progressCount: Int): MissionClaimResult {
         val response = api.claimMissionReward(ClaimMissionRewardRequestDto(missionId.name, periodKey, progressCount))
-        val profile = PlayerProfile(
-            xp = response.profile.xp,
-            coins = response.profile.coins,
-            currentStreak = response.profile.currentStreak,
-            longestStreak = response.profile.longestStreak,
-            lastPlayedEpochDay = response.profile.lastPlayedEpochDay,
-            streakShields = response.profile.streakShields,
-            dailyChallengeWonAtEpochSecond = response.profile.dailyChallengeWonAtEpochSecond,
-            weeklyChallengeWonAtEpochSecond = response.profile.weeklyChallengeWonAtEpochSecond,
-            journeyPoints = response.profile.journeyPoints,
-        )
         return MissionClaimResult(
             missionId = missionId,
             reward = MissionReward(
@@ -47,13 +43,60 @@ class MockBackendMissionRemoteSource @Inject constructor(
                 xp = response.xpAwarded,
                 inventoryGrants = response.inventoryGrants.toInventoryGrants(),
             ),
-            profile = profile,
+            profile = response.profile.toDomain(),
             inventory = response.inventory.toDomain(),
         )
     }
 
     override suspend fun consumeInventoryItem(kind: InventoryItemKind, quantity: Int): Inventory =
         api.consumeInventoryItem(ConsumeInventoryItemRequestDto(kind.name, quantity)).toDomain()
+
+    override suspend fun openMysteryChest(reward: MysteryChestReward): Pair<PlayerProfile, Inventory> {
+        val response = api.openMysteryChest(OpenMysteryChestRequestDto(reward.coinsAwarded))
+        return response.profile.toDomain() to response.inventory.toDomain()
+    }
+
+    override suspend fun applyXpBoost(xpGranted: Long): Pair<PlayerProfile, Inventory> {
+        val response = api.applyXpBoost(ApplyXpBoostRequestDto(xpGranted))
+        return response.profile.toDomain() to response.inventory.toDomain()
+    }
+
+    override suspend fun claimCategoryBonus(period: MissionPeriod, periodKey: Long, coinsAwarded: Long, xpAwarded: Long): MissionCategoryBonusOutcome {
+        val response = api.claimCategoryBonus(ClaimCategoryBonusRequestDto(period.name, periodKey, coinsAwarded, xpAwarded))
+        return MissionCategoryBonusOutcome(
+            reward = MissionReward(
+                coins = response.coinsAwarded,
+                xp = response.xpAwarded,
+                inventoryGrants = response.inventoryGrants.toInventoryGrants(),
+            ),
+            profile = response.profile.toDomain(),
+            inventory = response.inventory.toDomain(),
+        )
+    }
+
+    override suspend fun unlockAllMissionsEarly(dailyPeriodKey: Long, weeklyPeriodKey: Long, monthlyPeriodKey: Long): MissionRefreshOutcome {
+        val response = api.unlockAllMissionsEarly(UnlockAllMissionsEarlyRequestDto(dailyPeriodKey, weeklyPeriodKey, monthlyPeriodKey))
+        return MissionRefreshOutcome(
+            profile = response.profile.toDomain(),
+            refreshState = MissionRefreshState(
+                dailyForcedPeriodKey = response.refreshState.dailyForcedPeriodKey,
+                weeklyForcedPeriodKey = response.refreshState.weeklyForcedPeriodKey,
+                monthlyForcedPeriodKey = response.refreshState.monthlyForcedPeriodKey,
+            ),
+        )
+    }
+
+    private fun com.suman.memoryarchitect.data.remote.dto.PlayerProfileDto.toDomain(): PlayerProfile = PlayerProfile(
+        xp = xp,
+        coins = coins,
+        currentStreak = currentStreak,
+        longestStreak = longestStreak,
+        lastPlayedEpochDay = lastPlayedEpochDay,
+        streakShields = streakShields,
+        dailyChallengeWonAtEpochSecond = dailyChallengeWonAtEpochSecond,
+        weeklyChallengeWonAtEpochSecond = weeklyChallengeWonAtEpochSecond,
+        journeyPoints = journeyPoints,
+    )
 
     private fun InventoryDto.toDomain(): Inventory = Inventory(quantities.toInventoryGrants())
 

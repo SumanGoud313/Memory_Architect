@@ -7,7 +7,9 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.suman.memoryarchitect.core.ads.InterstitialPacingPreferences
 import com.suman.memoryarchitect.domain.model.AvatarCatalog
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
@@ -21,11 +23,14 @@ private val Context.dataStore by preferencesDataStore(name = "user_preferences")
 /**
  * Device-local, non-authoritative settings only (theme, sound, last-selected mode). Never
  * used as a source of truth for progression or gameplay state — that lives server-side.
+ *
+ * Implements [InterstitialPacingPreferences] purely so [com.suman.memoryarchitect.core.ads.InterstitialPacingGate]
+ * can depend on that small interface instead of this whole class - see that interface's own doc.
  */
 @Singleton
 class UserPreferencesDataStore @Inject constructor(
     @param:ApplicationContext private val context: Context,
-) {
+) : InterstitialPacingPreferences {
 
     private object Keys {
         val THEME_MODE = stringPreferencesKey("theme_mode")
@@ -42,6 +47,14 @@ class UserPreferencesDataStore @Inject constructor(
         val AVATAR_URL = stringPreferencesKey("avatar_url")
         val COUNTRY = stringPreferencesKey("country")
         val HAS_REMOVED_ADS = booleanPreferencesKey("has_removed_ads")
+        val OWNED_PRODUCT_IDS = stringSetPreferencesKey("owned_product_ids")
+        val STREAK_REMINDER_ENABLED = booleanPreferencesKey("streak_reminder_enabled")
+        val DAILY_CHALLENGE_REMINDER_ENABLED = booleanPreferencesKey("daily_challenge_reminder_enabled")
+        val LAST_INTERSTITIAL_SHOWN_AT_EPOCH_MS = longPreferencesKey("last_interstitial_shown_at_epoch_ms")
+        val LAST_REWARDED_AD_SHOWN_AT_EPOCH_MS = longPreferencesKey("last_rewarded_ad_shown_at_epoch_ms")
+        val GAMES_PLAYED_AT_LAST_INTERSTITIAL = intPreferencesKey("games_played_at_last_interstitial")
+        val INTERSTITIALS_SHOWN_TODAY = intPreferencesKey("interstitials_shown_today")
+        val INTERSTITIALS_SHOWN_TODAY_EPOCH_DAY = longPreferencesKey("interstitials_shown_today_epoch_day")
     }
 
     val themeMode: Flow<ThemeMode> = context.dataStore.data.map { prefs ->
@@ -140,13 +153,39 @@ class UserPreferencesDataStore @Inject constructor(
         context.dataStore.edit { prefs -> prefs[Keys.HAS_REMOVED_ADS] = purchased }
     }
 
+    /** A fast local cache of every non-Remove-Ads product this account owns (Premium Collections
+     * today) - same "not the source of truth" reasoning as [hasRemovedAds] immediately above,
+     * reconciled against Google Play on every [com.suman.memoryarchitect.core.billing.BillingManager.startConnection]/
+     * `restorePurchases` call, never trusted alone. */
+    val ownedProductIds: Flow<Set<String>> = context.dataStore.data.map { prefs -> prefs[Keys.OWNED_PRODUCT_IDS] ?: emptySet() }
+
+    suspend fun setOwnedProductIds(productIds: Set<String>) {
+        context.dataStore.edit { prefs -> prefs[Keys.OWNED_PRODUCT_IDS] = productIds }
+    }
+
+    /** Per-category opt-out for [com.suman.memoryarchitect.core.notifications.DailyReminderWorker] -
+     * on by default (matches the system permission prompt's own "you'll get useful reminders"
+     * framing), independent of whether the OS notification permission is actually granted. */
+    val streakReminderEnabled: Flow<Boolean> = context.dataStore.data.map { prefs -> prefs[Keys.STREAK_REMINDER_ENABLED] ?: true }
+
+    suspend fun setStreakReminderEnabled(enabled: Boolean) {
+        context.dataStore.edit { prefs -> prefs[Keys.STREAK_REMINDER_ENABLED] = enabled }
+    }
+
+    val dailyChallengeReminderEnabled: Flow<Boolean> =
+        context.dataStore.data.map { prefs -> prefs[Keys.DAILY_CHALLENGE_REMINDER_ENABLED] ?: true }
+
+    suspend fun setDailyChallengeReminderEnabled(enabled: Boolean) {
+        context.dataStore.edit { prefs -> prefs[Keys.DAILY_CHALLENGE_REMINDER_ENABLED] = enabled }
+    }
+
     // Everything below started out existing purely to back Firebase user properties
     // (lifetime_play_time, total_sessions, preferred_game_mode) - device-local counters. The two
     // read-facing Flows immediately below are also now the Statistics Dashboard's source for
     // "Total Play Time"/"Total Sessions" (see StatisticsViewModel) - still never gameplay/
     // progression truth, just now genuinely displayed rather than analytics-only.
 
-    val sessionCount: Flow<Int> = context.dataStore.data.map { prefs -> prefs[Keys.SESSION_COUNT] ?: 0 }
+    override val sessionCount: Flow<Int> = context.dataStore.data.map { prefs -> prefs[Keys.SESSION_COUNT] ?: 0 }
 
     val lifetimePlayTimeMs: Flow<Long> = context.dataStore.data.map { prefs -> prefs[Keys.LIFETIME_PLAY_TIME_MS] ?: 0L }
 
@@ -166,6 +205,45 @@ class UserPreferencesDataStore @Inject constructor(
             prefs[Keys.LIFETIME_PLAY_TIME_MS] = updated
         }
         return updated
+    }
+
+    /** Cooldown timestamps for [com.suman.memoryarchitect.core.ads.InterstitialPacingGate] - `null`
+     * until the first interstitial/rewarded ad this install has ever shown. Persisted (not just
+     * in-memory) so a cooldown genuinely survives a process restart, unlike the gate's own
+     * session-scoped counters (interstitials-shown-this-session, level-completions-since-last),
+     * which are correctly *not* persisted here - see that class's own doc. */
+    override val lastInterstitialShownAtEpochMs: Flow<Long?> = context.dataStore.data.map { prefs -> prefs[Keys.LAST_INTERSTITIAL_SHOWN_AT_EPOCH_MS] }
+
+    override suspend fun setLastInterstitialShownAtEpochMs(epochMs: Long) {
+        context.dataStore.edit { prefs -> prefs[Keys.LAST_INTERSTITIAL_SHOWN_AT_EPOCH_MS] = epochMs }
+    }
+
+    override val lastRewardedAdShownAtEpochMs: Flow<Long?> = context.dataStore.data.map { prefs -> prefs[Keys.LAST_REWARDED_AD_SHOWN_AT_EPOCH_MS] }
+
+    override suspend fun setLastRewardedAdShownAtEpochMs(epochMs: Long) {
+        context.dataStore.edit { prefs -> prefs[Keys.LAST_REWARDED_AD_SHOWN_AT_EPOCH_MS] = epochMs }
+    }
+
+    /** [com.suman.memoryarchitect.domain.model.PlayerStatistics.gamesPlayed]'s value the moment the
+     * most recent interstitial was shown - [com.suman.memoryarchitect.core.ads.InterstitialPacingGate]
+     * compares this against the *current* `gamesPlayed` to implement "N levels completed since the
+     * last interstitial" without needing a live in-memory counter wired through every scored-round
+     * call site. `0` until this install's first interstitial ever shows. */
+    override val gamesPlayedAtLastInterstitial: Flow<Int> = context.dataStore.data.map { prefs -> prefs[Keys.GAMES_PLAYED_AT_LAST_INTERSTITIAL] ?: 0 }
+
+    override suspend fun setGamesPlayedAtLastInterstitial(gamesPlayed: Int) {
+        context.dataStore.edit { prefs -> prefs[Keys.GAMES_PLAYED_AT_LAST_INTERSTITIAL] = gamesPlayed }
+    }
+
+    override val interstitialsShownToday: Flow<Int> = context.dataStore.data.map { prefs -> prefs[Keys.INTERSTITIALS_SHOWN_TODAY] ?: 0 }
+
+    override val interstitialsShownTodayEpochDay: Flow<Long?> = context.dataStore.data.map { prefs -> prefs[Keys.INTERSTITIALS_SHOWN_TODAY_EPOCH_DAY] }
+
+    override suspend fun setInterstitialsShownToday(count: Int, epochDay: Long) {
+        context.dataStore.edit { prefs ->
+            prefs[Keys.INTERSTITIALS_SHOWN_TODAY] = count
+            prefs[Keys.INTERSTITIALS_SHOWN_TODAY_EPOCH_DAY] = epochDay
+        }
     }
 
     /** Bumps this mode's pick count and returns whichever mode now has the highest count overall

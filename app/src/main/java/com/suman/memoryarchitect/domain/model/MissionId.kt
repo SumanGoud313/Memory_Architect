@@ -30,4 +30,16 @@ enum class MissionId {
     CLEAR_FORTY_LEVELS,
     FOUR_WEEKLY_SETS,
     EARN_2500_COINS_MONTHLY,
+    // Tied to Daily/Weekly Challenge win-*counts*, both already capped at one win per real
+    // calendar day/week (see GameMode.challengeLockDurationSeconds()) - structurally impossible to
+    // rush in a single heavy play session no matter how many levels get played, unlike the three
+    // above (see MissionCatalog's doc for why their own thresholds were also raised).
+    WIN_DAILY_CHALLENGE_MONTHLY,
+    WIN_WEEKLY_CHALLENGE_MONTHLY,
+
+    // Event pool - generic, reused as-is by every LiveEventCatalog template (see MissionCatalog's
+    // doc); never rotate, always all three active together whenever an event is live.
+    EVENT_CLEAR_FIVE_LEVELS,
+    EVENT_EARN_FORTY_STARS,
+    EVENT_EARN_1000_COINS,
 }

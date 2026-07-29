@@ -112,7 +112,48 @@ class ScoringEngineTest {
         val slowFinish = engine.score(levelWithTimer, placements, placementOrder = listOf("vase"), remainingReconstructMs = 5_000L)
 
         assertTrue(fastFinish.timeBonus > slowFinish.timeBonus)
-        assertTrue(fastFinish.timeBonus <= (ScoringRules.Default.maxTimeBonusPoints * ScoringRules.Default.timeBonusWeight).toInt() + 1)
+        // level(listOf(target), ...) is a single-object level - max time bonus is 1 * timeBonusPerObject.
+        assertTrue(fastFinish.timeBonus <= ScoringRules.Default.timeBonusPerObject + 1)
+    }
+
+    @Test
+    fun `max time bonus scales with object count, keeping its share of the total roughly constant across level sizes`() {
+        // Regression test for the "score barely varies by level/time" complaint this rebalance
+        // fixed - a flat time-bonus pool shrank to a negligible fraction of the total on larger
+        // levels; scaling per-object (like comboBonusPerStreakObject) keeps it meaningful at every
+        // size instead.
+        val smallTarget = target.copy(slotIndex = 2, rotationDegrees = 90)
+        val bigObjects = (0 until 10).map { index -> target.copy(objectId = "vase$index", slotIndex = index, rotationDegrees = 90) }
+
+        val smallLevel = level(listOf(smallTarget), timeLimitMs = 60_000L)
+        val bigLevel = level(bigObjects, timeLimitMs = 60_000L)
+
+        // A perfect, instant finish (remainingReconstructMs == timeLimitMs) earns the max possible
+        // time bonus for that level size.
+        val smallResult = engine.score(
+            smallLevel,
+            placements = listOf(PlacedObject("vase", 2, 90)),
+            placementOrder = listOf("vase"),
+            remainingReconstructMs = 60_000L,
+        )
+        val bigResult = engine.score(
+            bigLevel,
+            placements = bigObjects.map { PlacedObject(it.objectId, it.slotIndex, it.rotationDegrees) },
+            placementOrder = bigObjects.map { it.objectId },
+            remainingReconstructMs = 60_000L,
+        )
+
+        assertEquals(1 * ScoringRules.Default.timeBonusPerObject, smallResult.timeBonus)
+        assertEquals(10 * ScoringRules.Default.timeBonusPerObject, bigResult.timeBonus)
+
+        val smallMaxTotal = smallResult.placementScore + smallResult.timeBonus + smallResult.comboBonus
+        val bigMaxTotal = bigResult.placementScore + bigResult.timeBonus + bigResult.comboBonus
+        val smallTimeShare = smallResult.timeBonus.toFloat() / smallMaxTotal
+        val bigTimeShare = bigResult.timeBonus.toFloat() / bigMaxTotal
+        assertTrue(
+            "time bonus share should stay roughly constant across level sizes, was $smallTimeShare vs $bigTimeShare",
+            kotlin.math.abs(smallTimeShare - bigTimeShare) < 0.02f,
+        )
     }
 
     @Test

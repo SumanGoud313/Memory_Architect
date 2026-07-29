@@ -63,7 +63,9 @@ fun CosmeticGlyph(
                     .background(Brush.linearGradient(spec.gradientColors), CircleShape),
             )
         }
-        CosmeticCategory.VICTORY_ANIMATION, CosmeticCategory.CONFETTI_EFFECT, CosmeticCategory.BACKGROUND_THEME -> {
+        CosmeticCategory.VICTORY_ANIMATION, CosmeticCategory.CONFETTI_EFFECT, CosmeticCategory.BACKGROUND_THEME,
+        CosmeticCategory.ROOM_SKIN,
+        -> {
             Box(
                 modifier = modifier.size(sizeDp).background(Brush.radialGradient(spec.gradientColors), CircleShape),
                 contentAlignment = Alignment.Center,
@@ -71,7 +73,9 @@ fun CosmeticGlyph(
                 Icon(imageVector = spec.icon, contentDescription = null, tint = MemoryArchitectColors.bgBase, modifier = Modifier.size(sizeDp * 0.5f))
             }
         }
-        CosmeticCategory.STICKER_PACK, CosmeticCategory.TROPHY_RELIC, CosmeticCategory.PROFILE_BADGE -> {
+        CosmeticCategory.STICKER_PACK, CosmeticCategory.TROPHY_RELIC, CosmeticCategory.PROFILE_BADGE,
+        CosmeticCategory.OBJECT_MATERIAL,
+        -> {
             Box(
                 modifier = modifier.size(sizeDp).background(Brush.verticalGradient(spec.gradientColors), CircleShape),
                 contentAlignment = Alignment.Center,

@@ -55,8 +55,11 @@ fun AnalyticsLogger.logModeSelected(mode: GameMode) =
 fun AnalyticsLogger.logLevelStarted(mode: GameMode, levelNumber: Int, level: LevelSpec) =
     logEvent("level_started", levelContextParams(mode, levelNumber, level))
 
-fun AnalyticsLogger.logLevelRestarted(mode: GameMode, levelNumber: Int) =
-    logEvent("level_restarted", mapOf("mode" to mode.name, "level_number" to levelNumber))
+/** [attemptNumber] is how many times (including this one) the player has started this exact level
+ * number in this app install (see `FrustrationTracker.recordLevelStart`) - the explicit "retry
+ * count" signal, rather than something only inferable by counting `level_restarted` rows oneself. */
+fun AnalyticsLogger.logLevelRestarted(mode: GameMode, levelNumber: Int, attemptNumber: Int) =
+    logEvent("level_restarted", mapOf("mode" to mode.name, "level_number" to levelNumber, "attempt_number" to attemptNumber))
 
 fun AnalyticsLogger.logMemorizeStarted(mode: GameMode, levelNumber: Int, level: LevelSpec) =
     logEvent("memorize_started", levelContextParams(mode, levelNumber, level))
@@ -149,6 +152,49 @@ fun AnalyticsLogger.logRewatchUsed(mode: GameMode, levelNumber: Int) =
     logEvent("rewatch_used", mapOf("mode" to mode.name, "level_number" to levelNumber))
 
 // ===================================================================================
+// Rewarded-ad economy - the free-tier "X_used" events above cover only free-budget spends;
+// these three cover a rewarded-ad grant specifically redeemed, so "how many players lean on ads
+// vs. the free budget" is one filtered query away instead of indistinguishable inside one event.
+// [rewardedXUsed] is the running per-level count after this grant (1..RewardedAssistLimits' cap),
+// so "average rewarded ads per level" and "rewarded ad completion rate" (the two funnel metrics
+// the analytics brief asks for) are both derivable by joining these against
+// [logRewardedAdResult]'s "rewarded"/"cancelled"/"failed:*" outcomes for the same feature/level,
+// rather than needing yet another raw event of their own.
+// ===================================================================================
+
+fun AnalyticsLogger.logRewardedHintUsed(mode: GameMode, levelNumber: Int, rewardedHintsUsed: Int) =
+    logEvent(
+        "rewarded_hint_used",
+        mapOf("mode" to mode.name, "level_number" to levelNumber, "rewarded_hints_used" to rewardedHintsUsed),
+    )
+
+fun AnalyticsLogger.logRewardedRedoUsed(mode: GameMode, levelNumber: Int, rewardedRedosUsed: Int) =
+    logEvent(
+        "rewarded_redo_used",
+        mapOf("mode" to mode.name, "level_number" to levelNumber, "rewarded_redos_used" to rewardedRedosUsed),
+    )
+
+fun AnalyticsLogger.logRewardedRewatchUsed(mode: GameMode, levelNumber: Int, rewardedRewatchesUsed: Int) =
+    logEvent(
+        "rewarded_rewatch_used",
+        mapOf("mode" to mode.name, "level_number" to levelNumber, "rewarded_rewatches_used" to rewardedRewatchesUsed),
+    )
+
+/** [feature] is `"hint"`/`"redo"`/`"rewatch"` - fires the instant that helper's rewarded-ad budget
+ * (see `RewardedAssistLimits`) is fully spent for this level attempt, pairing with
+ * [logLevelAbandonedAfterRewardLimit] to answer "do players who hit the wall keep playing or
+ * leave," and on its own, "which levels/features get farmed hardest for ad rewards." */
+fun AnalyticsLogger.logRewardLimitReached(feature: String, mode: GameMode, levelNumber: Int) =
+    logEvent("reward_limit_reached", mapOf("feature" to feature, "mode" to mode.name, "level_number" to levelNumber))
+
+/** Fires from [com.suman.memoryarchitect.feature.gameplay.GameplayViewModel.onCleared] alongside
+ * [logLevelQuitMidway], but only when at least one [logRewardLimitReached] already fired earlier
+ * in this same attempt - isolates "hit a reward wall and left" from ordinary quits for retention
+ * analysis, the "Level abandonment after reaching reward limit" metric the brief asks for. */
+fun AnalyticsLogger.logLevelAbandonedAfterRewardLimit(mode: GameMode, levelNumber: Int) =
+    logEvent("level_abandoned_after_reward_limit", mapOf("mode" to mode.name, "level_number" to levelNumber))
+
+// ===================================================================================
 // Frustration detection - one consolidated event with a `signal_type` param rather than 8
 // near-duplicate event names, so "which levels are difficult" is one filtered query
 // (`frustration_signal` grouped by `signal_type` and `level_number`) instead of eight.
@@ -198,6 +244,95 @@ fun AnalyticsLogger.logDailyRewardClaimed(cycleDay: Int, rewardKind: String, coi
     )
 
 // ===================================================================================
+// Missions & Monthly Goals - see MissionCatalog/MissionRepository. [period] is one of
+// MissionPeriod's names (DAILY/WEEKLY/MONTHLY/EVENT). [logMissionAssigned]/[logMissionProgressed]
+// are logged client-side from MissionsViewModel's own before/after comparison of consecutive
+// [com.suman.memoryarchitect.domain.model.ActiveMission] snapshots (assigned = a (missionId,
+// periodKey) seen for the first time; progressed = currentCount increased) rather than threading
+// new instrumentation through every recordMissionEvent call site across the app - the same
+// "reuse existing signals" principle the Missions design itself is built on.
+// ===================================================================================
+
+fun AnalyticsLogger.logMissionAssigned(missionId: String, period: String) =
+    logEvent("mission_assigned", mapOf("mission_id" to missionId, "period" to period))
+
+fun AnalyticsLogger.logMissionProgressed(missionId: String, period: String, currentCount: Int, targetCount: Int) =
+    logEvent(
+        "mission_progressed",
+        mapOf("mission_id" to missionId, "period" to period, "current_count" to currentCount, "target_count" to targetCount),
+    )
+
+fun AnalyticsLogger.logMissionCompleted(missionId: String, period: String) =
+    logEvent("mission_completed", mapOf("mission_id" to missionId, "period" to period))
+
+fun AnalyticsLogger.logMissionRewardClaimed(missionId: String, period: String, coinsAwarded: Long, xpAwarded: Long) =
+    logEvent(
+        "mission_reward_claimed",
+        mapOf("mission_id" to missionId, "period" to period, "coins_awarded" to coinsAwarded, "xp_awarded" to xpAwarded),
+    )
+
+/** A filtered view of [logMissionCompleted] where `period == "MONTHLY"` would already answer this,
+ * but the plan's analytics catalog calls it out as its own event name - logged alongside, not
+ * instead of, [logMissionCompleted] for that one mission. */
+fun AnalyticsLogger.logMonthlyGoalCompleted(missionId: String) =
+    logEvent("monthly_goal_completed", mapOf("mission_id" to missionId))
+
+// ===================================================================================
+// Inventory - see InventoryItemKind/InventoryRepository. [source] distinguishes where a grant
+// came from (e.g. "mission_claim", "daily_reward") without needing a separate event per source.
+// ===================================================================================
+
+fun AnalyticsLogger.logInventoryItemGranted(kind: String, quantity: Int, source: String) =
+    logEvent("inventory_item_granted", mapOf("kind" to kind, "quantity" to quantity, "source" to source))
+
+fun AnalyticsLogger.logInventoryItemConsumed(kind: String, quantity: Int) =
+    logEvent("inventory_item_consumed", mapOf("kind" to kind, "quantity" to quantity))
+
+// ===================================================================================
+// Memory Journey - see MemoryJourneyCatalog/MemoryJourneyRules. [source] is one of
+// "level_completed"/"mission_claim" - the two currently-wired point sources (achievement/streak
+// bonuses fold into a "level_completed" round's total rather than logging separately, since
+// they're only ever awarded as part of that same submitScore call).
+// ===================================================================================
+
+fun AnalyticsLogger.logMemoryJourneyPointsEarned(source: String, points: Long) =
+    logEvent("memory_journey_points_earned", mapOf("source" to source, "points" to points))
+
+fun AnalyticsLogger.logMemoryJourneyTierReached(tierId: String) =
+    logEvent("memory_journey_tier_reached", mapOf("tier_id" to tierId))
+
+// ===================================================================================
+// Seasonal Events - see LiveEventCatalog/GetActiveLiveEventUseCase. [logEventCurrencyEarned] is
+// deliberately not defined - there is no event-scoped currency in this build (Phase 2's Fragments/
+// Chests/Rotating Shop, which Seasonal Events would otherwise layer on top of, is out of scope for
+// now - see LiveEventCatalog's own doc), so nothing in the app could ever fire it truthfully.
+// [logEventCompleted] is also not defined: detecting "this event's window just ended" reliably
+// needs a scheduled check independent of the player opening the app, which doesn't exist here -
+// firing it opportunistically from a client screen would systematically undercount by however long
+// the player's next visit is delayed past the event's actual end.
+// ===================================================================================
+
+fun AnalyticsLogger.logEventStartedClientView(eventId: String) =
+    logEvent("event_started_client_view", mapOf("event_id" to eventId))
+
+// ===================================================================================
+// Returning player - see ReturningPlayerRules. [gapDays] is whole days since lastPlayedEpochDay.
+// ===================================================================================
+
+fun AnalyticsLogger.logReturningPlayerSession(gapDays: Long) =
+    logEvent("returning_player_session", mapOf("gap_days" to gapDays))
+
+// ===================================================================================
+// Notifications - see core/notifications/. [category] is one of NotificationCategory's names.
+// ===================================================================================
+
+fun AnalyticsLogger.logNotificationScheduled(category: String) =
+    logEvent("notification_scheduled", mapOf("category" to category))
+
+fun AnalyticsLogger.logNotificationTapped(category: String) =
+    logEvent("notification_tapped", mapOf("category" to category))
+
+// ===================================================================================
 // Feature usage
 // ===================================================================================
 
@@ -242,17 +377,148 @@ fun AnalyticsLogger.logRewardedAdResult(feature: String, result: String) =
  * name/param set that's *not* ours to invent (`ad_impression` with these exact param keys is
  * Firebase's own recommended schema for AdMob revenue linking; using anything else forfeits the
  * automatic LTV/revenue reporting Firebase builds on top of it). [valueMicros] is AdMob's raw
- * micros value (1,000,000 micros = 1 unit of [currencyCode]). */
-fun AnalyticsLogger.logAdRevenue(feature: String, valueMicros: Long, currencyCode: String) =
+ * micros value (1,000,000 micros = 1 unit of [currencyCode]). [adFormat] defaults to "rewarded"
+ * (this event's original, only caller) - [BannerAdView]/`InterstitialAdControllerImpl` pass
+ * "banner"/"interstitial" instead so revenue reporting can be broken down by format. */
+fun AnalyticsLogger.logAdRevenue(feature: String, valueMicros: Long, currencyCode: String, adFormat: String = "rewarded") =
     logEvent(
         FirebaseAnalytics.Event.AD_IMPRESSION,
         mapOf(
             FirebaseAnalytics.Param.AD_PLATFORM to "admob",
             FirebaseAnalytics.Param.AD_SOURCE to "AdMob",
-            FirebaseAnalytics.Param.AD_FORMAT to "rewarded",
+            FirebaseAnalytics.Param.AD_FORMAT to adFormat,
             FirebaseAnalytics.Param.AD_UNIT_NAME to feature,
             FirebaseAnalytics.Param.CURRENCY to currencyCode,
             FirebaseAnalytics.Param.VALUE to valueMicros / 1_000_000.0,
+        ),
+    )
+
+// ===================================================================================
+// Banner ads - see BannerAdView. [placement] is the screen it's shown on ("mode_select"/"shop"/
+// "missions"/"lucky_spin"/"settings"/"achievements").
+// ===================================================================================
+
+fun AnalyticsLogger.logBannerImpression(placement: String) = logEvent("banner_impression", mapOf("placement" to placement))
+
+fun AnalyticsLogger.logBannerClicked(placement: String) = logEvent("banner_clicked", mapOf("placement" to placement))
+
+/** The one banner-specific failure signal - unlike rewarded/interstitial, a banner load failure was
+ * previously invisible (the composable just renders nothing, silently), so this is what makes
+ * "banner load success/failure rate" actually measurable rather than only inferable from a missing
+ * [logBannerImpression]. */
+fun AnalyticsLogger.logBannerLoadFailed(placement: String) = logEvent("banner_load_failed", mapOf("placement" to placement))
+
+// ===================================================================================
+// Interstitial ads - see InterstitialAdController/InterstitialPacingGate. [placement] is the
+// natural-transition point the attempt fired from (currently only "level_select_return", but
+// kept as a param rather than hardcoded so a future second trigger point doesn't need a new event).
+// ===================================================================================
+
+fun AnalyticsLogger.logInterstitialRequested(placement: String) = logEvent("interstitial_requested", mapOf("placement" to placement))
+
+fun AnalyticsLogger.logInterstitialLoaded(placement: String) = logEvent("interstitial_loaded", mapOf("placement" to placement))
+
+fun AnalyticsLogger.logInterstitialLoadFailed(placement: String) = logEvent("interstitial_load_failed", mapOf("placement" to placement))
+
+fun AnalyticsLogger.logInterstitialShown(placement: String) = logEvent("interstitial_shown", mapOf("placement" to placement))
+
+fun AnalyticsLogger.logInterstitialShowFailed(placement: String) = logEvent("interstitial_show_failed", mapOf("placement" to placement))
+
+fun AnalyticsLogger.logInterstitialClicked(placement: String) = logEvent("interstitial_clicked", mapOf("placement" to placement))
+
+fun AnalyticsLogger.logInterstitialDismissed(placement: String) = logEvent("interstitial_dismissed", mapOf("placement" to placement))
+
+/** Fires whenever [InterstitialPacingGate] decides *not* to show one - never a failure, just the
+ * pacing rules doing their job. [reason] is one of "disabled"/"emergency_disabled"/"cooldown"/
+ * "cooldown_after_rewarded"/"session_cap"/"daily_cap"/"first_session_protected"/
+ * "first_levels_protected" - lets you tell "ads are working but paced out" apart from "ads are
+ * broken" in the funnel. */
+fun AnalyticsLogger.logInterstitialSkipped(placement: String, reason: String) =
+    logEvent("interstitial_skipped", mapOf("placement" to placement, "reason" to reason))
+
+// ===================================================================================
+// Ad load latency - one event shape shared by rewarded/interstitial/banner rather than a
+// per-format duplicate, since "how long did loading take, and did it succeed" is the same
+// question for all three. [adFormat] is "rewarded"/"interstitial"/"banner"; [placement] is the
+// feature/placement id each format already tags its other events with.
+// ===================================================================================
+
+fun AnalyticsLogger.logAdLoadLatency(adFormat: String, placement: String, latencyMs: Long, success: Boolean) =
+    logEvent(
+        "ad_load_latency",
+        mapOf("ad_format" to adFormat, "placement" to placement, "latency_ms" to latencyMs, "success" to success),
+    )
+
+// ===================================================================================
+// Remove Ads conversion - see BillingManagerImpl.applyPurchases. Fires only for a fresh purchase
+// completing in this session (never for the silent re-verification every app start already does,
+// and never for a Restore Purchases finding an existing entitlement) - the distinction "Remove Ads
+// conversion rate" actually needs. Uses Firebase's own recommended `purchase` event schema, the
+// IAP-revenue equivalent of [logAdRevenue]'s `ad_impression` schema for ad revenue, so both feed
+// the same "average revenue per active user" reporting Firebase computes automatically.
+// ===================================================================================
+
+fun AnalyticsLogger.logRemoveAdsPurchased(priceMicros: Long, currencyCode: String) =
+    logEvent(
+        FirebaseAnalytics.Event.PURCHASE,
+        mapOf(
+            FirebaseAnalytics.Param.ITEM_ID to "remove_ads_lifetime",
+            FirebaseAnalytics.Param.CURRENCY to currencyCode,
+            FirebaseAnalytics.Param.VALUE to priceMicros / 1_000_000.0,
+        ),
+    )
+
+// ===================================================================================
+// Unified Billing funnel - see core.billing.BillingManager/BillingManagerImpl. One shared shape
+// across every product this app sells (Remove Ads, every Premium Collection, and any future
+// consumable/subscription), so a new product's funnel is visible for free rather than needing its
+// own event set the way logRemoveAdsPurchased above still does (kept as-is, name locked in by prior
+// dashboards - logPurchaseSuccess/logCollectionPurchased fire alongside it on a Remove Ads/Collection
+// grant respectively, they are not replacements for it).
+// ===================================================================================
+
+fun AnalyticsLogger.logShopViewed() = logEvent("shop_viewed")
+
+fun AnalyticsLogger.logProductViewed(productId: String) = logEvent("product_viewed", mapOf("product_id" to productId))
+
+fun AnalyticsLogger.logPurchaseStarted(productId: String) = logEvent("purchase_started", mapOf("product_id" to productId))
+
+fun AnalyticsLogger.logPurchaseSuccess(productId: String) = logEvent("purchase_success", mapOf("product_id" to productId))
+
+fun AnalyticsLogger.logPurchaseCancelled(productId: String) = logEvent("purchase_cancelled", mapOf("product_id" to productId))
+
+/** [reason] is a short machine-readable tag (a [com.suman.memoryarchitect.core.billing.BillingFailureReason]
+ * name, `"signature_invalid"`, `"unknown_product"`, `"not_ready"`, or a raw Play `BillingResponseCode`
+ * name) - never a user-facing message, same "plain reason string, not display text" convention
+ * [logInterstitialSkipped] already uses. */
+fun AnalyticsLogger.logPurchaseFailed(productId: String, reason: String) =
+    logEvent("purchase_failed", mapOf("product_id" to productId, "reason" to reason))
+
+fun AnalyticsLogger.logPurchasePending(productId: String) = logEvent("purchase_pending", mapOf("product_id" to productId))
+
+/** Fires once per product a [com.suman.memoryarchitect.core.billing.BillingManager.restorePurchases]/
+ * automatic-startup query re-grants - a purchase that was already owned and is simply being
+ * re-confirmed, never a fresh conversion (that's [logPurchaseSuccess]/[logRemoveAdsPurchased]/
+ * [logCollectionPurchased]'s job). */
+fun AnalyticsLogger.logPurchaseRestored(productId: String) = logEvent("purchase_restored", mapOf("product_id" to productId))
+
+/** Fires once per explicit "Restore Purchases" tap, regardless of how many products it found -
+ * [restoredCount] is how many were actually re-granted, `0` being a legitimate, common outcome
+ * (nothing to restore), not an error. */
+fun AnalyticsLogger.logRestoreCompleted(restoredCount: Int) = logEvent("restore_completed", mapOf("restored_count" to restoredCount))
+
+/** Fires alongside [logPurchaseSuccess] specifically for a
+ * [com.suman.memoryarchitect.domain.model.BillingEntitlementKind.COSMETIC_COLLECTION] grant - the
+ * Premium Collection equivalent of [logRemoveAdsPurchased], using the same Firebase `purchase`
+ * revenue schema so Collection revenue feeds the same ARPU reporting ad revenue and Remove Ads
+ * already do. */
+fun AnalyticsLogger.logCollectionPurchased(productId: String, priceMicros: Long, currencyCode: String) =
+    logEvent(
+        FirebaseAnalytics.Event.PURCHASE,
+        mapOf(
+            FirebaseAnalytics.Param.ITEM_ID to productId,
+            FirebaseAnalytics.Param.CURRENCY to currencyCode,
+            FirebaseAnalytics.Param.VALUE to priceMicros / 1_000_000.0,
         ),
     )
 

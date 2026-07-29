@@ -1,14 +1,17 @@
 package com.suman.memoryarchitect.data.repository
 
-import com.suman.memoryarchitect.core.analytics.FirebaseAvailability
+import com.suman.memoryarchitect.core.analytics.FirebaseAvailabilityProvider
 import com.suman.memoryarchitect.core.auth.PlayerIdentityManager
 import com.suman.memoryarchitect.core.common.DispatcherProvider
+import com.suman.memoryarchitect.core.database.InventoryItemDao
+import com.suman.memoryarchitect.core.database.InventoryItemEntity
 import com.suman.memoryarchitect.core.database.PendingScoreSubmissionDao
 import com.suman.memoryarchitect.core.database.PendingScoreSubmissionEntity
 import com.suman.memoryarchitect.core.database.PlayerProgressCacheEntity
 import com.suman.memoryarchitect.core.database.PlayerProgressDao
 import com.suman.memoryarchitect.core.database.StatisticsCacheEntity
 import com.suman.memoryarchitect.core.database.StatisticsDao
+import com.suman.memoryarchitect.core.sync.PendingScoreSyncScheduler
 import com.suman.memoryarchitect.core.database.UnlockedAchievementDao
 import com.suman.memoryarchitect.core.database.UnlockedAchievementEntity
 import com.suman.memoryarchitect.core.database.UnlockedRewardDao
@@ -24,6 +27,7 @@ import com.suman.memoryarchitect.domain.model.MemoryJourneyRules
 import com.suman.memoryarchitect.domain.model.Outcome
 import com.suman.memoryarchitect.domain.model.PlayerProfile
 import com.suman.memoryarchitect.domain.model.PlayerStatistics
+import com.suman.memoryarchitect.domain.model.ReturningPlayerGiftClaimResult
 import com.suman.memoryarchitect.domain.model.RewardDefinition
 import com.suman.memoryarchitect.domain.model.RewardId
 import com.suman.memoryarchitect.domain.model.ScoreResult
@@ -66,8 +70,11 @@ class ProgressionRepositoryImpl @Inject constructor(
     private val unlockedAchievementDao: UnlockedAchievementDao,
     private val unlockedRewardDao: UnlockedRewardDao,
     private val levelCampaignRepository: LevelCampaignRepository,
+    private val inventoryItemDao: InventoryItemDao,
     private val dispatchers: DispatcherProvider,
     private val errorMapper: ErrorMapper,
+    private val firebaseAvailabilityProvider: FirebaseAvailabilityProvider,
+    private val pendingSyncScheduler: PendingScoreSyncScheduler,
 ) : ProgressionRepository {
 
     private val xpCurve = XpCurve()
@@ -81,11 +88,11 @@ class ProgressionRepositoryImpl @Inject constructor(
      * [MockBackendProgressionRemoteSource] otherwise (no `google-services.json`, or Firestore/
      * Anonymous Auth not yet enabled in the console - see LEADERBOARD_SETUP.md) purely so local
      * development keeps working exactly as it always has without that setup. Since
-     * [FirebaseAvailability.isConfigured] is a build-time constant and sign-in is kicked off
+     * [FirebaseAvailabilityProvider.isConfigured] is a build-time constant and sign-in is kicked off
      * eagerly in [com.suman.memoryarchitect.MemoryArchitectApp.onCreate], a configured app only
      * ever takes the mock-backend branch for the first second or two of a cold launch. */
     private suspend fun activeRemoteSource(): ProgressionRemoteSource {
-        if (!FirebaseAvailability.isConfigured) return mockBackendSource
+        if (!firebaseAvailabilityProvider.isConfigured) return mockBackendSource
         val uid = playerIdentityManager.awaitUid()
         return if (uid != null) firestoreSource else mockBackendSource
     }
@@ -128,6 +135,7 @@ class ProgressionRepositoryImpl @Inject constructor(
         try {
             val result = activeRemoteSource().claimDailyReward(todayEpochDay)
             progressDao.upsert(result.profile.toCacheEntity())
+            result.inventory.quantities.forEach { (kind, quantity) -> inventoryItemDao.upsert(InventoryItemEntity(kind.name, quantity)) }
             Outcome.Success(result)
         } catch (cancellation: CancellationException) {
             throw cancellation
@@ -141,6 +149,22 @@ class ProgressionRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun claimReturningPlayerGift(todayEpochDay: Long): Outcome<ReturningPlayerGiftClaimResult> = withContext(dispatchers.io) {
+        try {
+            val result = activeRemoteSource().claimReturningPlayerGift(todayEpochDay)
+            result.inventory.quantities.forEach { (kind, quantity) -> inventoryItemDao.upsert(InventoryItemEntity(kind.name, quantity)) }
+            Outcome.Success(result)
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (alreadyClaimed: ReturningPlayerGiftAlreadyClaimedException) {
+            Outcome.Error(AppError.Server(code = 409, message = alreadyClaimed.message))
+        } catch (notEligible: ReturningPlayerGiftNotEligibleException) {
+            Outcome.Error(AppError.Server(code = 400, message = notEligible.message))
+        } catch (failure: Throwable) {
+            Outcome.Error(with(errorMapper) { failure.toAppError() })
+        }
+    }
+
     override suspend fun submitScore(
         mode: GameMode,
         levelSeed: Long,
@@ -148,9 +172,10 @@ class ProgressionRepositoryImpl @Inject constructor(
         playedOnEpochDay: Long,
         timeTakenMs: Long,
         submissionNonce: String,
+        awardXp: Boolean,
     ): Outcome<ScoreSubmissionResult> = withContext(dispatchers.io) {
         val cachedProfile = progressDao.get()?.toDomain() ?: PlayerProfile.EMPTY
-        val xpAwarded = (score.finalScore * ProgressionRules.Default.xpPerScorePoint).roundToLong()
+        val xpAwarded = if (awardXp) (score.finalScore * ProgressionRules.Default.xpPerScorePoint).roundToLong() else 0L
         val coinsAwarded = coinsAwardedFor(mode, score)
         val streakUpdate = streakCalculator.updateStreak(
             cachedProfile.lastPlayedEpochDay,
@@ -184,7 +209,7 @@ class ProgressionRepositoryImpl @Inject constructor(
         val previousJourneyTierId = MemoryJourneyCatalog.tierFor(cachedProfile.journeyPoints)?.id
 
         try {
-            val serverProfile = activeRemoteSource().submitScore(mode, score, levelSeed, playedOnEpochDay, submissionNonce, newlyUnlocked.size)
+            val serverProfile = activeRemoteSource().submitScore(mode, score, levelSeed, playedOnEpochDay, submissionNonce, newlyUnlocked.size, awardXp)
             progressDao.upsert(serverProfile.toCacheEntity())
             Outcome.Success(
                 ScoreSubmissionResult(
@@ -217,8 +242,12 @@ class ProgressionRepositoryImpl @Inject constructor(
                     playedOnEpochDay = playedOnEpochDay,
                     createdAt = playedOnEpochDay,
                     submissionNonce = submissionNonce,
+                    comboCount = score.comboCount,
+                    newlyUnlockedAchievementCount = newlyUnlocked.size,
+                    awardXp = awardXp,
                 ),
             )
+            pendingSyncScheduler.scheduleRetry()
             Outcome.Success(
                 ScoreSubmissionResult(
                     finalOptimisticProfile, xpAwarded, coinsAwarded, leveledUp, isPendingSync = true, updatedStatistics, newlyUnlocked, newlyUnlockedRewards,
@@ -229,6 +258,55 @@ class ProgressionRepositoryImpl @Inject constructor(
                     journeyTierReached = MemoryJourneyCatalog.tierFor(finalOptimisticProfile.journeyPoints)?.id?.takeIf { it != previousJourneyTierId },
                 ),
             )
+        }
+    }
+
+    override suspend fun retryPendingSubmissions(): Unit = withContext(dispatchers.io) {
+        // An explicit snapshot, never iterated live against the DAO - each successful/duplicate
+        // entry below is deleted mid-loop, and iterating a collection while mutating its backing
+        // store (even indirectly, through a DAO that happens to return a live reference rather
+        // than a fresh query result) throws ConcurrentModificationException.
+        val pending = pendingDao.getAll().toList()
+        for (entity in pending) {
+            val mode = runCatching { GameMode.valueOf(entity.mode) }.getOrNull()
+            if (mode == null) {
+                // A corrupt/unrecognized row can never succeed - drop it rather than blocking every
+                // entry queued after it on a retry forever.
+                pendingDao.delete(entity)
+                continue
+            }
+            // Only the three fields actually transmitted over the wire (see
+            // ScoreSubmissionRequestDto/PendingScoreSubmissionEntity's doc) need to be reconstructed
+            // accurately - objectScores/placementScore/timeBonus/comboBonus never reach either
+            // backend and play no part in the server-authoritative xp/coins calculation.
+            val score = ScoreResult(
+                objectScores = emptyList(),
+                sceneAccuracy = entity.sceneAccuracy,
+                placementScore = 0,
+                timeBonus = 0,
+                comboBonus = 0,
+                finalScore = entity.finalScore,
+                comboCount = entity.comboCount,
+            )
+            try {
+                val serverProfile = activeRemoteSource().submitScore(
+                    mode, score, entity.levelSeed, entity.playedOnEpochDay, entity.submissionNonce, entity.newlyUnlockedAchievementCount, entity.awardXp,
+                )
+                progressDao.upsert(serverProfile.toCacheEntity())
+                pendingDao.delete(entity)
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (duplicate: DuplicateSubmissionException) {
+                // The server already has this one - its original response just never reached the
+                // client. Reconcile against the real profile rather than treating this as a failure.
+                runCatching { activeRemoteSource().getProfile() }.getOrNull()?.let { progressDao.upsert(it.toCacheEntity()) }
+                pendingDao.delete(entity)
+            } catch (failure: Throwable) {
+                // Still can't reach the server - leave this and every later entry queued, and let
+                // the caller (PendingScoreSyncWorker) back off and retry the whole queue later
+                // rather than silently reordering it by skipping ahead.
+                throw failure
+            }
         }
     }
 

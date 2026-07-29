@@ -1,5 +1,7 @@
 package com.suman.memoryarchitect.core.feedback.audio
 
+import com.suman.memoryarchitect.domain.model.SfxMaterialFamily
+
 /**
  * Plays short, one-shot sound effects loaded from real asset files (see [SfxId.assetPath],
  * [AudioAssetManager]) via [android.media.SoundPool] - the only thing in this app allowed to
@@ -14,5 +16,8 @@ interface GameAudioManager {
      * mid-gameplay. Anything without a file yet is silently skipped. */
     fun preload()
 
-    fun play(sfx: SfxId, volume: Float = 1f)
+    /** [family] selects a premium `OBJECT_MATERIAL`'s themed sound variant for the 3 gameplay-
+     * object [SfxId]s - `null` (the default) plays the untheme'd baseline, exactly as before this
+     * param existed. See [SfxId.variantAssetPaths]. */
+    fun play(sfx: SfxId, volume: Float = 1f, family: SfxMaterialFamily? = null)
 }

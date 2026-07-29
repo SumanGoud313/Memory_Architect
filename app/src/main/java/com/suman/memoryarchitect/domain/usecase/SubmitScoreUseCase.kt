@@ -17,5 +17,6 @@ class SubmitScoreUseCase @Inject constructor(
         playedOnEpochDay: Long,
         timeTakenMs: Long = 0L,
         submissionNonce: String,
-    ): Outcome<ScoreSubmissionResult> = repository.submitScore(mode, levelSeed, score, playedOnEpochDay, timeTakenMs, submissionNonce)
+        awardXp: Boolean = true,
+    ): Outcome<ScoreSubmissionResult> = repository.submitScore(mode, levelSeed, score, playedOnEpochDay, timeTakenMs, submissionNonce, awardXp)
 }

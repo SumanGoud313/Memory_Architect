@@ -11,12 +11,12 @@ below is `FILE PRESENT - LICENSE UNVERIFIED`, not `VERIFIED` - the file existing
 claim as the file being cleared for commercial distribution. **Do not submit this app to Google
 Play until a human confirms the actual source/license of each file and this table is updated
 accordingly** (see "How to add an asset" below - the same verification steps apply retroactively
-to a file that's already in the tree). Sound effects (`SfxId`) are a separate case: all but three
-remain genuinely absent, same as before. The object pickup/rotate/place sounds are the one
-exception - those 9 files (3 randomly-varied takes each, see `SfxId.variantAssetPaths()`) are
-procedurally synthesized in-code (sine/envelope waveform synthesis, no samples, no recordings, no
-external source of any kind) specifically so they carry zero licensing risk - see their rows below,
-marked `VERIFIED - Original`.
+to a file that's already in the tree). Sound effects (`SfxId`) are a separate case: most remain
+genuinely absent, same as before. The object pickup/rotate/place sounds (9 files, 3 randomly-varied
+takes each, see `SfxId.variantAssetPaths()`) plus Lucky Spin's own two sounds (`lucky_spin_rotate.wav`,
+`lucky_spin_win.wav`) are the exceptions - all procedurally synthesized in-code (sine/envelope
+waveform synthesis, no samples, no recordings, no external source of any kind) specifically so they
+carry zero licensing risk - see their rows below, marked `VERIFIED - Original`.
 
 This document is the tracking sheet for these assets - every row below should move to `VERIFIED`
 only once its license has actually been confirmed commercially safe.
@@ -84,6 +84,9 @@ Reconstruct round's final 10 seconds (see `MusicManager.startCountdownOverlay`).
 | Object Pickup (3 variants) | `sfx/object_pickup_{1,2,3}.wav` | Picking an object up (random no-repeat variant per play) | Procedurally synthesized in-code (sine sweep + harmonic, envelope-shaped) | Original work - full commercial rights, no attribution required | Yes | No | VERIFIED - Original |
 | Object Rotate (3 variants) | `sfx/object_rotate_{1,2,3}.wav` | Rotating a placed object (random no-repeat variant per play) | Procedurally synthesized in-code (dual micro-click waveform, envelope-shaped) | Original work - full commercial rights, no attribution required | Yes | No | VERIFIED - Original |
 | Object Place (3 variants) | `sfx/object_place_{1,2,3}.wav` | Dropping an object on a slot (random no-repeat variant per play) | Procedurally synthesized in-code (low body tone + contact transient, envelope-shaped) | Original work - full commercial rights, no attribution required | Yes | No | VERIFIED - Original |
+| Premium Metallic set (9 files) | `sfx/object_{pickup,rotate,place}_metallic_{1,2,3}.wav` | Pickup/rotate/place while a `SfxMaterialFamily.METALLIC` premium material is equipped (Royal/Luxury/Cyber Collections) | Procedurally synthesized in-code - same base synth functions as the baseline set, driven by a brighter/longer-ring timbre profile | Original work - full commercial rights, no attribution required | Yes | No | VERIFIED - Original |
+| Premium Organic set (9 files) | `sfx/object_{pickup,rotate,place}_organic_{1,2,3}.wav` | Pickup/rotate/place while a `SfxMaterialFamily.ORGANIC` premium material is equipped (Nature Collection, Founder's Pack, Starter Bundle) | Procedurally synthesized in-code - same base synth functions, driven by a warmer/duller/faster-decaying timbre profile | Original work - full commercial rights, no attribution required | Yes | No | VERIFIED - Original |
+| Premium Crystalline set (9 files) | `sfx/object_{pickup,rotate,place}_crystalline_{1,2,3}.wav` | Pickup/rotate/place while a `SfxMaterialFamily.CRYSTALLINE` premium material is equipped (Space Collection) | Procedurally synthesized in-code - same base synth functions, driven by a bright/glassy/long-ring timbre profile | Original work - full commercial rights, no attribution required | Yes | No | VERIFIED - Original |
 | Combo Step | `sfx/combo_step.mp3` | Results-screen combo reveal | *(none yet)* | *(none yet)* | — | — | PENDING |
 | Coin Awarded | `sfx/coin_awarded.mp3` | Coins granted | *(none yet)* | *(none yet)* | — | — | PENDING |
 | XP Awarded | `sfx/xp_awarded.mp3` | XP granted | *(none yet)* | *(none yet)* | — | — | PENDING |
@@ -98,6 +101,8 @@ Reconstruct round's final 10 seconds (see `MusicManager.startCountdownOverlay`).
 | Victory Sting | `victory/victory_sting.mp3` | SFX layer under the Victory music sting | *(none yet)* | *(none yet)* | — | — | PENDING |
 | Great Sting | `victory/great_sting.mp3` | SFX for the mid-tier "Great" reveal | *(none yet)* | *(none yet)* | — | — | PENDING |
 | Encourage Sting | `failure/encourage_sting.mp3` | SFX layer under the Failure music sting | *(none yet)* | *(none yet)* | — | — | PENDING |
+| Lucky Spin Rotate | `sfx/lucky_spin_rotate.wav` | The Lucky Spin wheel's 5-second spin animation | Procedurally synthesized in-code (deceleration-paced click sequence, envelope-shaped) | Original work - full commercial rights, no attribution required | Yes | No | VERIFIED - Original |
+| Lucky Spin Win | `victory/lucky_spin_win.wav` | Lucky Spin's reward reveal (coins or cosmetic) | Procedurally synthesized in-code (rising bell-tone arpeggio + shimmer tail) | Original work - full commercial rights, no attribution required | Yes | No | VERIFIED - Original |
 
 ## Haptics
 

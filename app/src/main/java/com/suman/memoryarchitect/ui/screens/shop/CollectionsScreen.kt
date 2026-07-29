@@ -46,42 +46,39 @@ import com.suman.memoryarchitect.domain.progression.AllCosmeticsCatalog
 import com.suman.memoryarchitect.feature.shop.CollectionsTab
 import com.suman.memoryarchitect.feature.shop.CollectionsUiState
 import com.suman.memoryarchitect.feature.shop.CollectionsViewModel
-import com.suman.memoryarchitect.ui.components.AmbientBackground
 import com.suman.memoryarchitect.ui.components.GlassCard
 import com.suman.memoryarchitect.ui.components.PrimaryButton
-import com.suman.memoryarchitect.ui.components.ScreenHeader
-import com.suman.memoryarchitect.ui.components.rememberParticleFieldState
 import com.suman.memoryarchitect.ui.components.staggeredReveal
 import com.suman.memoryarchitect.ui.theme.MemoryArchitectColors
 import com.suman.memoryarchitect.ui.theme.MemoryArchitectRadii
 
-/** Cosmetic gallery + loadout manager - reached via Profile's "Collections" button. View/equip
- * only, never a storefront (buying happens in [ShopScreen]) - kept cleanly separate.
+/** Cosmetic gallery + loadout manager - reached via the Cosmetics Hub's Collections tab. View/equip
+ * only, never a storefront (buying happens in [ShopScreenBody]) - kept cleanly separate.
  *
  * Only *owned* cosmetics render here - the cosmetic audit's core Collections finding was that this
  * screen used to also show locked items (dimmed, priced), which made it read as a second, weaker
  * Shop instead of a trophy case of things the player actually has. [onOpenShop] backs the empty
- * state's "Browse Shop" call to action for a player who owns nothing yet.
+ * state's "Browse Shop" call to action for a player who owns nothing yet - now a local tab-switch
+ * (flip the Cosmetics Hub to its Shop tab) rather than a nav-push, since Shop/Collections live in
+ * the same screen as tabs.
  *
  * Three tabs - All / Favorites / Recently Used - all reading the same owned/equipped state, never
  * a second data source: Favorites and Recent both filter the exact same catalog All already
  * renders (see [buildCollectionsSections] and the Recent tab's own flat-list branch below), so a
  * newly purchased Coin *or* Premium cosmetic (see the Shop redesign) shows up in all three the
- * instant it's owned, with zero extra wiring. */
+ * instant it's owned, with zero extra wiring.
+ *
+ * No `AmbientBackground`/`ScreenHeader` of its own - the Cosmetics Hub screen owns both, shared
+ * across all 3 of its tabs; this composable keeps its own [hiltViewModel] so switching tabs and
+ * back never refetches. */
 @Composable
-fun CollectionsScreen(onBack: () -> Unit, onOpenShop: () -> Unit = {}, viewModel: CollectionsViewModel = hiltViewModel()) {
+fun CollectionsScreenBody(onOpenShop: () -> Unit = {}, viewModel: CollectionsViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val particles = rememberParticleFieldState()
     var previewDefinition by remember { mutableStateOf<CosmeticDefinition?>(null) }
     val showcaseHeader = stringResource(R.string.profile_showcase_header)
 
-    AmbientBackground(nearParticles = particles, modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
-            ScreenHeader(
-                title = stringResource(R.string.collections_title),
-                onBack = onBack,
-                modifier = Modifier.fillMaxWidth().padding(24.dp).staggeredReveal(0),
-            )
             when (val state = uiState) {
                 is CollectionsUiState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = MemoryArchitectColors.accentTerracotta)

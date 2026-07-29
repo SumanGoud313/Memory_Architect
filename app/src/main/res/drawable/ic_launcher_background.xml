@@ -1,4 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Adaptive icon background layer only - never carries logo content itself (see
+  ic_launcher_foreground.xml's doc for why). Radial gradient from bg_deep_space_alt (deep
+  violet-blue) to bg_deep_space (near-black) - the same "dark neon glass" tokens themes.xml's splash
+  style and Theme.MemoryArchitect already use, so the launcher icon's background reads as the same
+  brand as the rest of the app rather than an unrelated color pick. Deliberately close to the source
+  artwork's own near-black corners (sampled ~#000000-#0A1220) so the mask boundary between this
+  background and memory_architect_logo.png's own dark edges is never a visible seam.
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
@@ -8,14 +17,12 @@
     <path android:pathData="M0,0h108v108h-108z">
         <aapt:attr name="android:fillColor">
             <gradient
-                android:type="linear"
-                android:startX="0"
-                android:startY="0"
-                android:endX="108"
-                android:endY="108">
-                <item android:color="#3949AB" android:offset="0.0" />
-                <item android:color="#1A237E" android:offset="1.0" />
-            </gradient>
+                android:type="radial"
+                android:centerX="54"
+                android:centerY="54"
+                android:gradientRadius="76"
+                android:startColor="@color/bg_deep_space_alt"
+                android:endColor="@color/bg_deep_space" />
         </aapt:attr>
     </path>
 </vector>

@@ -51,6 +51,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -92,6 +93,10 @@ import com.suman.memoryarchitect.ui.illustration.RoomArt
 import com.suman.memoryarchitect.ui.illustration.RoomArtRegistry
 import com.suman.memoryarchitect.ui.theme.MemoryArchitectColors
 import com.suman.memoryarchitect.ui.theme.MemoryArchitectRadii
+import com.suman.memoryarchitect.ui.theme.ObjectMaterialVisualCatalog
+import com.suman.memoryarchitect.ui.theme.ObjectMaterialVisualSpec
+import com.suman.memoryarchitect.ui.theme.RoomSkinVisualCatalog
+import com.suman.memoryarchitect.ui.theme.RoomSkinVisualSpec
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -121,6 +126,11 @@ fun GameplayScreen(
     // CompositionLocal (see LocalEquippedCosmetics's doc), deliberately not part of
     // GameplayViewModel's own state.
     val equippedCosmetics = LocalEquippedCosmetics.current
+    // Premium ROOM_SKIN/OBJECT_MATERIAL cosmetics - resolved once here (not inside
+    // GameplayScenePanel/GameplayTray themselves) so the ghost/tray/panel all recolor from the
+    // exact same equipped pair. `null` (nothing equipped) is a true no-op everywhere these thread.
+    val roomSkin = remember(equippedCosmetics) { equippedCosmetics[CosmeticCategory.ROOM_SKIN]?.let(RoomSkinVisualCatalog::get) }
+    val objectMaterial = remember(equippedCosmetics) { equippedCosmetics[CosmeticCategory.OBJECT_MATERIAL]?.let(ObjectMaterialVisualCatalog::get) }
     val hintState by viewModel.hintState.collectAsStateWithLifecycle()
     val rewardedHintAdState by viewModel.rewardedHintAdState.collectAsStateWithLifecycle()
     val redoState by viewModel.redoState.collectAsStateWithLifecycle()
@@ -270,6 +280,17 @@ fun GameplayScreen(
         }
     }
 
+    // Fires once, exactly when Hint's rewarded-ad budget is fully spent for this level attempt
+    // (see GameplayViewModel.watchRewardedAd) - the one time this Snackbar's message differs from
+    // "you earned a reward"/"nothing happened," so it gets its own collector rather than folding
+    // into rewardedHintGranted above.
+    LaunchedEffect(Unit) {
+        viewModel.hintRewardLimitReached.collect {
+            val message = context.getString(R.string.gameplay_hint_reward_limit_reached_snackbar)
+            replaceSnackbar(message)
+        }
+    }
+
     // Same defensive-fallback role as the Hint/Submit collectors above — the Redo control already
     // disables itself at zero remaining or with nothing placed, so this should only ever fire
     // from stale state or accessibility tooling.
@@ -303,6 +324,15 @@ fun GameplayScreen(
         }
     }
 
+    // Same reasoning as the Hint collector above - fires once, exactly when Redo's rewarded-ad
+    // budget is fully spent for this level attempt.
+    LaunchedEffect(Unit) {
+        viewModel.redoRewardLimitReached.collect {
+            val message = context.getString(R.string.gameplay_redo_reward_limit_reached_snackbar)
+            replaceSnackbar(message)
+        }
+    }
+
     // Same defensive-fallback role as the Hint/Redo collectors above - the free Rewatch control
     // is only ever rendered while a budget remains, so this should only ever fire from stale
     // state or accessibility tooling.
@@ -319,6 +349,15 @@ fun GameplayScreen(
     LaunchedEffect(Unit) {
         viewModel.rewatchAdCancelled.collect {
             val message = context.getString(R.string.gameplay_rewatch_cancelled_snackbar)
+            replaceSnackbar(message)
+        }
+    }
+
+    // Same reasoning as the Hint/Redo collectors above - fires once, exactly when Rewatch's
+    // rewarded-ad budget is fully spent for this level attempt.
+    LaunchedEffect(Unit) {
+        viewModel.rewatchRewardLimitReached.collect {
+            val message = context.getString(R.string.gameplay_rewatch_reward_limit_reached_snackbar)
             replaceSnackbar(message)
         }
     }
@@ -386,6 +425,8 @@ fun GameplayScreen(
             is GameplayUiState.InProgress -> InProgressContent(
                 state = state,
                 equippedTimerStyleId = equippedCosmetics[CosmeticCategory.TIMER_STYLE],
+                roomSkin = roomSkin,
+                objectMaterial = objectMaterial,
                 onRotate = viewModel::rotatePlacedObject,
                 onPickUp = viewModel::pickUpPlacedObject,
                 hintState = hintState,
@@ -393,14 +434,17 @@ fun GameplayScreen(
                 onHintTargetSelected = viewModel::requestHint,
                 rewardedHintAdState = rewardedHintAdState,
                 onWatchAd = { activity?.let { viewModel.watchRewardedAd(it) } },
+                onUseHintToken = viewModel::useInventoryHintToken,
                 redoState = redoState,
                 onRedo = viewModel::redoLastPlacement,
                 rewardedRedoAdState = rewardedRedoAdState,
                 onWatchRedoAd = { activity?.let { viewModel.watchRewardedRedoAd(it) } },
+                onUseRedoToken = viewModel::useInventoryRedoToken,
                 rewatchState = rewatchState,
                 onRewatchFree = viewModel::watchRewatchFree,
                 rewatchAdState = rewatchAdState,
                 onWatchRewatchAd = { activity?.let { viewModel.watchRewatchAd(it) } },
+                onUseRewatchToken = viewModel::useInventoryRewatchToken,
                 isSubmitting = isSubmitting,
                 onSubmit = {
                     if (!isSubmitting) {
@@ -408,7 +452,11 @@ fun GameplayScreen(
                         scope.launch {
                             delay(SUBMIT_PROCESSING_DELAY_MS)
                             tick()
-                            ambientParticles.confettiBurst(Offset(400f, 300f), count = 20)
+                            if (roomSkin != null) {
+                                ambientParticles.confettiBurst(Offset(400f, 300f), colors = roomSkin.particleColors, count = 20)
+                            } else {
+                                ambientParticles.confettiBurst(Offset(400f, 300f), count = 20)
+                            }
                             viewModel.submitReconstruction()
                         }
                     }
@@ -450,7 +498,11 @@ fun GameplayScreen(
                         // second, different vibration pattern on top of it for the same single
                         // drop is exactly the "double buzz" that read as odd/off.
                         val dropPosition = slotRootPosition(drag.snappedSlotIndex) ?: floatingOffset.value
-                        ambientParticles.confettiBurst(dropPosition, count = 10)
+                        if (roomSkin != null) {
+                            ambientParticles.confettiBurst(dropPosition, colors = roomSkin.particleColors, count = 10)
+                        } else {
+                            ambientParticles.confettiBurst(dropPosition, count = 10)
+                        }
                         viewModel.placeObject(drag.objectId, drag.snappedSlotIndex)
                         dragState = null
                     } else if (drag != null) {
@@ -500,6 +552,8 @@ fun GameplayScreen(
             PremiumDragGhost(
                 objectId = ghostDrag.objectId,
                 isSnapped = isSnapped,
+                snappedGlowColor = roomSkin?.accentGlow ?: MemoryArchitectColors.accentGold,
+                objectMaterial = objectMaterial,
                 modifier = Modifier
                     .offset {
                         IntOffset((renderPosition.x - 34.dp.toPx()).toInt(), (renderPosition.y - 34.dp.toPx()).toInt())
@@ -540,7 +594,13 @@ fun GameplayScreen(
 }
 
 @Composable
-private fun PremiumDragGhost(objectId: String, isSnapped: Boolean, modifier: Modifier = Modifier) {
+private fun PremiumDragGhost(
+    objectId: String,
+    isSnapped: Boolean,
+    modifier: Modifier = Modifier,
+    snappedGlowColor: Color = MemoryArchitectColors.accentGold,
+    objectMaterial: ObjectMaterialVisualSpec? = null,
+) {
     val scale = if (isSnapped) 1.22f else 1.12f
     Box(modifier = modifier.size(68.dp), contentAlignment = Alignment.Center) {
         // Soft glow ring — warmer/brighter once magnetically snapped.
@@ -549,7 +609,7 @@ private fun PremiumDragGhost(objectId: String, isSnapped: Boolean, modifier: Mod
                 .size(if (isSnapped) 78.dp else 64.dp)
                 .graphicsLayer { alpha = if (isSnapped) 0.55f else 0.32f }
                 .blur(14.dp)
-                .background(if (isSnapped) MemoryArchitectColors.accentGold else MemoryArchitectColors.accentTerracotta, CircleShape),
+                .background(if (isSnapped) snappedGlowColor else MemoryArchitectColors.accentTerracotta, CircleShape),
         )
         // Drop shadow that grows with "lift height."
         Box(
@@ -562,6 +622,7 @@ private fun PremiumDragGhost(objectId: String, isSnapped: Boolean, modifier: Mod
         )
         TrayDragGhost(
             objectId = objectId,
+            objectMaterial = objectMaterial,
             modifier = Modifier.graphicsLayer { scaleX = scale; scaleY = scale },
         )
     }
@@ -575,6 +636,8 @@ internal val GameplayBottomExtraPadding = 16.dp
 private fun InProgressContent(
     state: GameplayUiState.InProgress,
     equippedTimerStyleId: CosmeticId?,
+    roomSkin: RoomSkinVisualSpec?,
+    objectMaterial: ObjectMaterialVisualSpec?,
     onRotate: (String) -> Unit,
     onPickUp: (String) -> Unit,
     hintState: HintUiState,
@@ -582,14 +645,17 @@ private fun InProgressContent(
     onHintTargetSelected: (String) -> Unit,
     rewardedHintAdState: RewardedAdUiState,
     onWatchAd: () -> Unit,
+    onUseHintToken: () -> Unit,
     redoState: RedoUiState,
     onRedo: () -> Unit,
     rewardedRedoAdState: RewardedAdUiState,
     onWatchRedoAd: () -> Unit,
+    onUseRedoToken: () -> Unit,
     rewatchState: RewatchUiState,
     onRewatchFree: () -> Unit,
     rewatchAdState: RewardedAdUiState,
     onWatchRewatchAd: () -> Unit,
+    onUseRewatchToken: () -> Unit,
     isSubmitting: Boolean,
     onSubmit: () -> Unit,
     dragState: DragState?,
@@ -656,6 +722,8 @@ private fun InProgressContent(
                 highlightedSlotIndex = dragState?.snappedSlotIndex,
                 hintReveal = hintState.activeReveal,
                 onPanelPositioned = onScenePanelPositioned,
+                roomSkin = roomSkin,
+                objectMaterial = objectMaterial,
             )
         }
 
@@ -674,15 +742,18 @@ private fun InProgressContent(
                     onToggleHint = onToggleHint,
                     rewardedHintAdState = rewardedHintAdState,
                     onWatchHintAd = onWatchAd,
+                    onUseHintToken = onUseHintToken,
                     redoState = redoState,
                     canUndo = state.placementOrder.isNotEmpty(),
                     onRedo = onRedo,
                     rewardedRedoAdState = rewardedRedoAdState,
                     onWatchRedoAd = onWatchRedoAd,
+                    onUseRedoToken = onUseRedoToken,
                     rewatchState = rewatchState,
                     onRewatchFree = onRewatchFree,
                     rewatchAdState = rewatchAdState,
                     onWatchRewatchAd = onWatchRewatchAd,
+                    onUseRewatchToken = onUseRewatchToken,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 GameplayTray(
@@ -695,6 +766,8 @@ private fun InProgressContent(
                     isHintModeArmed = hintState.isArmed,
                     onHintTargetSelected = onHintTargetSelected,
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    accentColor = roomSkin?.accentGlow ?: MemoryArchitectColors.accentGold,
+                    objectMaterial = objectMaterial,
                 )
                 SubmitButton(
                     remainingCount = state.trayObjectIds.size,

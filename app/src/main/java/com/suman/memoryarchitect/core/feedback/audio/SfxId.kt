@@ -1,5 +1,7 @@
 package com.suman.memoryarchitect.core.feedback.audio
 
+import com.suman.memoryarchitect.domain.model.SfxMaterialFamily
+
 /** Every discrete sound effect this app can play - see [com.suman.memoryarchitect.core.feedback.FeedbackManager]
  * for which gameplay/UI event maps to which of these. Each one is a real asset file loaded by
  * [GameAudioManagerImpl] via [AudioAssetManager] - nothing here is generated in code. */
@@ -32,6 +34,9 @@ enum class SfxId {
     LEVEL_UNLOCKED,
     DAILY_REWARD_CLAIMED,
     WEEKLY_REWARD_CLAIMED,
+
+    LUCKY_SPIN_ROTATE,
+    LUCKY_SPIN_WIN,
 }
 
 /** Where [GameAudioManagerImpl] looks for this sound's asset file, relative to
@@ -57,6 +62,7 @@ fun SfxId.assetPath(): String = when (this) {
     SfxId.LEVEL_UNLOCKED -> "sfx/level_unlocked.mp3"
     SfxId.DAILY_REWARD_CLAIMED -> "sfx/daily_reward_claimed.mp3"
     SfxId.WEEKLY_REWARD_CLAIMED -> "sfx/weekly_reward_claimed.mp3"
+    SfxId.LUCKY_SPIN_ROTATE -> "sfx/lucky_spin_rotate.wav"
 
     SfxId.TIMER_TICK_SOFT -> "timer/tick_soft.mp3"
     SfxId.TIMER_TICK_URGENT -> "timer/tick_urgent.mp3"
@@ -65,18 +71,28 @@ fun SfxId.assetPath(): String = when (this) {
     SfxId.RESULT_VICTORY -> "victory/victory_sting.mp3"
     SfxId.RESULT_GREAT -> "victory/great_sting.mp3"
     SfxId.RESULT_ENCOURAGE -> "failure/encourage_sting.mp3"
+    SfxId.LUCKY_SPIN_WIN -> "victory/lucky_spin_win.wav"
 }
 
 /** Every candidate asset file [GameAudioManagerImpl] may pick between for one played instance of
  * this sound, in no particular order - [assetPath] stays the single source of truth for ids with
  * only one recording. The 3 gameplay-object sounds get real variety (see `assets/audio/sfx/README.md`)
  * so pickup/rotate/place never sounds like the exact same clip on every repetition; every other id
- * falls back to its one [assetPath], so this is purely additive and changes nothing for them. */
-fun SfxId.variantAssetPaths(): List<String> = when (this) {
+ * falls back to its one [assetPath], so this is purely additive and changes nothing for them.
+ *
+ * [family] additionally selects a premium `OBJECT_MATERIAL`'s themed variant set (e.g.
+ * `object_pickup_metallic_1.wav`) for the 3 gameplay-object sounds - `null` (nothing equipped, or
+ * any other [SfxId]) reproduces the exact untheme'd paths above. [GameAudioManagerImpl] falls back
+ * to the untheme'd set on its own if a themed file doesn't exist yet, so passing a non-null
+ * [family] here is never a silence risk. */
+fun SfxId.variantAssetPaths(family: SfxMaterialFamily? = null): List<String> {
+    val suffix = family?.name?.lowercase()?.let { "${it}_" } ?: ""
     // .wav, not .mp3, for these three specifically - SoundPool decodes either fine, and .wav
     // avoids MP3 encode/decode overhead entirely for clips this short (well under 1 second).
-    SfxId.OBJECT_PICKUP -> listOf("sfx/object_pickup_1.wav", "sfx/object_pickup_2.wav", "sfx/object_pickup_3.wav")
-    SfxId.OBJECT_ROTATE -> listOf("sfx/object_rotate_1.wav", "sfx/object_rotate_2.wav", "sfx/object_rotate_3.wav")
-    SfxId.OBJECT_PLACE -> listOf("sfx/object_place_1.wav", "sfx/object_place_2.wav", "sfx/object_place_3.wav")
-    else -> listOf(assetPath())
+    return when (this) {
+        SfxId.OBJECT_PICKUP -> listOf("sfx/object_pickup_${suffix}1.wav", "sfx/object_pickup_${suffix}2.wav", "sfx/object_pickup_${suffix}3.wav")
+        SfxId.OBJECT_ROTATE -> listOf("sfx/object_rotate_${suffix}1.wav", "sfx/object_rotate_${suffix}2.wav", "sfx/object_rotate_${suffix}3.wav")
+        SfxId.OBJECT_PLACE -> listOf("sfx/object_place_${suffix}1.wav", "sfx/object_place_${suffix}2.wav", "sfx/object_place_${suffix}3.wav")
+        else -> listOf(assetPath())
+    }
 }

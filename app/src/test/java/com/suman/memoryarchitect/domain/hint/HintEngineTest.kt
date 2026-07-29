@@ -51,6 +51,6 @@ class HintEngineTest {
     @Test
     fun `maxHintsForLevel delegates to the injected rules`() {
         assertEquals(1, engine.maxHintsForLevel(1))
-        assertEquals(3, engine.maxHintsForLevel(100))
+        assertEquals(2, engine.maxHintsForLevel(100))
     }
 }

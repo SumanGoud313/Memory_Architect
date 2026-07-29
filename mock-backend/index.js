@@ -2,9 +2,12 @@
 
 const express = require('express');
 const { TIER_INDEX, computeConstraints, generateLevel } = require('./generation');
-const { applyScoreSubmission, canClaimDailyReward, nextDailyRewardCycleDay, claimDailyReward } = require('./progression');
+const { applyScoreSubmission, canClaimDailyReward, nextDailyRewardCycleDay, claimDailyReward, claimReturningPlayerGift } = require('./progression');
 const { purchaseCosmetic, spinLuckySpin, equipCosmetic, unequipCosmetic } = require('./shop');
-const { claimMissionReward, consumeInventoryItem } = require('./missions');
+const {
+  claimMissionReward, consumeInventoryItem, openMysteryChest, applyXpBoost,
+  claimCategoryBonus, unlockAllMissionsEarly,
+} = require('./missions');
 
 const PORT = process.env.PORT || 4000;
 const app = express();
@@ -14,7 +17,25 @@ app.use(express.json());
 let remoteConfig = {
   ad_cadence: '3',
   difficulty_curve_base: '5.0',
-  seasonal_event_active: 'false',
+  // Mirrors FirebaseRemoteConfigSource.kt's own defaults - empty id / zero window means no event
+  // is active. See LiveEventCatalog.activeEvent's doc.
+  event_active_id: '',
+  event_start_epoch: '0',
+  event_end_epoch: '0',
+  // Mirrors AdRemoteConfig.kt's own per-key defaults exactly - see that file's doc for what each
+  // key gates/tunes. Dev-only; the real values live in the Firebase Remote Config console.
+  emergency_ads_disabled: 'false',
+  banner_ads_enabled: 'true',
+  interstitial_ads_enabled: 'true',
+  rewarded_ads_enabled: 'true',
+  interstitial_cooldown_seconds: '180',
+  interstitial_min_level_completions_before_first: '3',
+  interstitial_min_session_count: '2',
+  interstitial_session_cap: '4',
+  interstitial_daily_cap: '6',
+  interstitial_cooldown_after_rewarded_seconds: '60',
+  reward_multiplier_enabled: 'false',
+  reward_multiplier_value: '2.0',
 };
 
 let playerProfile = {
@@ -34,14 +55,31 @@ let dailyReward = {
   lastClaimedEpochDay: null,
 };
 
+let returningPlayerGift = {
+  lastClaimedOnEpochDay: null,
+};
+
 let playerCosmetics = {
   ownedSkus: [],
   equipped: {},
 };
 
+let luckySpinState = {
+  lastFreeSpinEpochDay: null,
+  lastAdSpinEpochDay: null,
+  hasEverSpun: false,
+};
+
 let missionState = {
   claimedKeys: {},
+  bonusClaimedKeys: {},
   inventory: {},
+};
+
+let missionRefreshState = {
+  dailyForcedPeriodKey: null,
+  weeklyForcedPeriodKey: null,
+  monthlyForcedPeriodKey: null,
 };
 
 function requestLogger(req, res, next) {
@@ -124,12 +162,12 @@ app.get('/v1/profile', (req, res) => {
 });
 
 app.post('/v1/scores/submit', (req, res) => {
-  const { mode, finalScore, comboCount, sceneAccuracy, playedOnEpochDay, newlyUnlockedAchievementCount } = req.body || {};
+  const { mode, finalScore, comboCount, sceneAccuracy, playedOnEpochDay, newlyUnlockedAchievementCount, awardXp } = req.body || {};
   if (typeof finalScore !== 'number' || typeof playedOnEpochDay !== 'number') {
     res.status(400).json({ error: 'finalScore and playedOnEpochDay are required numbers' });
     return;
   }
-  playerProfile = applyScoreSubmission(playerProfile, mode, finalScore, comboCount, sceneAccuracy, playedOnEpochDay, newlyUnlockedAchievementCount);
+  playerProfile = applyScoreSubmission(playerProfile, mode, finalScore, comboCount, sceneAccuracy, playedOnEpochDay, newlyUnlockedAchievementCount, awardXp !== false);
   res.json(playerProfile);
 });
 
@@ -150,8 +188,11 @@ app.post('/v1/profile/reset', (req, res) => {
     journeyPoints: 0,
   };
   dailyReward = { cycleDay: 0, lastClaimedEpochDay: null };
+  returningPlayerGift = { lastClaimedOnEpochDay: null };
   playerCosmetics = { ownedSkus: [], equipped: {} };
-  missionState = { claimedKeys: {}, inventory: {} };
+  luckySpinState = { lastFreeSpinEpochDay: null, lastAdSpinEpochDay: null, hasEverSpun: false };
+  missionState = { claimedKeys: {}, bonusClaimedKeys: {}, inventory: {} };
+  missionRefreshState = { dailyForcedPeriodKey: null, weeklyForcedPeriodKey: null, monthlyForcedPeriodKey: null };
   res.json(playerProfile);
 });
 
@@ -159,14 +200,22 @@ app.get('/v1/cosmetics', (req, res) => {
   res.json(playerCosmetics);
 });
 
+app.get('/v1/cosmetics/luckySpinState', (req, res) => {
+  res.json(luckySpinState);
+});
+
 app.post('/v1/cosmetics/purchase', (req, res) => {
-  const { sku } = req.body || {};
+  const { sku, useDiscountCoupon } = req.body || {};
   if (typeof sku !== 'string') {
     res.status(400).json({ error: 'sku is required' });
     return;
   }
-  const result = purchaseCosmetic(playerProfile, playerCosmetics, sku);
+  const result = purchaseCosmetic(playerProfile, playerCosmetics, sku, missionState.inventory, !!useDiscountCoupon);
   if (result.error === 'already_owned') {
+    res.status(409).json({ error: result.error });
+    return;
+  }
+  if (result.error === 'insufficient_inventory') {
     res.status(409).json({ error: result.error });
     return;
   }
@@ -176,29 +225,53 @@ app.post('/v1/cosmetics/purchase', (req, res) => {
   }
   playerProfile = result.profile;
   playerCosmetics = result.state;
-  res.json({ purchasedSku: sku, profile: playerProfile, cosmetics: playerCosmetics });
+  missionState = { ...missionState, inventory: result.inventory };
+  res.json({ purchasedSku: sku, profile: playerProfile, cosmetics: playerCosmetics, inventory: { quantities: missionState.inventory } });
 });
 
 app.post('/v1/cosmetics/spin', (req, res) => {
-  const { chosenSku } = req.body || {};
-  if (typeof chosenSku !== 'string') {
-    res.status(400).json({ error: 'chosenSku is required' });
+  const { rewardKind, coinsAmount, chosenSku, rarity, source, todayEpochDay } = req.body || {};
+  if (rewardKind !== 'COINS' && rewardKind !== 'COSMETIC') {
+    res.status(400).json({ error: 'rewardKind must be COINS or COSMETIC' });
     return;
   }
-  const result = spinLuckySpin(playerProfile, playerCosmetics, chosenSku);
+  if (rewardKind === 'COSMETIC' && typeof chosenSku !== 'string') {
+    res.status(400).json({ error: 'chosenSku is required for a COSMETIC reward' });
+    return;
+  }
+  if (!['FREE', 'AD', 'TICKET'].includes(source)) {
+    res.status(400).json({ error: 'source must be FREE, AD, or TICKET' });
+    return;
+  }
+  if (!Number.isFinite(todayEpochDay)) {
+    res.status(400).json({ error: 'todayEpochDay is required' });
+    return;
+  }
+  const request = rewardKind === 'COINS' ? { rewardKind, coinsAmount } : { rewardKind, chosenSku };
+  const result = spinLuckySpin(playerProfile, playerCosmetics, luckySpinState, request, missionState.inventory, source, todayEpochDay);
+  if (result.error === 'spin_not_available' || result.error === 'insufficient_inventory') {
+    res.status(409).json({ error: result.error });
+    return;
+  }
   if (result.error) {
     res.status(402).json({ error: result.error });
     return;
   }
   playerProfile = result.profile;
   playerCosmetics = result.state;
+  luckySpinState = result.luckySpinState;
+  missionState = { ...missionState, inventory: result.inventory };
   res.json({
-    awardedSku: chosenSku,
-    rarity: (req.body && req.body.rarity) || 'COMMON',
+    rewardKind,
+    coinsAwarded: rewardKind === 'COINS' ? coinsAmount : undefined,
+    awardedSku: rewardKind === 'COSMETIC' ? chosenSku : undefined,
+    rarity: rewardKind === 'COSMETIC' ? (rarity || 'COMMON') : undefined,
     wasDuplicate: result.wasDuplicate,
     coinsRefunded: result.coinsRefunded,
     profile: playerProfile,
     cosmetics: playerCosmetics,
+    inventory: { quantities: missionState.inventory },
+    luckySpinState,
   });
 });
 
@@ -249,16 +322,38 @@ app.post('/v1/rewards/daily/claim', (req, res) => {
     res.status(409).json({ error: 'Daily reward already claimed today' });
     return;
   }
-  const result = claimDailyReward(dailyReward, playerProfile, claimedOnEpochDay);
+  const result = claimDailyReward(dailyReward, playerProfile, claimedOnEpochDay, missionState.inventory);
   playerProfile = result.profile;
   dailyReward = result.state;
+  missionState = { ...missionState, inventory: result.inventory };
   res.json({
     cycleDay: result.state.cycleDay,
     coinsAwarded: result.coinsAwarded,
     xpAwarded: result.xpAwarded,
     profile: playerProfile,
     shieldAwarded: result.shieldAwarded,
+    inventory: { quantities: missionState.inventory },
   });
+});
+
+app.post('/v1/rewards/returning-player/claim', (req, res) => {
+  const { claimedOnEpochDay } = req.body || {};
+  if (typeof claimedOnEpochDay !== 'number') {
+    res.status(400).json({ error: 'claimedOnEpochDay is required' });
+    return;
+  }
+  const result = claimReturningPlayerGift(returningPlayerGift, playerProfile, missionState.inventory, claimedOnEpochDay);
+  if (result.error === 'already_claimed') {
+    res.status(409).json({ error: result.error });
+    return;
+  }
+  if (result.error) {
+    res.status(400).json({ error: result.error });
+    return;
+  }
+  returningPlayerGift = result.state;
+  missionState = { ...missionState, inventory: result.inventory };
+  res.json({ inventory: { quantities: missionState.inventory } });
 });
 
 app.get('/v1/inventory', (req, res) => {
@@ -292,6 +387,52 @@ app.post('/v1/missions/claim', (req, res) => {
   });
 });
 
+app.post('/v1/missions/claimCategoryBonus', (req, res) => {
+  const { period, periodKey, coinsAwarded, xpAwarded } = req.body || {};
+  if (typeof period !== 'string' || typeof periodKey !== 'number' || typeof coinsAwarded !== 'number') {
+    res.status(400).json({ error: 'period, periodKey and coinsAwarded are required' });
+    return;
+  }
+  const result = claimCategoryBonus(missionState, playerProfile, period, periodKey, coinsAwarded, xpAwarded || 0);
+  if (result.error === 'already_claimed') {
+    res.status(409).json({ error: result.error });
+    return;
+  }
+  if (result.error) {
+    res.status(400).json({ error: result.error });
+    return;
+  }
+  playerProfile = result.profile;
+  missionState = result.state;
+  res.json({
+    coinsAwarded: result.coinsAwarded,
+    xpAwarded: result.xpAwarded,
+    inventoryGrants: result.inventoryGrants,
+    profile: playerProfile,
+    inventory: { quantities: missionState.inventory },
+  });
+});
+
+app.post('/v1/missions/unlockAllEarly', (req, res) => {
+  const { dailyPeriodKey, weeklyPeriodKey, monthlyPeriodKey } = req.body || {};
+  if (typeof dailyPeriodKey !== 'number' || typeof weeklyPeriodKey !== 'number' || typeof monthlyPeriodKey !== 'number') {
+    res.status(400).json({ error: 'dailyPeriodKey, weeklyPeriodKey and monthlyPeriodKey are required' });
+    return;
+  }
+  const result = unlockAllMissionsEarly(playerProfile, missionState.claimedKeys, dailyPeriodKey, weeklyPeriodKey, monthlyPeriodKey);
+  if (result.error === 'not_all_claimed') {
+    res.status(400).json({ error: result.error });
+    return;
+  }
+  if (result.error) {
+    res.status(402).json({ error: result.error });
+    return;
+  }
+  playerProfile = result.profile;
+  missionRefreshState = result.refreshState;
+  res.json({ profile: playerProfile, refreshState: missionRefreshState });
+});
+
 app.post('/v1/inventory/consume', (req, res) => {
   const { kind, quantity } = req.body || {};
   if (typeof kind !== 'string' || typeof quantity !== 'number') {
@@ -305,6 +446,38 @@ app.post('/v1/inventory/consume', (req, res) => {
   }
   missionState = result.state;
   res.json({ quantities: missionState.inventory });
+});
+
+app.post('/v1/inventory/mystery-chest', (req, res) => {
+  const { coinsAwarded } = req.body || {};
+  if (typeof coinsAwarded !== 'number') {
+    res.status(400).json({ error: 'coinsAwarded is required' });
+    return;
+  }
+  const result = openMysteryChest(missionState, playerProfile, coinsAwarded);
+  if (result.error) {
+    res.status(409).json({ error: result.error });
+    return;
+  }
+  playerProfile = result.profile;
+  missionState = result.state;
+  res.json({ profile: playerProfile, inventory: { quantities: missionState.inventory } });
+});
+
+app.post('/v1/inventory/xp-boost', (req, res) => {
+  const { xpAwarded } = req.body || {};
+  if (typeof xpAwarded !== 'number') {
+    res.status(400).json({ error: 'xpAwarded is required' });
+    return;
+  }
+  const result = applyXpBoost(missionState, playerProfile, xpAwarded);
+  if (result.error) {
+    res.status(409).json({ error: result.error });
+    return;
+  }
+  playerProfile = result.profile;
+  missionState = result.state;
+  res.json({ profile: playerProfile, inventory: { quantities: missionState.inventory } });
 });
 
 app.listen(PORT, () => {

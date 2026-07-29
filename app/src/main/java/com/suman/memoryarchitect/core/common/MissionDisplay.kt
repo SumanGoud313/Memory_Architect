@@ -22,4 +22,9 @@ fun MissionId.toDisplayTitle(context: Context): String = when (this) {
     MissionId.CLEAR_FORTY_LEVELS -> context.getString(R.string.mission_clear_forty_levels)
     MissionId.FOUR_WEEKLY_SETS -> context.getString(R.string.mission_four_weekly_sets)
     MissionId.EARN_2500_COINS_MONTHLY -> context.getString(R.string.mission_earn_2500_coins_monthly)
+    MissionId.WIN_DAILY_CHALLENGE_MONTHLY -> context.getString(R.string.mission_win_daily_challenge_monthly)
+    MissionId.WIN_WEEKLY_CHALLENGE_MONTHLY -> context.getString(R.string.mission_win_weekly_challenge_monthly)
+    MissionId.EVENT_CLEAR_FIVE_LEVELS -> context.getString(R.string.mission_event_clear_five_levels)
+    MissionId.EVENT_EARN_FORTY_STARS -> context.getString(R.string.mission_event_earn_forty_stars)
+    MissionId.EVENT_EARN_1000_COINS -> context.getString(R.string.mission_event_earn_1000_coins)
 }

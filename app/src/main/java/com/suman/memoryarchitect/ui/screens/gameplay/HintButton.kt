@@ -3,6 +3,7 @@ package com.suman.memoryarchitect.ui.screens.gameplay
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -66,10 +67,22 @@ fun HintButton(
     onWatchAd: () -> Unit,
     modifier: Modifier = Modifier,
     compact: Boolean = false,
+    maxRewardedHints: Int = 0,
+    rewardedRemaining: Int = 0,
+    hasInventoryToken: Boolean = false,
+    inventoryTokenCount: Int = 0,
+    isRedeemingToken: Boolean = false,
+    onUseToken: () -> Unit = {},
 ) {
     val tick = rememberHapticsTick()
     val hasFreeUses = remaining > 0
-    val isLoading = !hasFreeUses && adState is RewardedAdUiState.Loading
+    val isExhausted = !hasFreeUses && !hasInventoryToken && rewardedRemaining <= 0 && maxRewardedHints > 0
+    val isLoading = !hasFreeUses && !hasInventoryToken && !isExhausted && adState is RewardedAdUiState.Loading
+    val disabledAlpha by animateFloatAsState(
+        targetValue = if (isExhausted) 0.45f else 1f,
+        animationSpec = tween(200),
+        label = "hintExhaustedAlpha",
+    )
     val interactionSource = remember { MutableInteractionSource() }
 
     val infiniteTransition = rememberInfiniteTransition(label = "hintButtonArmed")
@@ -86,7 +99,10 @@ fun HintButton(
 
     val description = when {
         hasFreeUses && isArmed -> stringResource(R.string.gameplay_hint_armed_description)
-        hasFreeUses -> stringResource(R.string.gameplay_hint_idle_description, remaining)
+        hasFreeUses -> stringResource(R.string.gameplay_hint_idle_description, remaining + inventoryTokenCount)
+        isRedeemingToken -> stringResource(R.string.gameplay_hint_redeeming_token_description)
+        hasInventoryToken -> stringResource(R.string.gameplay_hint_use_token_description, inventoryTokenCount)
+        isExhausted -> stringResource(R.string.gameplay_hint_reward_exhausted_description)
         adState is RewardedAdUiState.Loading -> stringResource(R.string.gameplay_rewarded_hint_loading_description)
         adState is RewardedAdUiState.Failed -> stringResource(
             when (adState.reason) {
@@ -95,7 +111,7 @@ fun HintButton(
                 RewardedAdFailureReason.SHOW_FAILED -> R.string.gameplay_rewarded_hint_show_failed
             },
         )
-        else -> stringResource(R.string.gameplay_rewarded_hint_watch_ad_description)
+        else -> stringResource(R.string.gameplay_rewarded_hint_watch_ad_description, rewardedRemaining)
     }
 
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
@@ -119,13 +135,18 @@ fun HintButton(
         GlassCard(
             modifier = Modifier
                 .pressableScale(interactionSource)
+                .graphicsLayer { alpha = disabledAlpha }
                 .clearAndSetSemantics {
                     role = Role.Button
                     contentDescription = description
                 }
-                .clickable(interactionSource = interactionSource, indication = null, enabled = !isLoading) {
+                .clickable(interactionSource = interactionSource, indication = null, enabled = !isLoading && !isRedeemingToken && !isExhausted) {
                     tick()
-                    if (hasFreeUses) onClick() else onWatchAd()
+                    when {
+                        hasFreeUses -> onClick()
+                        hasInventoryToken -> onUseToken()
+                        else -> onWatchAd()
+                    }
                 },
             tint = when {
                 hasFreeUses && isArmed -> MemoryArchitectColors.accentGold.copy(alpha = 0.55f)
@@ -143,7 +164,10 @@ fun HintButton(
                     icon = Icons.Filled.Lightbulb,
                     iconTint = MemoryArchitectColors.accentGold,
                     remaining = remaining,
-                    isLoading = isLoading,
+                    isLoading = isLoading || isRedeemingToken,
+                    isExhausted = isExhausted,
+                    hasInventoryToken = hasInventoryToken,
+                    inventoryTokenCount = inventoryTokenCount,
                 )
                 Text(
                     text = stringResource(R.string.gameplay_hint_name),
@@ -152,6 +176,22 @@ fun HintButton(
                     fontWeight = FontWeight.Medium,
                     modifier = Modifier.padding(top = 3.dp),
                 )
+                // Only surfaced once the free budget is spent - while free uses remain there is
+                // nothing rewarded-specific worth showing yet, matching AssistIconBadge's own
+                // "don't relearn the control" restraint applied to this caption instead.
+                if (!hasFreeUses && (hasInventoryToken || maxRewardedHints > 0)) {
+                    Text(
+                        text = when {
+                            hasInventoryToken -> stringResource(R.string.gameplay_assist_use_token_caption)
+                            isExhausted -> stringResource(R.string.gameplay_reward_exhausted_caption)
+                            else -> stringResource(R.string.gameplay_reward_progress_caption, maxRewardedHints - rewardedRemaining, maxRewardedHints)
+                        },
+                        color = MemoryArchitectColors.textTertiary,
+                        fontSize = 8.sp,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                    )
+                }
             }
         }
     }
