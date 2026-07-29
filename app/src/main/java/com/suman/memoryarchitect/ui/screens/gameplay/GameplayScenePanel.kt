@@ -74,6 +74,7 @@ import com.suman.memoryarchitect.ui.components.ParticleField
 import com.suman.memoryarchitect.ui.components.RoomSkinOverlay
 import com.suman.memoryarchitect.ui.components.rememberParticleFieldState
 import com.suman.memoryarchitect.ui.illustration.IdleAnimatedObject
+import com.suman.memoryarchitect.ui.illustration.MAX_OBJECT_SIZE_SCALE
 import com.suman.memoryarchitect.ui.illustration.ObjectArt
 import com.suman.memoryarchitect.ui.illustration.ObjectArtRegistry
 import com.suman.memoryarchitect.ui.illustration.RoomArt
@@ -87,27 +88,30 @@ import kotlinx.coroutines.launch
 private val PopIn = OvershootEasing(1.6f)
 private const val POP_IN_DURATION_MS = 250
 
+/** How much guaranteed, fully-settled viewing time the Memorize phase reserves at the very end,
+ * on top of order-mode's sequential reveal - see [rememberRevealProgress]'s own doc for why this
+ * exists: without it, the last object to appear in a high-object-count/order-mode level (e.g.
+ * Classic L100, 16 objects) was popping in right as the phase's own timer expired, giving it
+ * effectively zero real time on screen no matter how generous the total duration was. */
+private const val MIN_SETTLE_MS = 2_500L
+
 /** Every room's [com.suman.memoryarchitect.ui.illustration.RoomSlot.footprintFraction] was tuned
  * small (0.10-0.16 of room width) for a dense, cluttered-room look - genuinely harder to recall
  * than it needs to be. Scaling up once here, at the single shared render site every mode
  * (Classic/Practice/Daily/Weekly) already goes through, avoids re-tuning 100+ individual
  * per-slot values across 8 rooms while keeping every room's relative slot spacing intact.
  *
- * Tapered by object count rather than a flat constant: a scripted overlap check (comparing
- * every room's slot-pair distances against their scaled footprints, then generating hundreds of
- * real Classic L95-100 levels - the densest, 12-14 objects) found the "at least one occupied
- * overlapping pair" case is already ~100% at the *original* unscaled size on those levels - a
- * pre-existing property of the room layouts, not something introduced here. A flat 1.2x pushed
- * the total overlapping-pair count across all 8 rooms from 49 to 74 (+51%), most of it landing
- * on exactly the dense scenes that could least afford it. Daily (3 objects) / Weekly (5) /
- * Practice (~5) / early-mid Classic never approach that density, so they get the full boost;
- * only the sparse endgame tail is held back closer to baseline (58 pairs, +18%, at 1.05x).
+ * A flat [MAX_OBJECT_SIZE_SCALE] regardless of object count - this used to taper down to 1.05x
+ * once a level had more than 9 objects, out of concern for visual overlap at the densest Classic
+ * endgame levels. That concern is already fully retired: every room's slots were since
+ * repositioned (see [com.suman.memoryarchitect.ui.illustration.autoResolveOverlaps]) specifically
+ * so no two of a room's slots can ever visually overlap *at this exact scale*, independent of how
+ * many are simultaneously occupied - [com.suman.memoryarchitect.ui.illustration.RoomLayoutOverlapTest]
+ * is the permanent regression guard for that claim. Tapering down further than that was only ever
+ * making the densest, hardest-to-read levels (L95-100, exactly where legibility matters most)
+ * needlessly smaller for no remaining safety reason.
  */
-private fun objectSizeScale(objectCount: Int): Float = when {
-    objectCount <= 6 -> 1.2f
-    objectCount <= 9 -> 1.12f
-    else -> 1.05f
-}
+private val objectSizeScale: Float = MAX_OBJECT_SIZE_SCALE
 
 /**
  * Draws the room backdrop plus every currently visible object at its designed furniture slot
@@ -137,7 +141,6 @@ fun GameplayScenePanel(
 ) {
     val accentColor = roomSkin?.accentGlow ?: MemoryArchitectColors.accentGold
     var panelSizePx by remember { mutableStateOf(IntSize.Zero) }
-    val objectSizeScale = remember(level.objects.size) { objectSizeScale(level.objects.size) }
     val progressMap = rememberRevealProgress(level, visibleObjects, phase)
     val mirrored = remember(level.seed) { LevelMirrorPolicy.isMirrored(level.seed) }
     val roomArt = remember(level.sceneType, mirrored) { RoomArtRegistry.get(level.sceneType).mirrored(mirrored) }
@@ -458,6 +461,15 @@ private fun SlotHintOverlay(
     }
 }
 
+/**
+ * Order-mode's sequential reveal used to spread every object's pop-in across the *entire*
+ * Memorize window, [POP_IN_DURATION_MS] included - meaning the very last object to appear
+ * finished animating in exactly as the phase timer expired, giving it effectively zero real
+ * viewing time no matter how long the phase itself was. [MIN_SETTLE_MS] reserves guaranteed
+ * fully-visible time at the end of the window instead: the stagger only spreads objects across
+ * the window *up to* that reserved tail, so every object - including the last - is fully popped
+ * in with real time left to actually look at the completed scene before it hides.
+ */
 @Composable
 private fun rememberRevealProgress(
     level: LevelSpec,
@@ -477,7 +489,7 @@ private fun rememberRevealProgress(
 
         if (phase == GamePhase.MEMORIZE && level.orderModeEnabled && wasEmpty) {
             val orderedNewIds = visibleObjects.map { it.objectId }.filter { it in newIds }
-            val staggerWindowMs = (level.memorizeDurationMs - POP_IN_DURATION_MS).coerceAtLeast(0L).toFloat()
+            val staggerWindowMs = (level.memorizeDurationMs - POP_IN_DURATION_MS - MIN_SETTLE_MS).coerceAtLeast(0L).toFloat()
             val perObjectDelayMs = if (orderedNewIds.size > 1) staggerWindowMs / (orderedNewIds.size - 1) else 0f
             orderedNewIds.forEachIndexed { index, id ->
                 launch {

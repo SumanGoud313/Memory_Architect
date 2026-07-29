@@ -3,7 +3,6 @@ package com.suman.memoryarchitect.domain.progression
 import com.suman.memoryarchitect.domain.model.DifficultyTier
 import com.suman.memoryarchitect.domain.model.LevelConstraints
 import kotlin.math.roundToInt
-import kotlin.math.roundToLong
 
 /**
  * Pure functions mapping a campaign level number (1..[LevelCampaignRules.maxLevel]) to
@@ -46,10 +45,11 @@ class LevelCampaignEngine(private val rules: LevelCampaignRules = LevelCampaignR
     /**
      * The whole 1..[LevelCampaignRules.maxLevel] curve as one smooth, monotonic ramp. Object
      * count and distractor ratio grow gradually (the room's fixed slot list absorbs the extra
-     * objects, no grid to resize); memorize time only ever eases down slightly (never to
-     * anything punishing); the reconstruct time budget scales directly with object count, so a
-     * level with more objects always gets proportionally more time — an unhurried player who
-     * knows the scene can always finish, no matter how far into the campaign.
+     * objects, no grid to resize); memorize time only ever grows alongside object count (never
+     * shrinks, however far into the campaign); the reconstruct time budget also scales directly
+     * with object count, so a level with more objects always gets proportionally more time in
+     * both phases — an unhurried player who knows the scene can always finish, no matter how far
+     * into the campaign.
      */
     fun constraintsFor(levelNumber: Int): LevelConstraints {
         val progress = progressFor(levelNumber)
@@ -61,14 +61,13 @@ class LevelCampaignEngine(private val rules: LevelCampaignRules = LevelCampaignR
         val rotationEnabled = levelNumber >= rules.rotationUnlockLevel
         val orderModeEnabled = levelNumber >= rules.orderUnlockLevel
 
-        // The base curve alone (tuned against object count only) plus a flat top-up the instant
-        // rotation/order mode are active - see [LevelCampaignRules.rotationMemorizeBonusMs].
-        val baseMemorizeDurationMs = (rules.maxMemorizeDurationMs -
-            progress * (rules.maxMemorizeDurationMs - rules.minMemorizeDurationMs))
-            .roundToLong()
+        // Fixed setup time plus a per-object study budget - grows with objectCount rather than
+        // shrinking with level, then tops up per object again the instant rotation/order mode add
+        // a further memory dimension to track for each one. See [LevelCampaignRules.memorizePerObjectMs].
+        val baseMemorizeDurationMs = rules.memorizeSetupMs + objectCount * rules.memorizePerObjectMs
         val memorizeDurationMs = baseMemorizeDurationMs +
-            (if (rotationEnabled) rules.rotationMemorizeBonusMs else 0L) +
-            (if (orderModeEnabled) rules.orderModeMemorizeBonusMs else 0L)
+            (if (rotationEnabled) objectCount * rules.rotationMemorizePerObjectMs else 0L) +
+            (if (orderModeEnabled) objectCount * rules.orderModeMemorizePerObjectMs else 0L)
 
         val distractorRatio = rules.minDistractorRatio + progress * (rules.maxDistractorRatio - rules.minDistractorRatio)
 

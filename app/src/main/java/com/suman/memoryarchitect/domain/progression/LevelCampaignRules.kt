@@ -14,24 +14,34 @@ data class LevelCampaignRules(
     val passAccuracyThreshold: Float = 0.7f,
     val minObjectCount: Int = 3,
     val maxObjectCount: Int = 12,
-    val maxMemorizeDurationMs: Long = 11_000L,
-    // Softened on purpose: difficulty should come from more objects/distractors/rotation and
-    // richer room layouts, not a shrinking memorize window.
-    val minMemorizeDurationMs: Long = 9_500L,
+    /**
+     * Fixed overhead every Memorize phase gets regardless of object count - the moment to orient
+     * to a new room before any per-object study time is even needed.
+     */
+    val memorizeSetupMs: Long = 4_000L,
+    /**
+     * Per-target study time, scaled by [LevelCampaignEngine.constraintsFor]'s objectCount rather
+     * than a flat/shrinking duration - a real human can't encode more objects (up to 12 by L100)
+     * in *less* time than fewer objects needed at L1, which the old curve did (it shrank from
+     * 11s to 9.5s as object count nearly quadrupled). Total memorize time now only ever grows
+     * with how much there actually is to remember. See the level-design audit on realistic human
+     * recall limits.
+     */
+    val memorizePerObjectMs: Long = 900L,
     val minDistractorRatio: Float = 0.1f,
     val maxDistractorRatio: Float = 0.3f,
     val rotationUnlockLevel: Int = 30,
     val rotationStepDegrees: Int = 90,
     val orderUnlockLevel: Int = 55,
     /**
-     * Flat memorize-time top-ups the instant rotation/order mode become required, on top of the
-     * base curve above. Each one adds a real memory *dimension* per object (angle, then serial
-     * position) rather than just more objects - the base curve alone was tuned against object
-     * count only, so seconds-of-memorize-time-per-object was falling well below what's realistic
-     * by the time both stack on an already-tight base window. See the level-design audit.
+     * Per-object memorize-time top-ups the instant rotation/order mode become required, scaled by
+     * objectCount rather than a flat bonus. Each one adds a real memory *dimension* per object
+     * (angle, then serial position), so the compensation has to grow with how many objects are
+     * carrying that extra dimension - a flat bonus left a 12-object L100 just as time-starved per
+     * object as an 8-object L55 despite tracking half again as many. See the level-design audit.
      */
-    val rotationMemorizeBonusMs: Long = 1_500L,
-    val orderModeMemorizeBonusMs: Long = 2_000L,
+    val rotationMemorizePerObjectMs: Long = 150L,
+    val orderModeMemorizePerObjectMs: Long = 250L,
     val baseTimeLimitMs: Long = 15_000L,
     val perObjectTimeLimitMs: Long = 5_500L,
 ) {
