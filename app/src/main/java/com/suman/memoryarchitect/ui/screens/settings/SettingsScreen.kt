@@ -1,9 +1,14 @@
 package com.suman.memoryarchitect.ui.screens.settings
 
 import android.Manifest
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.net.Uri
 import android.os.Build
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -14,8 +19,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -26,7 +34,9 @@ import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DeleteForever
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Vibration
@@ -55,6 +65,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.core.os.LocaleListCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.suman.memoryarchitect.BuildConfig
@@ -70,6 +81,7 @@ import com.suman.memoryarchitect.ui.components.rememberHapticsTick
 import com.suman.memoryarchitect.ui.components.rememberParticleFieldState
 import com.suman.memoryarchitect.ui.components.staggeredReveal
 import com.suman.memoryarchitect.ui.theme.MemoryArchitectColors
+import java.util.Locale
 
 /** New screen — Home's settings gear opens this. Sound &amp; Haptics (master/music/effects volume,
  * haptics on/off, reduce haptics, mute all - all backed by
@@ -88,6 +100,7 @@ fun SettingsScreen(
     val particles = rememberParticleFieldState()
     var showResetConfirmation by remember { mutableStateOf(false) }
     var showHowToPlay by remember { mutableStateOf(false) }
+    var showLanguagePicker by remember { mutableStateOf(false) }
 
     // Only relevant on API 33+ (POST_NOTIFICATIONS didn't exist before) - below that, toggling a
     // reminder on just works once DailyReminderWorker next runs, no prompt needed. Requested only
@@ -147,14 +160,25 @@ fun SettingsScreen(
                     },
                     modifier = Modifier.staggeredReveal(5),
                 )
+                Text(
+                    text = stringResource(R.string.settings_general),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MemoryArchitectColors.textTertiary,
+                    modifier = Modifier.padding(top = 8.dp).staggeredReveal(6),
+                )
+                LanguageRow(
+                    onClick = { showLanguagePicker = true },
+                    modifier = Modifier.staggeredReveal(7),
+                )
                 HowToPlayRow(
                     onClick = { showHowToPlay = true },
-                    modifier = Modifier.staggeredReveal(6),
+                    modifier = Modifier.staggeredReveal(8),
                 )
+                HelpAndSupportRow(modifier = Modifier.staggeredReveal(9))
                 ResetProgressRow(
                     isResetting = isResetting,
                     onClick = { showResetConfirmation = true },
-                    modifier = Modifier.staggeredReveal(7),
+                    modifier = Modifier.staggeredReveal(10),
                 )
                 AboutRow(
                     // Debug builds only, and never advertised in the UI - tapping the app name 7
@@ -162,7 +186,7 @@ fun SettingsScreen(
                     // Options) is the only way in, so a tester holding a debug build never
                     // stumbles onto internal analytics data by casually browsing Settings.
                     onSecretUnlock = if (BuildConfig.DEBUG) onOpenAnalyticsDashboard else null,
-                    modifier = Modifier.staggeredReveal(8),
+                    modifier = Modifier.staggeredReveal(11),
                 )
             }
 
@@ -185,6 +209,18 @@ fun SettingsScreen(
 
     if (showHowToPlay) {
         HowToPlayDialog(onDismiss = { showHowToPlay = false })
+    }
+
+    if (showLanguagePicker) {
+        LanguagePickerDialog(
+            onSelect = { languageTag ->
+                AppCompatDelegate.setApplicationLocales(
+                    if (languageTag == null) LocaleListCompat.getEmptyLocaleList() else LocaleListCompat.forLanguageTags(languageTag),
+                )
+                showLanguagePicker = false
+            },
+            onDismiss = { showLanguagePicker = false },
+        )
     }
 }
 
@@ -405,6 +441,148 @@ private fun NotificationsCard(
         }
     }
 }
+
+/** Per-app language override via [AppCompatDelegate.setApplicationLocales] - AppCompat's own
+ * cross-version storage for this (backed by the platform's per-app language API on API 33+, a
+ * local shim below that), so no manual persistence is needed here. Selecting a language recreates
+ * the Activity to apply it, which is also why this row's own "currently selected" read is a plain
+ * one-shot [remember]: the whole Composable tree is freshly recreated right after a change, so it
+ * never needs to observe further updates mid-session. */
+@Composable
+private fun LanguageRow(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val tick = rememberHapticsTick()
+    val currentLabel = remember {
+        AppCompatDelegate.getApplicationLocales().takeIf { !it.isEmpty }
+            ?.get(0)
+            ?.let { locale -> locale.getDisplayName(locale) }
+    }
+    GlassCard(
+        modifier = modifier
+            .fillMaxWidth()
+            .pressableScale(interactionSource)
+            .clickable(interactionSource = interactionSource, indication = null) { tick(); onClick() },
+    ) {
+        Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Filled.Language, contentDescription = null, tint = MemoryArchitectColors.accentGold)
+            Column(modifier = Modifier.padding(start = 14.dp).weight(1f)) {
+                Text(
+                    text = stringResource(R.string.settings_language),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MemoryArchitectColors.textPrimary,
+                )
+                Text(
+                    text = currentLabel ?: stringResource(R.string.settings_language_system_default),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MemoryArchitectColors.textSecondary,
+                )
+            }
+            Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = MemoryArchitectColors.textTertiary)
+        }
+    }
+}
+
+/** Locale tags for the languages this app actually ships translated strings for
+ * (`values-XX/strings.xml`). Kept as a fixed list rather than [Locale.getISOLanguages] - unlike
+ * [com.suman.memoryarchitect.ui.screens.profile.AccountSection]'s Country picker (which is just a
+ * display label, so every ISO country is safe to list), picking an untranslated language here
+ * would silently leave the UI in English despite the user's choice. Chinese needs the "CN" region
+ * to match the `values-zh-rCN` resource folder; the rest are plain language tags. */
+private val SUPPORTED_LANGUAGE_TAGS = listOf(
+    "es", "fr", "de", "pt", "ru", "ar", "zh-CN", "ja", "ko", "hi", "te", "ta", "kn", "bn", "mr",
+)
+
+/** [onSelect] receives a BCP-47 language tag, or `null` for "System Default" (clears the app's
+ * locale override). Only [SUPPORTED_LANGUAGE_TAGS] are listed - offering the full ISO language
+ * list here would let users pick a language with no translated resources, which changes the
+ * locale but leaves every string showing in English. Each name is rendered in that language's own
+ * script/spelling (`displayName` against itself, not the device's current locale) so a reader can
+ * recognize their own language even if the UI is currently showing a language they don't read. */
+@Composable
+private fun LanguagePickerDialog(onSelect: (String?) -> Unit, onDismiss: () -> Unit) {
+    val feedback = rememberFeedback()
+    LaunchedEffect(Unit) { feedback.onDialogOpen() }
+    val languages = remember {
+        SUPPORTED_LANGUAGE_TAGS
+            .map { tag -> tag to Locale.forLanguageTag(tag) }
+            .map { (tag, locale) -> tag to locale.getDisplayName(locale) }
+            .sortedBy { it.second }
+    }
+    AlertDialog(
+        onDismissRequest = { feedback.onDialogClose(); onDismiss() },
+        title = { Text(stringResource(R.string.settings_language_dialog_title)) },
+        text = {
+            LazyColumn(modifier = Modifier.height(320.dp)) {
+                item {
+                    Text(
+                        text = stringResource(R.string.settings_language_system_default),
+                        color = MemoryArchitectColors.textSecondary,
+                        modifier = Modifier.fillMaxWidth().clickable { onSelect(null) }.padding(vertical = 10.dp),
+                    )
+                }
+                items(languages, key = { it.first }) { (code, name) ->
+                    Text(
+                        text = name,
+                        color = MemoryArchitectColors.textPrimary,
+                        modifier = Modifier.fillMaxWidth().clickable { onSelect(code) }.padding(vertical = 10.dp),
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { feedback.onDialogClose(); onDismiss() }) { Text(stringResource(R.string.action_close)) }
+        },
+    )
+}
+
+/** Opens the device's email app with [SUPPORT_EMAIL] pre-filled - the one deliberately
+ * low-friction "reach a real person" escape hatch on this screen, since nothing else here routes
+ * to human support. Falls back to a short [Toast] rather than crashing on the (rare, e.g. a bare
+ * emulator image) device with no email app installed at all. */
+@Composable
+private fun HelpAndSupportRow(modifier: Modifier = Modifier) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val tick = rememberHapticsTick()
+    val context = LocalContext.current
+    val emailSubject = stringResource(R.string.settings_help_and_support_email_subject)
+    val noEmailAppMessage = stringResource(R.string.settings_help_and_support_no_email_app)
+    GlassCard(
+        modifier = modifier
+            .fillMaxWidth()
+            .pressableScale(interactionSource)
+            .clickable(interactionSource = interactionSource, indication = null) {
+                tick()
+                val intent = Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:")).apply {
+                    putExtra(Intent.EXTRA_EMAIL, arrayOf(SUPPORT_EMAIL))
+                    putExtra(Intent.EXTRA_SUBJECT, emailSubject)
+                }
+                try {
+                    context.startActivity(intent)
+                } catch (_: ActivityNotFoundException) {
+                    Toast.makeText(context, noEmailAppMessage, Toast.LENGTH_SHORT).show()
+                }
+            },
+    ) {
+        Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Filled.Email, contentDescription = null, tint = MemoryArchitectColors.accentGold)
+            Column(modifier = Modifier.padding(start = 14.dp).weight(1f)) {
+                Text(
+                    text = stringResource(R.string.settings_help_and_support),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MemoryArchitectColors.textPrimary,
+                )
+                Text(
+                    text = stringResource(R.string.settings_help_and_support_subtitle),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MemoryArchitectColors.textSecondary,
+                )
+            }
+            Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = MemoryArchitectColors.textTertiary)
+        }
+    }
+}
+
+private const val SUPPORT_EMAIL = "sumangoud.ekkurthi99@gmail.com"
 
 @Composable
 private fun HowToPlayRow(onClick: () -> Unit, modifier: Modifier = Modifier) {
