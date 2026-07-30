@@ -1,5 +1,7 @@
 package com.suman.memoryarchitect.di
 
+import com.suman.memoryarchitect.core.ads.AdConsentGate
+import com.suman.memoryarchitect.core.ads.AdConsentManager
 import com.suman.memoryarchitect.core.ads.InterstitialAdController
 import com.suman.memoryarchitect.core.ads.InterstitialAdControllerImpl
 import com.suman.memoryarchitect.core.ads.InterstitialPacingPreferences
@@ -56,4 +58,12 @@ abstract class AdsModule {
     abstract fun bindInterstitialPacingPreferences(
         impl: UserPreferencesDataStore,
     ): InterstitialPacingPreferences
+
+    /** See [AdConsentGate]'s own doc - this binding is the only place production code learns which
+     * concrete type satisfies it; tests substitute a plain fake instead. */
+    @Binds
+    @Singleton
+    abstract fun bindAdConsentGate(
+        impl: AdConsentManager,
+    ): AdConsentGate
 }

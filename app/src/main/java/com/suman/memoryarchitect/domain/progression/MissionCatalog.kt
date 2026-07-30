@@ -9,11 +9,11 @@ import com.suman.memoryarchitect.domain.model.MissionReward
 
 /**
  * The full mission pool plus deterministic rotation. Mirrors `mock-backend/missions.js`'s
- * `MISSION_CATALOG`/`activeMissionIds` and `functions/src/missions.ts`'s copy - all three kept in
- * sync by hand, the same convention [DailyRewardCatalog]/[StreakCalculator] already use for
- * progression math. A given (period, periodKey) always resolves to the exact same active set on
- * every platform, which is what lets a Firestore-side claim independently re-derive "was this
- * really one of today's missions" rather than trusting the client's word for it - see
+ * `MISSION_CATALOG`/`activeMissionIds` - both kept in sync by hand, the same convention
+ * [DailyRewardCatalog]/[StreakCalculator] already use for progression math. A given (period,
+ * periodKey) always resolves to the exact same active set on every platform, which is what lets
+ * the claiming transaction independently re-derive "was this really one of today's missions"
+ * rather than trusting the client's word for it - see
  * [com.suman.memoryarchitect.data.repository.FirestoreMissionRemoteSource].
  *
  * Reward scale is deliberately modest relative to [DailyRewardCatalog]'s single check-in day

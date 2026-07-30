@@ -188,6 +188,7 @@ private class FakeMissionPlayerIdentityManager : PlayerIdentityManager {
     override fun ensureSignedIn() = Unit
     override suspend fun awaitUid(timeoutMs: Long): String? = null
     override suspend fun linkWithGoogle(idToken: String): Result<Unit> = Result.failure(UnsupportedOperationException("not exercised by these tests"))
+    override suspend fun signOutAfterAccountDeletion() = Unit
 }
 
 /** The requirement types that advance by a flat +1 per event, independent of any event payload -

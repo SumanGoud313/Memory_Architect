@@ -91,14 +91,19 @@ import java.util.Locale
 fun SettingsScreen(
     onBack: () -> Unit,
     onOpenAnalyticsDashboard: () -> Unit = {},
+    onOpenPrivacyPolicy: () -> Unit = {},
+    onOpenTerms: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val audioSettings by viewModel.audioSettings.collectAsStateWithLifecycle()
     val isResetting by viewModel.isResetting.collectAsStateWithLifecycle()
+    val isDeletingAccount by viewModel.isDeletingAccount.collectAsStateWithLifecycle()
+    val deleteAccountFailed by viewModel.deleteAccountFailed.collectAsStateWithLifecycle()
     val streakReminderEnabled by viewModel.streakReminderEnabled.collectAsStateWithLifecycle()
     val dailyChallengeReminderEnabled by viewModel.dailyChallengeReminderEnabled.collectAsStateWithLifecycle()
     val particles = rememberParticleFieldState()
     var showResetConfirmation by remember { mutableStateOf(false) }
+    var showDeleteAccountConfirmation by remember { mutableStateOf(false) }
     var showHowToPlay by remember { mutableStateOf(false) }
     var showLanguagePicker by remember { mutableStateOf(false) }
 
@@ -175,9 +180,24 @@ fun SettingsScreen(
                     modifier = Modifier.staggeredReveal(8),
                 )
                 HelpAndSupportRow(modifier = Modifier.staggeredReveal(9))
+                LegalRow(
+                    label = stringResource(R.string.settings_privacy_policy),
+                    onClick = onOpenPrivacyPolicy,
+                    modifier = Modifier.staggeredReveal(9),
+                )
+                LegalRow(
+                    label = stringResource(R.string.settings_terms_and_conditions),
+                    onClick = onOpenTerms,
+                    modifier = Modifier.staggeredReveal(9),
+                )
                 ResetProgressRow(
                     isResetting = isResetting,
                     onClick = { showResetConfirmation = true },
+                    modifier = Modifier.staggeredReveal(10),
+                )
+                DeleteAccountRow(
+                    isDeleting = isDeletingAccount,
+                    onClick = { showDeleteAccountConfirmation = true },
                     modifier = Modifier.staggeredReveal(10),
                 )
                 AboutRow(
@@ -205,6 +225,20 @@ fun SettingsScreen(
             },
             onDismiss = { showResetConfirmation = false },
         )
+    }
+
+    if (showDeleteAccountConfirmation) {
+        DeleteAccountDialog(
+            onConfirm = {
+                showDeleteAccountConfirmation = false
+                viewModel.deleteAccount(onComplete = onBack)
+            },
+            onDismiss = { showDeleteAccountConfirmation = false },
+        )
+    }
+
+    if (deleteAccountFailed) {
+        DeleteAccountErrorDialog(onDismiss = viewModel::dismissDeleteAccountError)
     }
 
     if (showHowToPlay) {
@@ -634,6 +668,91 @@ private fun ResetProgressRow(isResetting: Boolean, onClick: () -> Unit, modifier
             }
         }
     }
+}
+
+@Composable
+private fun LegalRow(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val interactionSource = remember { MutableInteractionSource() }
+    GlassCard(
+        modifier = modifier
+            .fillMaxWidth()
+            .pressableScale(interactionSource)
+            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick),
+    ) {
+        Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MemoryArchitectColors.textPrimary,
+                modifier = Modifier.weight(1f),
+            )
+            Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = MemoryArchitectColors.textTertiary)
+        }
+    }
+}
+
+/** Play Data Safety requires an in-app account deletion flow since this app supports account
+ * creation (Google Sign-In) - see [AccountDeletionRepositoryImpl]'s own doc for exactly what gets
+ * deleted. Same shape as [ResetProgressRow] immediately above, one step more destructive. */
+@Composable
+private fun DeleteAccountRow(isDeleting: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val interactionSource = remember { MutableInteractionSource() }
+    GlassCard(
+        modifier = modifier
+            .fillMaxWidth()
+            .pressableScale(interactionSource)
+            .clickable(interactionSource = interactionSource, indication = null, enabled = !isDeleting, onClick = onClick),
+    ) {
+        Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Filled.DeleteForever, contentDescription = null, tint = MemoryArchitectColors.danger)
+            Column(modifier = Modifier.padding(start = 14.dp).weight(1f)) {
+                Text(
+                    text = stringResource(R.string.settings_delete_account),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MemoryArchitectColors.danger,
+                )
+                Text(
+                    text = stringResource(R.string.settings_delete_account_subtitle),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MemoryArchitectColors.textSecondary,
+                )
+            }
+            if (isDeleting) {
+                CircularProgressIndicator(color = MemoryArchitectColors.danger, modifier = Modifier.size(20.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun DeleteAccountDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    val feedback = rememberFeedback()
+    LaunchedEffect(Unit) { feedback.onDialogOpen() }
+    AlertDialog(
+        onDismissRequest = { feedback.onDialogClose(); onDismiss() },
+        title = { Text(stringResource(R.string.settings_delete_account_dialog_title)) },
+        text = { Text(stringResource(R.string.settings_delete_account_dialog_message)) },
+        confirmButton = {
+            TextButton(onClick = { feedback.onDialogClose(); onConfirm() }) {
+                Text(stringResource(R.string.settings_delete_account), color = MemoryArchitectColors.danger)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = { feedback.onDialogClose(); onDismiss() }) { Text(stringResource(R.string.action_cancel)) }
+        },
+    )
+}
+
+@Composable
+private fun DeleteAccountErrorDialog(onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.settings_delete_account_error_title)) },
+        text = { Text(stringResource(R.string.settings_delete_account_error_message)) },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_close)) }
+        },
+    )
 }
 
 /** [onSecretUnlock], when non-null (debug builds only - see the call site), fires once this row

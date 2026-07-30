@@ -204,7 +204,14 @@ class ProgressionRepositoryImpl @Inject constructor(
         val updatedStatistics = updateStatistics(mode, score, playedOnEpochDay, timeTakenMs)
         val newlyUnlocked = evaluateAndPersistAchievements(optimisticProfile, updatedStatistics, playedOnEpochDay)
         val newlyUnlockedRewards = evaluateAndPersistRewards(xpCurve.levelForXp(optimisticProfile.xp), playedOnEpochDay)
-        val journeyPointsAwarded = journeyPointsAwardedFor(score.sceneAccuracy, streakUpdate.milestoneReached, newlyUnlocked.size)
+        // awardXp is already false exactly for a repeat clear of an already-completed Classic
+        // level (see GameplayViewModel.watchRewardedAd's doc), so reusing it here excludes that
+        // same case from Memory Journey points too - a repeat clear shouldn't inflate a lifetime
+        // stat any more than it should inflate XP. Daily/Weekly Challenge rounds are excluded
+        // outright regardless of awardXp (which is always true for them) - Memory Journey points
+        // track Classic campaign progress specifically, not challenge-mode participation.
+        val awardJourneyPoints = awardXp && mode != GameMode.DAILY_CHALLENGE && mode != GameMode.WEEKLY_CHALLENGE
+        val journeyPointsAwarded = if (awardJourneyPoints) journeyPointsAwardedFor(score.sceneAccuracy, streakUpdate.milestoneReached, newlyUnlocked.size) else 0L
         val finalOptimisticProfile = optimisticProfile.copy(journeyPoints = cachedProfile.journeyPoints + journeyPointsAwarded)
         val previousJourneyTierId = MemoryJourneyCatalog.tierFor(cachedProfile.journeyPoints)?.id
 

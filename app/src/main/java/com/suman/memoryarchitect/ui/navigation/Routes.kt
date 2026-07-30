@@ -68,6 +68,11 @@ sealed interface Route {
     @Serializable
     data object AnalyticsDashboard : Route
 
+    /** Privacy Policy / Terms & Conditions - [document] is [com.suman.memoryarchitect.ui.screens.legal.LegalDocument]'s
+     * `.name`, reached via Settings' two new rows. See `LegalScreen.kt`'s own doc. */
+    @Serializable
+    data class Legal(val document: String) : Route
+
     @Serializable
     data class Gameplay(
         val mode: String,

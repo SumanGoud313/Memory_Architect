@@ -9,8 +9,8 @@ import com.suman.memoryarchitect.domain.model.CosmeticRarity
  * Static, client-known catalog of Point Shop cosmetics - same "the catalog itself is never
  * persisted" approach as [RewardCatalog]/[com.suman.memoryarchitect.domain.achievements.AchievementCatalog].
  * Four items per [CosmeticCategory] (one per [CosmeticRarity]), priced from [ShopRules]' bands.
- * `mock-backend/shop.js` and `functions/src/shopCatalog.ts` mirror this table's prices exactly -
- * keep all three in sync, the same convention [RewardCatalog]'s sibling systems already use.
+ * `mock-backend/shop.js` mirrors this table's prices exactly - keep both in sync, the same
+ * convention [RewardCatalog]'s sibling systems already use.
  */
 object ShopCatalog {
     val definitions: List<CosmeticDefinition> = listOf(

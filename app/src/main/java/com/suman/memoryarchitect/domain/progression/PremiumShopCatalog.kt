@@ -13,10 +13,7 @@ import com.suman.memoryarchitect.domain.model.CosmeticId
  * one new entry here plus one new grant-path `when` branch, never a new manager. Remove Ads lives in
  * this same list ([REMOVE_ADS_PRODUCT_ID], `entitlement = BillingEntitlementKind.REMOVE_ADS`) rather
  * than a separate catalog - the split that used to exist between it and the cosmetic bundles was a
- * manager-layer artifact, not a real difference in how either is catalogued. Mirrored in
- * `functions/src/premiumCatalog.ts`'s doc-comment only now (see that file for why the Cloud Function
- * itself is no longer called) - keep both in sync as a reference, the same "keep Kotlin/TypeScript
- * in sync" convention `shopCatalog.ts` already established for the coin catalog.
+ * manager-layer artifact, not a real difference in how either is catalogued.
  */
 object PremiumShopCatalog {
     const val REMOVE_ADS_PRODUCT_ID = "remove_ads_lifetime"

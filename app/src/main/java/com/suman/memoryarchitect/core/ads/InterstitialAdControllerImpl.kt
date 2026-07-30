@@ -45,6 +45,7 @@ class InterstitialAdControllerImpl @Inject constructor(
     @ApplicationContext private val context: Context,
     private val networkMonitor: NetworkMonitor,
     private val analytics: AnalyticsLogger,
+    private val adConsentGate: AdConsentGate,
 ) : InterstitialAdController {
 
     private val initMutex = Mutex()
@@ -53,6 +54,11 @@ class InterstitialAdControllerImpl @Inject constructor(
     override suspend fun loadAndShow(activity: Activity, placement: String): InterstitialAdResult {
         if (!networkMonitor.isOnline.value) {
             return InterstitialAdResult.Failed(InterstitialAdFailureReason.NO_INTERNET)
+        }
+        // UMP policy: never request an ad before consent is gathered (where required) - see
+        // AdConsentManager's own doc.
+        if (!adConsentGate.canRequestAds) {
+            return InterstitialAdResult.Failed(InterstitialAdFailureReason.AD_UNAVAILABLE)
         }
         ensureInitialized()
 
@@ -130,11 +136,7 @@ class InterstitialAdControllerImpl @Inject constructor(
         }
 
     private companion object {
-        /** Google's official Android test interstitial ad unit ID - always fills with a test
-         * creative, never a real ad, safe to ship in any build. Swap for a real ad unit ID (from
-         * your own AdMob console) before release - same placeholder convention
-         * [RewardedAdControllerImpl.REWARDED_AD_UNIT_ID] already uses. */
-        const val INTERSTITIAL_AD_UNIT_ID = "ca-app-pub-3940256099942544/1033173712"
+        const val INTERSTITIAL_AD_UNIT_ID = "ca-app-pub-6355592583655922/8909184395"
         const val INIT_TIMEOUT_MS = 10_000L
         const val LOAD_TIMEOUT_MS = 15_000L
     }

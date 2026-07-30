@@ -3,7 +3,6 @@ package com.suman.memoryarchitect.di
 import com.suman.memoryarchitect.BuildConfig
 import com.suman.memoryarchitect.core.network.EmulatorBaseUrlResolver
 import com.suman.memoryarchitect.core.network.SecurityConfig
-import com.suman.memoryarchitect.data.remote.LevelApi
 import com.suman.memoryarchitect.data.remote.MissionApi
 import com.suman.memoryarchitect.data.remote.ProgressionApi
 import com.suman.memoryarchitect.data.remote.RemoteConfigApi
@@ -74,10 +73,6 @@ object NetworkModule {
     @Singleton
     fun provideRemoteConfigApi(retrofit: Retrofit): RemoteConfigApi =
         retrofit.create(RemoteConfigApi::class.java)
-
-    @Provides
-    @Singleton
-    fun provideLevelApi(retrofit: Retrofit): LevelApi = retrofit.create(LevelApi::class.java)
 
     @Provides
     @Singleton

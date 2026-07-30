@@ -95,6 +95,16 @@ interface PlayerIdentityManager {
      * still returns [Result.failure] - the caller surfaces that distinctly from a generic network
      * failure so the player isn't left thinking they're verified when they aren't. */
     suspend fun linkWithGoogle(idToken: String): Result<Unit>
+
+    /** Called only by account deletion, once every Firestore document under this [uid] has already
+     * been removed. Best-effort deletes the underlying `FirebaseAuth` user - if that specifically
+     * fails (e.g. the sign-in is no longer "recent" per Firebase's own re-authentication policy),
+     * it's logged and swallowed, never surfaced as a failure, since the player's data is already
+     * gone either way. Unconditionally resets this manager's own in-memory state to signed-out
+     * afterward, so the mandatory sign-in gate reappears immediately, exactly like a fresh
+     * install - leaving the app "verified" against an account whose data was just wiped would be a
+     * far more broken state than an orphaned, dataless Auth record. */
+    suspend fun signOutAfterAccountDeletion()
 }
 
 @Singleton
@@ -166,6 +176,19 @@ class PlayerIdentityManagerImpl @Inject constructor(
             Log.w(TAG, "Google account linking failed", t)
             Result.failure(t)
         }
+    }
+
+    override suspend fun signOutAfterAccountDeletion() {
+        try {
+            Firebase.auth.currentUser?.delete()?.await()
+        } catch (t: Throwable) {
+            Log.w(TAG, "FirebaseAuth account deletion failed - local sign-out still proceeds", t)
+        }
+        _uid.value = null
+        _isVerified.value = false
+        _displayName.value = null
+        _photoUrl.value = null
+        signInAttempted = false
     }
 
     private fun applyUser(user: FirebaseUser?) {

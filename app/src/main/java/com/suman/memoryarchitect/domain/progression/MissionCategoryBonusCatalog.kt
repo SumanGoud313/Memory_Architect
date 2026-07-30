@@ -12,13 +12,11 @@ import kotlin.random.Random
  * [MissionCatalog] itself already documents. No entry for [MissionPeriod.EVENT] - a live event's
  * short, rare window doesn't get its own completion bonus.
  *
- * [coinRange] is rolled client-side (see [roll]) rather than a fixed amount, then re-verified only
- * for *plausibility* server-side (falls within this same range) - the same "client rolls a bounded
- * amount, server bounds-checks rather than re-deriving" trust level
- * [com.suman.memoryarchitect.domain.progression.MysteryChestOdds] already documents, since every
- * range here stays comfortably under `functions/src/index.ts`'s `MAX_PLAUSIBLE_COINS_GAIN_PER_WRITE`
- * (2,000/write). [inventoryGrants] stays fixed (never randomized) and is always applied from the
- * server's own copy of this table, never trusted from the client.
+ * [coinRange] is rolled client-side (see [roll]) rather than a fixed amount - only bounded by
+ * `firestore.rules`' `isValidProfile` coins ceiling, the same trust level
+ * [com.suman.memoryarchitect.domain.progression.MysteryChestOdds] already documents (this project
+ * runs no Cloud Function to re-verify the roll fell within [coinRange] specifically).
+ * [inventoryGrants] stays fixed (never randomized).
  */
 object MissionCategoryBonusCatalog {
 

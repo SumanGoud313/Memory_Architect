@@ -303,8 +303,6 @@ dependencies {
     // data/repository/AvatarUploadRepository.kt. Same FirebaseAvailability-guarded, fails-soft
     // posture as Auth/Firestore above.
     implementation(libs.firebase.storage)
-    // Calls the verifyDeviceIntegrity callable Cloud Function - see core/security/DeviceIntegrityChecker.kt.
-    implementation(libs.firebase.functions)
 
     // Google Sign-In upgrade path (core/auth/PlayerIdentityManager.linkWithGoogle) - the modern
     // Credential Manager API, not the deprecated GoogleSignInClient. See

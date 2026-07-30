@@ -11,20 +11,16 @@ import com.suman.memoryarchitect.domain.model.CosmeticRarity
  * purchase/spin path (`FirestoreShopRemoteSource.purchase`/`spin`, [GetShopCatalogUseCase],
  * [com.suman.memoryarchitect.domain.progression.LuckySpinEngine], the Shop's Coin tab) can ever
  * see or grant a premium id - those call sites stay on [ShopCatalog] alone by construction. Every
- * item here is granted exclusively through [PremiumShopCatalog]'s bundles, via a
- * server-verified Google Play purchase (see `functions/src/index.ts`'s `verifyPremiumPurchase`) or
- * `DebugTestGrantor.debugGrantPremiumProduct` in debug builds - never coin-purchasable, never a
- * Lucky Spin prize (`spinEligible = false` throughout).
+ * item here is granted exclusively through [PremiumShopCatalog]'s bundles, via
+ * `core.billing.CosmeticCollectionGrantor` right after a verified Google Play purchase (see
+ * `BillingManagerImpl`'s own doc) or `DebugTestGrantor.debugGrantPremiumProduct` in debug builds -
+ * never coin-purchasable, never a Lucky Spin prize (`spinEligible = false` throughout).
  *
  * [CosmeticDefinition.priceCoins] is inert here (always `0L`) - only the coin-purchase transaction
  * path ever reads that field, and premium items never reach it. [CosmeticDefinition.isAnimated] is
  * only meaningful for [CosmeticCategory.PROFILE_BORDER] (see `PremiumBorder.kt`), so it's `true`
  * only for the border entries below, matching [ShopCatalog]'s own convention of leaving it `false`
  * everywhere else.
- *
- * Every id here needs a mirrored entry in `functions/src/premiumCatalog.ts` (which product grants
- * which ids) - see that file's doc - the same "keep the Kotlin and TypeScript catalogs in sync"
- * convention `shopCatalog.ts` already established for [ShopCatalog].
  */
 object PremiumCatalog {
     val definitions: List<CosmeticDefinition> = listOf(

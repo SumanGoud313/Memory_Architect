@@ -10,11 +10,12 @@ import com.suman.memoryarchitect.domain.scoring.ScoringRules
  * corrupted/tampered local [ScoreResult] (a modified APK, a memory-edit tool, a bug) can never
  * even attempt to reach Firestore. This is a first line of defense, not the authoritative one - a
  * motivated attacker can still bypass client code entirely and write to Firestore directly with
- * forged credentials, which is exactly what Firestore Security Rules + a Cloud Function trigger
- * exist to close (see `firestore.rules` and `functions/validateScoreSubmission.ts` - the
- * server-side layer this app can define but can't itself deploy). [isPlausible] deliberately never
- * *lowers* what the client already computed - it only ever rejects outright, so it can't be used
- * to invent a better score than [ScoringEngine] actually produced.
+ * forged credentials, which is exactly what `firestore.rules`' own shape/range bounds
+ * (`isValidGlobalStats`/`isValidPeriodicEntry`) exist to close - this project runs no Cloud
+ * Function to compare a write against a player's own history on top of that (an accepted trade-off
+ * of staying on the free Firebase Spark plan). [isPlausible] deliberately never *lowers* what the
+ * client already computed - it only ever rejects outright, so it can't be used to invent a better
+ * score than [ScoringEngine] actually produced.
  */
 object LeaderboardAntiCheat {
 

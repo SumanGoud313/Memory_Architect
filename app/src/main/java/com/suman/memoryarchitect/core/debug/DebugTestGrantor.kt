@@ -4,7 +4,6 @@ import com.google.firebase.Firebase
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.SetOptions
 import com.google.firebase.firestore.firestore
-import com.google.firebase.functions.functions
 import com.suman.memoryarchitect.BuildConfig
 import com.suman.memoryarchitect.core.analytics.FirebaseAvailabilityProvider
 import com.suman.memoryarchitect.core.auth.PlayerIdentityManager
@@ -51,13 +50,12 @@ import javax.inject.Singleton
  * Writes directly to the same Firestore documents the real gameplay/purchase/claim flows use (see
  * [FirestoreShopRemoteSource], [FirestoreMissionRemoteSource], [FirestoreProgressionRemoteSource]),
  * then mirrors the change into the local Room cache so it's reflected immediately without waiting
- * for a fresh fetch. Every write goes through the exact same `firestore.rules`/Cloud-Function
- * validation path a real client write would - nothing here uses an Admin SDK shortcut or a rule
- * exception carved out for this class. The two exceptions ([debugResetDailyReward]/
- * [debugResetReturningPlayer]) call the already-existing, already-reviewed `resetPlayerData`
- * callable Cloud Function instead - the same one the real "Reset Progress" feature uses - because
- * there is no client-writable path that can turn a real claim back into "never claimed" without
- * admin privilege (see that method's own doc for why).
+ * for a fresh fetch. Every write goes through the exact same `firestore.rules` validation path a
+ * real client write would - nothing here uses an Admin SDK shortcut or a rule exception carved out
+ * for this class. The two exceptions ([debugResetDailyReward]/[debugResetReturningPlayer]) instead
+ * *delete* their target documents outright (see [performFullProgressionReset]) - the same
+ * `allow delete: if isOwner(uid)` rule the real "Reset Progress" feature uses - because there is no
+ * client-*writable* path that can turn a real claim back into "never claimed."
  *
  * Both writes send the **full** document shape (every field `isValidProfile`/`isValidCosmetics` in
  * `firestore.rules` requires), never a partial [SetOptions.merge] of just the changed field - a
@@ -111,11 +109,10 @@ class DebugTestGrantor @Inject constructor(
         mutateProfile { it.copy(xp = it.xp + amount) }.xp
     }
 
-    /** Bounded to [MAX_JOURNEY_POINTS_GRANT_PER_CALL] per call - matches the real
-     * `validateProfileWrite`'s own only-increases-by-at-most-500-per-write bound in
-     * `functions/src/index.ts`; a larger single grant would just get silently reverted
-     * server-side, which would look like this tool is broken rather than like the real anti-cheat
-     * bound doing its job. Call it more than once to grant more. */
+    /** Bounded to [MAX_JOURNEY_POINTS_GRANT_PER_CALL] per call - kept in line with what one real
+     * scored round could plausibly grant, so a debug session's profile state stays realistic even
+     * though nothing server-side enforces this bound (this project runs no Cloud Function - see
+     * the Spark migration report). Call it more than once to grant more. */
     suspend fun grantTestJourneyPoints(amount: Long = MAX_JOURNEY_POINTS_GRANT_PER_CALL): Result<Long> = runCatching {
         requireDebugBuild()
         require(amount in 1..MAX_JOURNEY_POINTS_GRANT_PER_CALL) {
@@ -124,10 +121,9 @@ class DebugTestGrantor @Inject constructor(
         mutateProfile { it.copy(journeyPoints = it.journeyPoints + amount) }.journeyPoints
     }
 
-    /** Grants exactly one Streak Shield, capped at [MAX_STREAK_SHIELDS] - matches both
-     * `StreakRules`' own cap and `validateProfileWrite`'s ±1-per-write bound in
-     * `functions/src/index.ts`, so this never triggers the same revert [grantTestJourneyPoints]'s
-     * doc describes. */
+    /** Grants exactly one Streak Shield, capped at [MAX_STREAK_SHIELDS] - matches `StreakRules`'
+     * own cap, same "stay realistic even with no server enforcing it" reasoning
+     * [grantTestJourneyPoints]'s doc describes. */
     suspend fun grantTestStreakShield(): Result<Int> = runCatching {
         requireDebugBuild()
         mutateProfile { it.copy(streakShields = (it.streakShields + 1).coerceAtMost(MAX_STREAK_SHIELDS)) }.streakShields
@@ -136,11 +132,9 @@ class DebugTestGrantor @Inject constructor(
     /** Covers Hint/Redo/Rewatch tokens, Lucky Spin Tickets, Mystery Chests, and every other
      * [InventoryItemKind] - one generic grant rather than one method per kind, since the write
      * shape (`inventory/{uid}`'s `quantities` map) is identical for all of them. [quantity]
-     * defaults to, and is hard-capped at, [MAX_INVENTORY_GRANT_PER_CALL] - matches
-     * `MAX_MISSION_INVENTORY_GRANT_PER_KIND` in `functions/src/missions.ts` (the real per-write
-     * increase bound `validateInventoryWrite` enforces); a larger single write would be reverted
-     * server-side the same way an over-large journey-points grant would. Call it more than once to
-     * grant more of the same kind. */
+     * defaults to, and is hard-capped at, [MAX_INVENTORY_GRANT_PER_CALL] - same "stay realistic
+     * even with no server enforcing it" reasoning [grantTestJourneyPoints]'s doc describes. Call it
+     * more than once to grant more of the same kind. */
     suspend fun grantInventoryItem(kind: InventoryItemKind, quantity: Int = MAX_INVENTORY_GRANT_PER_CALL): Result<Int> = runCatching {
         requireDebugBuild()
         check(firebaseAvailabilityProvider.isConfigured) { "Firebase isn't configured - no server inventory to grant on" }
@@ -249,22 +243,22 @@ class DebugTestGrantor @Inject constructor(
         }
     }
 
-    /** Both reset actions below share this one admin-privileged reset - `resetPlayerData`
-     * (`functions/src/index.ts`), the exact same callable Cloud Function the real "Reset Progress"
-     * feature already calls (see `LocalProgressResetRepositoryImpl`) - because there is no
-     * client-writable, rules-respecting way to narrow a reset to just `dailyRewards/{uid}` or
-     * `returningPlayerGifts/{uid}`: both collections only accept a client *write* shaped like a
-     * real, eligible claim (`isValidDailyReward`/`isValidReturningPlayerGift` in `firestore.rules`),
-     * and `validateDailyReward`/`validateReturningPlayerGiftWrite` would revert anything that
-     * doesn't independently re-derive as a real eligible claim - a client can't forge "never
-     * claimed" back into existence without the admin privilege this callable already has. This
-     * also resets `playerProfiles`/`inventory`/`missionClaims`, not just the one collection the
-     * caller asked about - see [debugResetDailyReward]/[debugResetReturningPlayer]'s own docs,
-     * this is documented there so a tester isn't surprised by the broader scope. */
+    /** Both reset actions below share this one reset - direct client-side deletes of
+     * `playerProfiles`/`dailyRewards`/`inventory`/`missionClaims`/`returningPlayerGifts`, the same
+     * 5 collections and same `allow delete: if isOwner(uid)` rule
+     * [LocalProgressResetRepositoryImpl]'s real "Reset Progress" feature uses - there's no way to
+     * narrow this to just `dailyRewards/{uid}` or `returningPlayerGifts/{uid}` alone (a client write
+     * can only ever look like a real, eligible claim, never "never claimed"), so this resets all 5,
+     * not just the one collection the caller asked about - see [debugResetDailyReward]/
+     * [debugResetReturningPlayer]'s own docs, this is documented there so a tester isn't surprised
+     * by the broader scope. */
     private suspend fun performFullProgressionReset() {
         requireDebugBuild()
         check(firebaseAvailabilityProvider.isConfigured) { "Firebase isn't configured - nothing to reset" }
-        Firebase.functions.getHttpsCallable("resetPlayerData").call().await()
+        val uid = playerIdentityManager.awaitUid() ?: error("No signed-in player yet - try again in a moment")
+        listOf("playerProfiles", "dailyRewards", "inventory", "missionClaims", "returningPlayerGifts")
+            .map { collection -> firestore.collection(collection).document(uid).delete() }
+            .forEach { it.await() }
     }
 
     /** See [performFullProgressionReset]'s doc - this also resets profile/inventory/missions, not
@@ -407,16 +401,13 @@ class DebugTestGrantor @Inject constructor(
     private companion object {
         const val DEBUG_NOTIFICATION_WORK_NAME = "debug_trigger_daily_reminder"
 
-        // Mirrors validateProfileWrite's own only-increases-by-at-most-500-per-write bound in
-        // functions/src/index.ts - see grantTestJourneyPoints's doc.
+        // See grantTestJourneyPoints's doc.
         const val MAX_JOURNEY_POINTS_GRANT_PER_CALL = 500L
 
-        // Mirrors StreakRules' own cap (also enforced independently by validateProfileWrite's
-        // ±1-per-write bound) - see grantTestStreakShield's doc.
+        // Mirrors StreakRules' own cap - see grantTestStreakShield's doc.
         const val MAX_STREAK_SHIELDS = 3
 
-        // Mirrors MAX_MISSION_INVENTORY_GRANT_PER_KIND in functions/src/missions.ts - see
-        // grantInventoryItem's doc.
+        // See grantInventoryItem's doc.
         const val MAX_INVENTORY_GRANT_PER_CALL = 5
     }
 }

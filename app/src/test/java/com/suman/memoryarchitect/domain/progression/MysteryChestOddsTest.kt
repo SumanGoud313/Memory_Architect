@@ -14,12 +14,11 @@ class MysteryChestOddsTest {
     }
 
     @Test
-    fun `every reward in the table stays under the server's per-write coin-gain cap`() {
-        // Mirrors functions/src/index.ts's MAX_PLAUSIBLE_COINS_GAIN_PER_WRITE (2,000) - see
-        // MysteryChestOdds's own doc for why this table needs no dedicated Cloud Function
-        // re-derivation as long as every entry stays comfortably under that bound.
+    fun `every reward in the table stays a modest, bounded amount by design`() {
+        // A design/balance sanity check, not tied to any server-enforced bound (this project runs
+        // no Cloud Function - see the Spark migration report).
         MysteryChestOdds.rewardTable.forEach { (reward, _) ->
-            assertTrue("${reward.coinsAwarded} exceeds the server's per-write coin-gain cap", reward.coinsAwarded < 2_000L)
+            assertTrue("${reward.coinsAwarded} is too large for a Mystery Chest reward", reward.coinsAwarded < 2_000L)
         }
     }
 

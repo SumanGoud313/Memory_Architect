@@ -3,12 +3,11 @@
 This project ships with a complete, production-ready Point Shop already wired in code - a real
 32-item cosmetic catalog across 8 categories, a spend/purchase pipeline, a Collections gallery, and
 a cosmetic-only Lucky Spin, all spending the existing `coins` currency players already earn from
-gameplay. Like this project's other Firebase-backed features (`FIREBASE_SETUP.md`,
-`LEADERBOARD_SETUP.md`), the client-side purchase flow works immediately (against the mock backend,
-or against Firestore with only client-side/rules validation), but the **anti-cheat hardening layer**
-- server-side verification that a coin deduction actually corresponds to a legitimate catalog
-purchase - stays inert until you deploy the updated Cloud Functions and republish the Firestore
-rules described below.
+gameplay. This project runs entirely on the free Firebase Spark plan - no Cloud Functions anywhere
+(see the Spark migration report) - so every check on a purchase is either the mock backend (dev
+only), a Firestore transaction, or a `firestore.rules` shape/range bound; there is no server-side
+re-verification that a coin deduction matches a specific catalog receipt after the fact. This is an
+accepted, documented trade-off, not a setup step you still need to complete.
 
 ## What's already wired in code
 
@@ -25,36 +24,25 @@ rules described below.
   price instead of a no-op.
 - **UI**: Profile → Shop / Collections / Lucky Spin buttons (`ui/screens/shop/`).
 
-## Why this stays inert until you do the steps below
+## What actually protects a purchase today
 
-The Cloud Function that validates a `coins` decrease actually corresponds to a real catalog price
-(`validatePurchaseReceipt` in `functions/src/index.ts`) is **not deployed automatically** - same
-reasoning as `LEADERBOARD_SETUP.md`'s `validateGlobalStats`/`validateProfileWrite`: this repo has no
-access to your Firebase CLI credentials. Until you deploy it, a purchase still works end-to-end
-(the mock backend and the Firestore transaction both enforce affordability/ownership at write time),
-but a modified/rooted client could in principle forge a `playerProfiles/{uid}` write with a
-implausible coin decrease and it would only be caught by the *bounded* check already live in
-`validateProfileWrite` (rejects a single-write decrease over 4,000 coins - well above the priciest
-32-item catalog price of 3,500), not matched against an actual receipt, until you deploy.
+Both the mock backend and the real Firestore transaction (`FirestoreShopRemoteSource.purchase`)
+enforce affordability/ownership at write time - a purchase can't go through without enough coins or
+grant an item twice. On top of that, `firestore.rules`' `isValidProfile` rejects any single write
+that decreases `coins` by more than 4,000 (well above the priciest 32-item catalog price of 3,500),
+regardless of whether it's paired with a real receipt. What's genuinely not checked: that a specific
+coin decrease matches a specific catalog item's exact price - a modified/rooted client could in
+principle forge a plausible-looking decrease not tied to any real purchase, which only a Cloud
+Function re-deriving "does this receipt's price match this sku's real catalog price" could close.
+This project deliberately doesn't run one (see the Spark migration report).
 
-## What you need to do
+## Setup
 
-1. **Deploy the updated Cloud Functions** (adds `validatePurchaseReceipt` and
-   `validateCosmeticsWrite`, and relaxes `validateProfileWrite`'s coin-decrease check from
-   "never decreases" to "bounded decrease"):
-   ```
-   cd functions
-   npm install
-   firebase deploy --only functions
-   ```
-2. **Republish `firestore.rules`** (adds `playerCosmetics/{uid}` and `purchaseReceipts/{receiptId}`
-   match blocks) via **Firestore Database → Rules** in the Firebase Console, or:
-   ```
-   firebase deploy --only firestore:rules
-   ```
-3. Nothing else - no new collections need pre-creating (Firestore creates `playerCosmetics/{uid}`
-   and `purchaseReceipts/{uid}_{nonce}` documents on first write, same as every other collection in
-   this app), no new console toggles, no new API to enable.
+Nothing to deploy - `playerCosmetics/{uid}` and `purchaseReceipts/{uid}_{nonce}` are already covered
+by the checked-in `firestore.rules` (publish it via **Firestore Database → Rules** in the Firebase
+Console, or `firebase deploy --only firestore:rules`, same as every other collection in this app).
+No new collections need pre-creating - Firestore creates them on first write - no new console
+toggles, no new API to enable.
 
 ## Expanding the catalog later
 
@@ -63,10 +51,9 @@ Every new item is a pure data change, never new code:
 1. Add a `CosmeticId` entry (`domain/model/CosmeticId.kt`).
 2. Add its `CosmeticDefinition` (`domain/progression/ShopCatalog.kt`) - category, rarity, price.
 3. Add its visual spec (`ui/theme/CosmeticVisualCatalog.kt`) - a color list + icon, no art asset.
-4. Mirror its price in **both** `mock-backend/shop.js`'s `CATALOG_PRICES` and
-   `functions/src/shopCatalog.ts`'s `SHOP_CATALOG_PRICES` (server-side validation reads these, not
-   the Kotlin catalog - keep all three in sync, the existing "mirrors X" convention this codebase
-   already uses for `ProgressionRules`).
+4. Mirror its price in `mock-backend/shop.js`'s `CATALOG_PRICES` (the dev-only mock backend's own
+   copy) - keep both in sync, the existing "mirrors X" convention this codebase already uses for
+   `ProgressionRules`.
 
 Adding a brand-new **category** additionally means: extend `CosmeticCategory` (domain), give it a
 render case in `CosmeticGlyph.kt`, and add its display name in `CosmeticDisplay.kt`'s

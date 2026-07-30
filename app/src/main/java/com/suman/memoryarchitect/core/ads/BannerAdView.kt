@@ -25,12 +25,12 @@ import com.google.android.gms.ads.OnPaidEventListener
 import com.suman.memoryarchitect.feature.ads.BannerAdViewModel
 
 /**
- * One reusable adaptive banner, dropped into any non-gameplay screen's layout
- * (`ModeSelectScreen`/`ShopScreen`/`MissionsScreen`/`LuckySpinScreen`/`SettingsScreen`/
- * `AchievementsScreen` - see the placement audit in the monetization plan/report for why these six
- * and not `GameplayScreen`). Renders nothing at all - not even a collapsed placeholder that reflows
- * layout - whenever [BannerAdViewModel.shouldShowBanner] is false (Remove Ads purchased, or Remote
- * Config has banners off), so a Remove Ads purchaser never even constructs an [AdView].
+ * One reusable adaptive banner, dropped into every non-gameplay screen's layout (Mode Select,
+ * Missions, Lucky Spin, Inventory, Leaderboard, Settings, Shop, Collections, Profile,
+ * Achievements - never `GameplayScreen`, see [bannerAdUnitIdFor] for each placement's real ad
+ * unit). Renders nothing at all - not even a collapsed placeholder that reflows layout - whenever
+ * [BannerAdViewModel.shouldShowBanner] is false (Remove Ads purchased, or Remote Config has banners
+ * off), so a Remove Ads purchaser never even constructs an [AdView].
  *
  * Sized via [AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize] - Google's own adaptive-
  * banner API, which is what actually handles phones/foldables/tablets/every DPI/every aspect ratio
@@ -82,7 +82,7 @@ fun AdaptiveBannerAd(placement: String, modifier: Modifier = Modifier, viewModel
                 val loadStartedAtMs = System.currentTimeMillis()
                 AdView(factoryContext).apply {
                     setAdSize(AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(context, screenWidthDp))
-                    adUnitId = BANNER_AD_UNIT_ID
+                    adUnitId = bannerAdUnitIdFor(placement)
                     adListener = object : AdListener() {
                         override fun onAdLoaded() {
                             viewModel.onBannerImpression(placement)
@@ -109,8 +109,17 @@ private class AdViewHolder {
     var adView: AdView? = null
 }
 
-/** Google's official Android test adaptive banner ad unit ID - always fills with a test creative,
- * never a real ad, safe to ship in any build. Swap for a real ad unit ID (from your own AdMob
- * console) before release - same placeholder convention [RewardedAdControllerImpl]/
- * [InterstitialAdControllerImpl] already use. */
-private const val BANNER_AD_UNIT_ID = "ca-app-pub-3940256099942544/9214589741"
+/** One real AdMob ad unit per screen/screen-group, matching [placement]'s exact string from each
+ * [AdaptiveBannerAd] call site - "rewards" in the product's own naming is the Inventory screen (see
+ * `LuckySpinScreen.kt`'s "Rewards/Inventory screen" doc), sharing the Lucky Spin unit. An
+ * unrecognized placement (should never happen - every real call site is listed here) falls back to
+ * the mode-select unit rather than crashing. */
+private fun bannerAdUnitIdFor(placement: String): String = when (placement) {
+    "missions" -> "ca-app-pub-6355592583655922/7292282174"
+    "mode_select" -> "ca-app-pub-6355592583655922/3559655377"
+    "lucky_spin", "inventory" -> "ca-app-pub-6355592583655922/8772884805"
+    "leaderboard", "settings" -> "ca-app-pub-6355592583655922/7459803136"
+    "shop", "collections" -> "ca-app-pub-6355592583655922/9335991582"
+    "profile", "achievements" -> "ca-app-pub-6355592583655922/2207476455"
+    else -> "ca-app-pub-6355592583655922/3559655377"
+}

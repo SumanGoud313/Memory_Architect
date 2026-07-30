@@ -100,9 +100,9 @@ class FirestoreShopRemoteSource @Inject constructor(
                 receiptRef,
                 mapOf("uid" to uid, "sku" to id.name, "priceCoins" to priceCoins, "kind" to "PURCHASE", "createdAtEpochMs" to nowEpochMs),
             )
-            // lastWriteSource: see PROFILE_WRITE_SOURCES' doc in functions/src/index.ts - lets
-            // validateProfileWrite rate-limit this write independently of an unrelated action
-            // (a score submission, a mission claim) landing within the same few seconds.
+            // lastWriteSource: no longer read by anything server-side (this project runs no Cloud
+            // Function), kept purely as a manual-debugging aid for which write path last touched a
+            // given profile.
             transaction.set(profileRef, updatedProfile.toFirestoreMap(clock) + mapOf("lastWriteSource" to "shop_purchase"), SetOptions.merge())
             // `equipped` must be included even though this write never changes it - firestore.rules'
             // isValidCosmetics requires it present on every write, and a player's very first

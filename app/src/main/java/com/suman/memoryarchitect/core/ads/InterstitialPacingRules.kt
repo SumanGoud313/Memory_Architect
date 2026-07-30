@@ -13,7 +13,7 @@ data class InterstitialPacingRules(
      * [RemoteConfig.interstitialAdsEnabled]'s doc. */
     val enabled: Boolean = true,
     /** Minimum real time between two interstitials, regardless of any other condition. */
-    val cooldownSeconds: Long = 180L,
+    val cooldownSeconds: Long = 90L,
     /** [InterstitialPacingGate] resets its own completions-since-last-interstitial counter to 0
      * every time one shows, then requires it to reach this value again before the next one is
      * even considered - a "frequency cap" applied continuously, not just once. This is also what

@@ -37,6 +37,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.suman.memoryarchitect.R
+import com.suman.memoryarchitect.core.ads.AdaptiveBannerAd
 import com.suman.memoryarchitect.core.common.toDisplayMessage
 import com.suman.memoryarchitect.core.common.toSecondsLabel
 import com.suman.memoryarchitect.domain.model.AvatarCatalog
@@ -109,6 +110,10 @@ fun LeaderboardScreen(onBack: () -> Unit, viewModel: LeaderboardViewModel = hilt
                 is LeaderboardUiState.Content -> LeaderboardList(state.result.type, state.result.entries, state.result.currentPlayerRank)
             }
         }
+
+        // Bottom-anchored, same convention as every other non-gameplay screen's copy - see
+        // AdaptiveBannerAd's own doc for why this renders nothing at all for a Remove Ads purchaser.
+        AdaptiveBannerAd(placement = "leaderboard", modifier = Modifier.align(Alignment.BottomCenter))
     }
 }
 

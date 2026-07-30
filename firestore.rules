@@ -1,8 +1,8 @@
 rules_version = '2';
 
-// Firestore Security Rules for Memory Architect's competitive leaderboard system.
-// See LEADERBOARD_SETUP.md for how to paste this into the Firebase console (Firestore Database ->
-// Rules tab) and why it's required before LeaderboardRepositoryImpl's reads/writes will succeed.
+// Firestore Security Rules for Memory Architect - runs entirely on the free Firebase Spark plan,
+// no Cloud Functions anywhere in this project (see the Spark migration report for what used to be
+// server-side and why it moved here/on-device instead).
 //
 // Design principles:
 //  - Every player can read the whole leaderboard (it's public, competitive data), but can only
@@ -13,17 +13,22 @@ rules_version = '2';
 //    every field's type AND plausible range is checked on every write.
 //  - This is real, meaningful protection (a modified/rooted client, or a raw REST/curl call using
 //    a stolen anonymous auth token, cannot write arbitrary scores or overwrite another player's
-//    entry) but it is NOT a substitute for the Cloud Function in functions/validateScoreSubmission.ts,
-//    which is the only place that can verify a score against the *actual* level seed/scoring
-//    formula server-side. Rules alone can bound "is this a plausible number," never "is this the
-//    number this specific round should have produced."
+//    entry) but it only bounds shape/range, never write history - it can reject an out-of-bounds
+//    value, but can't cheaply compare against what a player's document held before this write (that
+//    would need a Cloud Function re-validating after the fact, which this project deliberately
+//    doesn't run - see the Spark migration report's accepted-risk note). Every private, per-uid
+//    collection also allows a player to delete their own document - used by both "Reset Progress"
+//    (a narrower subset) and full account deletion (every collection here).
 service cloud.firestore {
   match /databases/{database}/documents {
 
     // players/{uid} - the Global Leaderboard's source. See LeaderboardRepositoryImpl.submitGlobalStats.
+    // allow delete supports full account deletion (SettingsScreen's "Delete Account") - a player
+    // removing their own public leaderboard entry as part of erasing their account entirely.
     match /players/{uid} {
       allow read: if true; // public leaderboard - anyone (including unauthenticated) can read rankings
       allow write: if isOwner(uid) && isValidGlobalStats(request.resource.data);
+      allow delete: if isOwner(uid);
     }
 
     // leaderboardDaily/{yyyy-MM-dd}/entries/{uid} and leaderboardWeekly/{yyyy-Www}/entries/{uid}.
@@ -32,11 +37,13 @@ service cloud.firestore {
     match /leaderboardDaily/{period}/entries/{uid} {
       allow read: if true;
       allow write: if isOwner(uid) && isValidPeriodicEntry(request.resource.data);
+      allow delete: if isOwner(uid);
     }
 
     match /leaderboardWeekly/{period}/entries/{uid} {
       allow read: if true;
       allow write: if isOwner(uid) && isValidPeriodicEntry(request.resource.data);
+      allow delete: if isOwner(uid);
     }
 
     // leaderboardMonthly/{yyyy-MM}/entries/{uid} - same shape/reset mechanism as Daily/Weekly above,
@@ -44,6 +51,7 @@ service cloud.firestore {
     match /leaderboardMonthly/{period}/entries/{uid} {
       allow read: if true;
       allow write: if isOwner(uid) && isValidPeriodicEntry(request.resource.data);
+      allow delete: if isOwner(uid);
     }
 
     // playerProfiles/{uid} and dailyRewards/{uid} - the real, per-player-scoped counterpart to
@@ -54,14 +62,21 @@ service cloud.firestore {
     // public numbers already exposed via players/{uid}. Read access is required (not just write)
     // because FirestoreProgressionRemoteSource reads these documents inside the same Firestore
     // transaction that writes them.
+    // allow delete is used by two features: LocalProgressResetRepositoryImpl's narrower "Reset
+    // Progress" (this collection plus dailyRewards/inventory/missionClaims/returningPlayerGifts
+    // only, deliberately never players/{uid} or playerCosmetics/{uid} - a local reset isn't meant
+    // to erase leaderboard history or owned cosmetics) and full account deletion (every collection
+    // in this file). Both run directly from the client now - no Cloud Function needed.
     match /playerProfiles/{uid} {
       allow read: if isOwner(uid);
       allow write: if isOwner(uid) && isValidProfile(request.resource.data);
+      allow delete: if isOwner(uid);
     }
 
     match /dailyRewards/{uid} {
       allow read: if isOwner(uid);
       allow write: if isOwner(uid) && isValidDailyReward(request.resource.data);
+      allow delete: if isOwner(uid);
     }
 
     // returningPlayerGifts/{uid} - the double-claim guard for
@@ -71,6 +86,7 @@ service cloud.firestore {
     match /returningPlayerGifts/{uid} {
       allow read: if isOwner(uid);
       allow write: if isOwner(uid) && isValidReturningPlayerGift(request.resource.data);
+      allow delete: if isOwner(uid);
     }
 
     // submissionNonces/{uid}_{nonce} - replay protection for FirestoreProgressionRemoteSource
@@ -95,26 +111,26 @@ service cloud.firestore {
     }
 
     // playerCosmetics/{uid} - the Point Shop's owned/equipped state, written by
-    // FirestoreShopRemoteSource.purchase/spin/equip - and, since the real-money Premium Shop grant
-    // path stopped calling a Cloud Function, also written directly by
-    // core.billing.CosmeticCollectionGrantor (inside the same transaction as the
-    // claimedPurchaseTokens write below) for a Premium Collection purchase. Private, same reasoning
-    // as playerProfiles above - a player's own cosmetic inventory isn't public leaderboard data.
+    // FirestoreShopRemoteSource.purchase/spin/equip, and directly by core.billing.
+    // CosmeticCollectionGrantor (inside the same transaction as the claimedPurchaseTokens write
+    // below) for a real-money Premium Collection purchase - Google Play Billing is the source of
+    // truth for whether the purchase happened at all; this only records what it granted. Private,
+    // same reasoning as playerProfiles above - a player's own cosmetic inventory isn't public
+    // leaderboard data.
     match /playerCosmetics/{uid} {
       allow read: if isOwner(uid);
       allow write: if isOwner(uid) && isValidCosmetics(request.resource.data);
+      allow delete: if isOwner(uid);
     }
 
-    // claimedPurchaseTokens/{sha256(purchaseToken)} - the Spark-plan-compatible replay guard for a
-    // real-money purchase grant (core.billing.CosmeticCollectionGrantor), replacing what a Cloud
-    // Function's own claimedPurchaseTokens check used to do server-side. A document that already
-    // exists is evaluated as an `update` by these rules regardless of the client's intent - denying
-    // `update` (and `delete`) makes a second claim of the same purchase token fail outright, the
-    // same guarantee the removed Cloud Function gave (minus cross-account revocation lookups, which
-    // genuinely need a server - see BillingManagerImpl's own doc for that accepted trade-off).
-    // `allow read: if false` because nothing legitimate ever needs to read this back - the app only
-    // ever attempts a `create`, and a permission-denied on that attempt already tells the client the
-    // token was claimed, without needing a separate read.
+    // claimedPurchaseTokens/{sha256(purchaseToken)} - the replay guard for a real-money purchase
+    // grant (core.billing.CosmeticCollectionGrantor). A document that already exists is evaluated
+    // as an `update` by these rules regardless of the client's intent - denying `update` (and
+    // `delete`) makes a second claim of the same purchase token fail outright (minus cross-account
+    // revocation lookups, which would need a server - see BillingManagerImpl's own doc for that
+    // accepted trade-off). `allow read: if false` because nothing legitimate ever needs to read
+    // this back - the app only ever attempts a `create`, and a permission-denied on that attempt
+    // already tells the client the token was claimed, without needing a separate read.
     match /claimedPurchaseTokens/{tokenHash} {
       allow read: if false;
       allow create: if request.auth != null && request.resource.data.uid == request.auth.uid
@@ -145,6 +161,7 @@ service cloud.firestore {
     match /luckySpinState/{uid} {
       allow read: if isOwner(uid);
       allow write: if isOwner(uid) && isValidLuckySpinState(request.resource.data);
+      allow delete: if isOwner(uid);
     }
 
     // mysteryChestAdState/{uid} - the ad-gated Mystery Chest claim's own daily-gate state, written
@@ -154,7 +171,13 @@ service cloud.firestore {
     match /mysteryChestAdState/{uid} {
       allow read: if isOwner(uid);
       allow write: if isOwner(uid) && isValidMysteryChestAdState(request.resource.data);
+      allow delete: if isOwner(uid);
     }
+
+    // Daily/Weekly Challenge has no Firestore-backed shared document at all - see
+    // domain/generation/PeriodicChallengeGenerator.kt's own doc. Its seed is a pure function of the
+    // calendar date/ISO week, so every player's device computes the identical puzzle entirely
+    // on-device, with nothing to read or write here and nothing for a malicious client to poison.
 
     // inventory/{uid} - the permanent home for earned consumables (Hint/Redo/Rewatch tokens,
     // Lucky Spin tickets, XP boosts, discount coupons, mystery chests), written by
@@ -163,6 +186,7 @@ service cloud.firestore {
     match /inventory/{uid} {
       allow read: if isOwner(uid);
       allow write: if isOwner(uid) && isValidInventory(request.resource.data);
+      allow delete: if isOwner(uid);
     }
 
     // missionClaims/{uid} - one claimedKeys map ("{missionId}_{periodKey}" -> epoch-ms claimed),
@@ -173,6 +197,7 @@ service cloud.firestore {
     match /missionClaims/{uid} {
       allow read: if isOwner(uid);
       allow write: if isOwner(uid) && isValidMissionClaims(request.resource.data);
+      allow delete: if isOwner(uid);
     }
 
     // missionCategoryBonusClaims/{uid} - one claimedKeys map ("{period}_{periodKey}" -> epoch-ms
@@ -182,6 +207,7 @@ service cloud.firestore {
     match /missionCategoryBonusClaims/{uid} {
       allow read: if isOwner(uid);
       allow write: if isOwner(uid) && isValidMissionCategoryBonusClaims(request.resource.data);
+      allow delete: if isOwner(uid);
     }
 
     // missionRefreshState/{uid} - the "pay 1000 coins to skip the countdown" override, written by
@@ -190,6 +216,7 @@ service cloud.firestore {
     match /missionRefreshState/{uid} {
       allow read: if isOwner(uid);
       allow write: if isOwner(uid) && isValidMissionRefreshState(request.resource.data);
+      allow delete: if isOwner(uid);
     }
 
     // Everything else is denied by default (Firestore's implicit deny-all for any path with no
@@ -230,7 +257,7 @@ service cloud.firestore {
     // avatarId/avatarUrl/country/verified/league - denormalized onto every leaderboard doc
     // (players/{uid} and every periodic entry) by LeaderboardRepositoryImpl.currentIdentityFields.
     // Mirrors AvatarCatalog.kt's curated id set and League.kt's enum names - keep both in sync if
-    // either changes, the same "mirrors X" convention already used elsewhere in this file/functions.
+    // either changes.
     function isValidIdentityFields(data) {
       return data.avatarId is string
         && data.avatarId in ['architect_gold', 'compass', 'hourglass', 'key', 'lantern', 'crystal',
@@ -248,31 +275,29 @@ service cloud.firestore {
     // write more than 10 minutes stale is rejected here before the submissionNonces check even
     // runs - defense in depth alongside the nonce, not a replacement for it (the nonce is exact and
     // permanent; this only bounds how old a *first-time* replay of a captured payload can be).
+    // Shape/range bounds only, checked against absolute ceilings (not the previous document's
+    // value) - this project runs no Cloud Function to compare against write history, an accepted
+    // trade-off of staying on the free Spark plan (see the Spark migration report).
     function isValidProfile(data) {
       return data.xp is int && data.xp >= 0 && data.xp <= 1000000000
         && data.coins is int && data.coins >= 0 && data.coins <= 1000000000
         && data.currentStreak is int && data.currentStreak >= 0
         && data.longestStreak is int && data.longestStreak >= 0
         // Mirrors StreakRules.Default.maxStoredShields (domain/model/StreakRules.kt) - keep both
-        // in sync. Bounds shape/range only; validateProfileWrite in functions/src/index.ts is what
-        // actually checks this only ever moves by the one shield a single write can plausibly
-        // grant or consume, the same division of labor as xp/coins above.
+        // in sync.
         && data.streakShields is int && data.streakShields >= 0 && data.streakShields <= 3
         && (data.lastPlayedEpochDay == null || data.lastPlayedEpochDay is int)
         && (data.dailyChallengeWonAtEpochSecond == null || data.dailyChallengeWonAtEpochSecond is int)
         && (data.weeklyChallengeWonAtEpochSecond == null || data.weeklyChallengeWonAtEpochSecond is int)
-        // Mirrors MemoryJourneyCatalog.kt's top tier threshold with generous headroom - bounds
-        // shape/range only, same division of labor as streakShields above (validateProfileWrite
-        // is what checks this only ever moves by one plausible write's worth of points).
+        // Mirrors MemoryJourneyCatalog.kt's top tier threshold with generous headroom.
         && data.journeyPoints is int && data.journeyPoints >= 0 && data.journeyPoints <= 1000000000
         && data.updatedAtEpochMs is int
         && data.updatedAtEpochMs > request.time.toMillis() - 600000
         && data.updatedAtEpochMs < request.time.toMillis() + 600000
-        // Optional - which client operation caused this write, so validateProfileWrite in
-        // functions/src/index.ts can rate-limit each independently instead of one shared bucket
-        // (see that file's PROFILE_WRITE_SOURCES). Shape/length bound only, same division of
-        // labor as everywhere else in this function - the Function is what checks the value
-        // itself is one of the known sources.
+        // Optional - which client operation caused this write. No longer read server-side (the
+        // Cloud Function that once rate-limited per-source is gone); kept as a shape-bound field
+        // rather than removed outright since it's still useful for manual Firestore-console
+        // debugging of which write path last touched a given profile.
         && (data.lastWriteSource == null || (data.lastWriteSource is string && data.lastWriteSource.size() <= 40));
     }
 
@@ -282,20 +307,16 @@ service cloud.firestore {
         && (data.lastClaimedEpochDay == null || data.lastClaimedEpochDay is int);
     }
 
-    // Shape/size bounds only - the actual "owned set only grows, no unknown skus, equipped
-    // references only owned skus" invariants need to compare against the *previous* document,
-    // which rules can't cheaply do here (no access to a fetched prior-doc without an extra get()
-    // per write) - that's exactly what functions/src/index.ts's validateCosmeticsWrite re-checks
-    // immediately after, same division of labor as isValidProfile/validateProfileWrite above.
+    // Shape/size bounds only - "the owned set only grows, no unknown skus, equipped references
+    // only owned skus" would need comparing against the previous document, which this project
+    // accepts as an unenforced gap on Spark (see isValidProfile's own note).
     function isValidCosmetics(data) {
       return data.ownedSkus is list && data.ownedSkus.size() <= 200
         && data.equipped is map && data.equipped.size() <= 20
         && data.updatedAtEpochMs is int;
     }
 
-    // Shape/size bounds only - the actual "quantities only change by a plausible per-write amount"
-    // invariant needs the previous document, same division of labor as isValidProfile/
-    // validateProfileWrite: functions/src/missions.ts's validateInventoryWrite re-checks that.
+    // Shape/size bounds only - see isValidCosmetics' own note on the accepted write-history gap.
     function isValidInventory(data) {
       return data.quantities is map && data.quantities.size() <= 20
         && data.updatedAtEpochMs is int;
@@ -307,37 +328,28 @@ service cloud.firestore {
       return data.claimedKeys is map && data.claimedKeys.size() <= 1000;
     }
 
-    // Same shape as isValidMissionClaims above - the actual "was every active mission in this
-    // period really claimed" eligibility check needs missionClaims/{uid} itself, which
-    // functions/src/index.ts's validateMissionCategoryBonusClaims re-derives, same division of
-    // labor as isValidProfile/validateProfileWrite.
+    // Same shape as isValidMissionClaims above.
     function isValidMissionCategoryBonusClaims(data) {
       return data.claimedKeys is map && data.claimedKeys.size() <= 200;
     }
 
     // Three epoch-day-or-null integers - no economy bounds needed here (this only ever gates which
-    // mission set shows, never a coin/item amount directly); functions/src/index.ts's
-    // validateMissionRefreshState checks each field only ever moves forward, never backward.
+    // mission set shows, never a coin/item amount directly).
     function isValidMissionRefreshState(data) {
       return (data.dailyForcedPeriodKey == null || data.dailyForcedPeriodKey is int)
         && (data.weeklyForcedPeriodKey == null || data.weeklyForcedPeriodKey is int)
         && (data.monthlyForcedPeriodKey == null || data.monthlyForcedPeriodKey is int);
     }
 
-    // One epoch-day integer, no bounds needed beyond the type check - the actual "is this gap
-    // really long enough, has today's gift already been claimed" eligibility needs the player's
-    // own playerProfiles/{uid} doc, which functions/src/index.ts's validateReturningPlayerGiftWrite
-    // re-checks, same division of labor as isValidProfile/validateProfileWrite above.
+    // One epoch-day integer, no bounds needed beyond the type check.
     function isValidReturningPlayerGift(data) {
       return data.lastClaimedOnEpochDay is int;
     }
 
     // Two epoch-day-or-null integers, a bounded ad-spin counter, plus a bool - no economy bounds
-    // needed (these gate spin *frequency*, not coin amounts; the actual per-write coin-gain cap is
-    // enforced on playerProfiles/{uid} by validateProfileWrite regardless of which allowance a spin
-    // used), same "shape/type only" division of labor isValidInventory already uses.
-    // adSpinsUsedToday's upper bound (10) is a generous ceiling, not SpinRules.maxAdSpinsPerDay (3)
-    // itself - tuning that value server-side later shouldn't require a rules redeploy in lockstep.
+    // needed (these gate spin *frequency*, not coin amounts). adSpinsUsedToday's upper bound (10)
+    // is a generous ceiling, not SpinRules.maxAdSpinsPerDay (3) itself - tuning that value later
+    // shouldn't require a rules redeploy in lockstep.
     function isValidLuckySpinState(data) {
       return (data.lastFreeSpinEpochDay == null || data.lastFreeSpinEpochDay is int)
         && (data.lastAdSpinEpochDay == null || data.lastAdSpinEpochDay is int)

@@ -13,11 +13,7 @@ import com.suman.memoryarchitect.domain.model.CosmeticRarity
  * Coins are the deliberate majority outcome (mirrors the request this table was built for: "don't
  * provide coin shop rewards every time, mostly 150/250 coins, with a luck-based 500 coin
  * jackpot") - a genuine Shop cosmetic ([cosmeticOdds]) is the rarer, more exciting minority
- * outcome, same spirit as [MysteryChestOdds]' escalating-but-mostly-modest table. Every
- * [coinOutcomes] amount stays comfortably under `functions/src/index.ts`'s
- * `MAX_PLAUSIBLE_COINS_GAIN_PER_WRITE` (2,000/write - see [MysteryChestOdds]'s doc for why that
- * means no dedicated Cloud Function re-derivation is needed for a Coins-kind spin, unlike a
- * Cosmetic-kind one).
+ * outcome, same spirit as [MysteryChestOdds]' escalating-but-mostly-modest table.
  *
  * [cosmeticOdds] only ever applies on a "lucky day" (see [LuckySpinEngine.isLuckyCosmeticDay]) -
  * roughly one day in every [luckyDayIntervalDays]. Every other day, a spin can only ever resolve

@@ -1,14 +1,12 @@
 package com.suman.memoryarchitect.domain.model
 
 /**
- * A player's competitive tier, purely derived from lifetime XP - never a separately stored or
- * client-supplied field anywhere (Firestore, Room, or the wire). A client can no more "set" its
- * League than it can set its own XP total; the only way to change it is to actually earn XP.
- * [forXp] is mirrored exactly (same thresholds, same order) in `functions/src/index.ts` so the
- * server-side re-validation of `players/{uid}` writes can independently compute the same League a
- * client claims - the same "two independent copies of one small formula" precedent
- * [com.suman.memoryarchitect.data.repository.FirestoreProgressionRemoteSource]'s own doc already
- * establishes for `coinsAwardedFor`.
+ * A player's competitive tier, derived from lifetime XP by [forXp] - client code always computes
+ * it this way, never sets it as an independent value. `firestore.rules`' `isValidIdentityFields`
+ * only checks the written `league` string is one of this enum's names, not that it actually
+ * matches the account's real XP - re-deriving and comparing would need a Cloud Function this
+ * project doesn't run (see the Spark migration report's accepted-risk note), so a modified client
+ * could in principle claim a League above its real standing.
  */
 enum class League(val minXp: Long, val displayName: String) {
     APPRENTICE(minXp = 0L, displayName = "Apprentice"),

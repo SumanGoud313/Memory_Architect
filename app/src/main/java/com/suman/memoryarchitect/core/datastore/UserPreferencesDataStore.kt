@@ -255,6 +255,13 @@ class UserPreferencesDataStore @Inject constructor(
         return MODE_NAMES.maxBy { prefs[intPreferencesKey(Keys.MODE_COUNT_PREFIX + it)] ?: 0 }
     }
 
+    /** Wipes every preference in this store back to its default - used only by account deletion,
+     * so a deleted account leaves no residual PII (avatarUrl, country) or stale entitlement flags
+     * (hasRemovedAds, ownedProductIds) behind for whatever plays next on this device. */
+    suspend fun clearAll() {
+        context.dataStore.edit { it.clear() }
+    }
+
     private companion object {
         val MODE_NAMES = listOf("CLASSIC", "DAILY_CHALLENGE", "WEEKLY_CHALLENGE", "PRACTICE")
     }

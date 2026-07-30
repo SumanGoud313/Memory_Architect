@@ -4,8 +4,8 @@ package com.suman.memoryarchitect.domain.model
  * Every mission that can ever appear in [com.suman.memoryarchitect.domain.progression.MissionCatalog]'s
  * pool, across all three periods - one flat enum (rather than per-period pools of raw strings)
  * so a claim/progress record can be persisted as `.name` exactly like [AchievementId] already is
- * (see `UnlockedAchievementEntity`), and so `mock-backend/missions.js`/`functions/src/missions.ts`
- * mirror the exact same identifiers.
+ * (see `UnlockedAchievementEntity`), and so `mock-backend/missions.js` mirrors the exact same
+ * identifiers.
  */
 enum class MissionId {
     // Daily pool

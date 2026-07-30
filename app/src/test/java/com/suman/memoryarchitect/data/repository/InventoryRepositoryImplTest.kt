@@ -47,6 +47,7 @@ private class FakeInventoryPlayerIdentityManager : PlayerIdentityManager {
     override fun ensureSignedIn() = Unit
     override suspend fun awaitUid(timeoutMs: Long): String? = null
     override suspend fun linkWithGoogle(idToken: String): Result<Unit> = Result.failure(UnsupportedOperationException("not exercised"))
+    override suspend fun signOutAfterAccountDeletion() = Unit
 }
 
 private class FakeInventoryPlayerProgressDao : PlayerProgressDao {

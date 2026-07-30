@@ -200,6 +200,7 @@ private class FakePlayerIdentityManager : PlayerIdentityManager {
     override fun ensureSignedIn() = Unit
     override suspend fun awaitUid(timeoutMs: Long): String? = null
     override suspend fun linkWithGoogle(idToken: String): Result<Unit> = Result.failure(UnsupportedOperationException("not exercised by these tests"))
+    override suspend fun signOutAfterAccountDeletion() = Unit
 }
 
 private val sampleScore = ScoreResult(objectScores = emptyList(), sceneAccuracy = 0.8f, placementScore = 140, timeBonus = 10, comboBonus = 0, finalScore = 150, comboCount = 0)
@@ -431,6 +432,36 @@ class ProgressionRepositoryImplTest {
         assertEquals(3, submission.streakMilestoneReached)
         assertEquals(0, submission.newlyUnlockedAchievements.size)
         assertEquals(40L, submission.journeyPointsAwarded)
+    }
+
+    @Test
+    fun `submitScore awards zero journey points for a repeat clear of an already-completed Classic level`() = runTest {
+        val repository = buildRepository(api = FakeProgressionApi(error = IOException("offline")))
+
+        // awardXp = false is exactly the signal GameplayViewModel sends for a repeat Classic
+        // clear (see LevelCompletionOutcome.isFirstCompletion) - Memory Journey points reuse that
+        // same signal, so a repeat clear contributes 0 here too, not just 0 XP.
+        val result = repository.submitScore(
+            GameMode.CLASSIC, levelSeed = 1L, score = sampleScore, playedOnEpochDay = 1L, submissionNonce = "nonce-1", awardXp = false,
+        )
+
+        val submission = (result as Outcome.Success).data
+        assertEquals(0L, submission.journeyPointsAwarded)
+        assertEquals(0L, submission.profile.journeyPoints)
+    }
+
+    @Test
+    fun `submitScore awards zero journey points for Daily and Weekly Challenge rounds`() = runTest {
+        val repository = buildRepository(api = FakeProgressionApi(error = IOException("offline")))
+
+        // awardXp defaults to true for both modes (challenges are already naturally rate-limited
+        // to once per day/week) - journey points are excluded independently of that flag, since
+        // Memory Journey tracks Classic campaign progress specifically.
+        val dailyResult = repository.submitScore(GameMode.DAILY_CHALLENGE, levelSeed = 1L, score = sampleScore, playedOnEpochDay = 1L, submissionNonce = "nonce-daily")
+        val weeklyResult = repository.submitScore(GameMode.WEEKLY_CHALLENGE, levelSeed = 2L, score = sampleScore, playedOnEpochDay = 1L, submissionNonce = "nonce-weekly")
+
+        assertEquals(0L, (dailyResult as Outcome.Success).data.journeyPointsAwarded)
+        assertEquals(0L, (weeklyResult as Outcome.Success).data.journeyPointsAwarded)
     }
 
     @Test

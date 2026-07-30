@@ -80,6 +80,12 @@ fun ConnectivityGate(viewModel: MainViewModel = hiltViewModel(), signInGateViewM
         }
     }
 
+    // As early as possible with a real Activity on hand - see MainViewModel.requestAdConsent's
+    // own doc for why this has to run (and resolve) before any ad is ever requested.
+    LaunchedEffect(activity) {
+        activity?.let(viewModel::requestAdConsent)
+    }
+
     MemoryArchitectNavHost(modifier = Modifier.fillMaxSize())
 
     AnimatedVisibility(visible = !isOnline, enter = fadeIn(), exit = fadeOut()) {

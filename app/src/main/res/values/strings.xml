@@ -82,6 +82,14 @@
     <string name="settings_reset_progress_subtitle">Erase local levels, stats, and achievements</string>
     <string name="settings_reset_progress_dialog_title">Reset all progress?</string>
     <string name="settings_reset_progress_dialog_message">This erases your local levels, best times, stars, statistics, and achievements. This can\'t be undone.</string>
+    <string name="settings_privacy_policy">Privacy Policy</string>
+    <string name="settings_terms_and_conditions">Terms &amp; Conditions</string>
+    <string name="settings_delete_account">Delete Account</string>
+    <string name="settings_delete_account_subtitle">Permanently deletes your account and all data</string>
+    <string name="settings_delete_account_dialog_title">Delete Account?</string>
+    <string name="settings_delete_account_dialog_message">This permanently deletes your account, XP/coins/streaks, purchases, owned cosmetics, and leaderboard history. This can\'t be undone.</string>
+    <string name="settings_delete_account_error_title">Couldn\'t delete account</string>
+    <string name="settings_delete_account_error_message">Please check your connection and try again.</string>
     <string name="settings_version">Version %1$s</string>
 
     <string name="mode_classic_title">Classic</string>
@@ -584,6 +592,11 @@
     <string name="lucky_spin_go_to_collections">Head to Shop → Collections to equip it!</string>
     <string name="lucky_spin_go_to_shop_action">Go to Shop</string>
     <string name="lucky_spin_ad_unavailable">No ad available right now - try again shortly.</string>
+    <string name="lucky_spin_odds_action">View odds</string>
+    <string name="lucky_spin_odds_title">Spin odds</string>
+    <string name="lucky_spin_odds_intro">The chance of each outcome on any given spin:</string>
+    <string name="lucky_spin_odds_coins_row">%1$d coins</string>
+    <string name="lucky_spin_odds_cosmetic_row">%1$s cosmetic item</string>
     <string name="mystery_chest_box_title">Mystery Chest Box</string>
     <string name="mystery_chest_watch_ad_description">Watch Ad to get 1 Mystery Box</string>
     <string name="mystery_chest_watch_ad_action">Watch Ad</string>

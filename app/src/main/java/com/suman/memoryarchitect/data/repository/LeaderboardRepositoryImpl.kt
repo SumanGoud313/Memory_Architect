@@ -116,13 +116,13 @@ class LeaderboardRepositoryImpl @Inject constructor(
         // first clear, or a retried network call) overwrite a better prior score with a worse one -
         // the schema's overwrite-by-uid semantics already stop duplicates, this stops regressions.
         //
-        // Wrapped in a transaction (unlike the original plain get-then-set) - two devices signed
-        // into the same account submitting within the same round-trip window used to be a genuine
+        // Wrapped in a transaction (unlike a plain get-then-set) - two devices signed into the same
+        // account submitting within the same round-trip window would otherwise be a genuine
         // lost-update race: both could read the same existingScore before either write committed,
-        // so a worse score submitted second could still win the write, only to be caught and
-        // reverted a moment later by validatePeriodicEntry server-side. A transaction re-reads
-        // existingScore atomically and Firestore retries it on contention, closing the same window
-        // client-side instead of relying on the Cloud Function to clean up after the fact.
+        // so a worse score submitted second could still win the write. A transaction re-reads
+        // existingScore atomically and Firestore retries it on contention, closing that window
+        // entirely client-side - this project runs no server-side re-validation to catch it after
+        // the fact (see the Spark migration report), so getting it right here is what actually matters.
         val identity = currentIdentityFields()
         firestore.runTransaction { transaction ->
             val existingScore = transaction.get(collection.document(uid)).getLong("score") ?: -1L

@@ -13,11 +13,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MonetizationOn
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -43,6 +47,7 @@ import com.suman.memoryarchitect.core.common.toIcon
 import com.suman.memoryarchitect.core.feedback.ui.rememberFeedback
 import com.suman.memoryarchitect.domain.model.InventoryItemKind
 import com.suman.memoryarchitect.domain.model.SpinRewardKind
+import com.suman.memoryarchitect.domain.progression.LuckySpinOddsDisclosure
 import com.suman.memoryarchitect.domain.progression.MysteryChestAdRules
 import com.suman.memoryarchitect.domain.progression.ShopCatalog
 import com.suman.memoryarchitect.domain.repository.SpinSource
@@ -75,16 +80,71 @@ fun LuckySpinScreen(
     viewModel: LuckySpinViewModel = hiltViewModel(),
 ) {
     val particles = rememberParticleFieldState()
+    var showOdds by remember { mutableStateOf(false) }
     AmbientBackground(nearParticles = particles, modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
-            ScreenHeader(
-                title = stringResource(R.string.lucky_spin_title),
-                onBack = onBack,
-                modifier = Modifier.fillMaxWidth().padding(24.dp).staggeredReveal(0),
-            )
+            Box(modifier = Modifier.fillMaxWidth().padding(24.dp).staggeredReveal(0)) {
+                ScreenHeader(title = stringResource(R.string.lucky_spin_title), onBack = onBack)
+                // Play Store loot-box-disclosure requirement - the actual configured odds
+                // (LuckySpinOddsDisclosure, computed live from SpinRules, never a hand-maintained
+                // string that could drift out of sync), one tap away from the wheel itself.
+                IconButton(onClick = { showOdds = true }, modifier = Modifier.align(Alignment.CenterEnd)) {
+                    Icon(
+                        imageVector = Icons.Filled.Info,
+                        contentDescription = stringResource(R.string.lucky_spin_odds_action),
+                        tint = MemoryArchitectColors.textSecondary,
+                    )
+                }
+            }
             LuckySpinScreenBody(onGoToCollections = onGoToCollections, onGoToInventory = onGoToInventory, viewModel = viewModel)
         }
     }
+    if (showOdds) {
+        LuckySpinOddsDialog(onDismiss = { showOdds = false })
+    }
+}
+
+@Composable
+private fun LuckySpinOddsDialog(onDismiss: () -> Unit) {
+    val entries = remember { LuckySpinOddsDisclosure.compute() }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.lucky_spin_odds_title)) },
+        text = {
+            Column {
+                Text(
+                    text = stringResource(R.string.lucky_spin_odds_intro),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MemoryArchitectColors.textSecondary,
+                    modifier = Modifier.padding(bottom = 12.dp),
+                )
+                entries.sortedByDescending { it.probability }.forEach { entry ->
+                    val label = if (entry.coinsAwarded != null) {
+                        stringResource(R.string.lucky_spin_odds_coins_row, entry.coinsAwarded)
+                    } else {
+                        stringResource(
+                            R.string.lucky_spin_odds_cosmetic_row,
+                            entry.rarity!!.name.lowercase().replaceFirstChar(Char::uppercase),
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text(text = label, style = MaterialTheme.typography.bodyMedium, color = MemoryArchitectColors.textPrimary)
+                        Text(
+                            text = "%.1f%%".format(entry.probability * 100),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MemoryArchitectColors.accentGold,
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_close)) }
+        },
+    )
 }
 
 @Composable

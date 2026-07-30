@@ -68,14 +68,17 @@ currency, sourced entirely from what you configure here.
   billing) is surfaced as "Purchase pending," not a failure; the entitlement grants itself the
   moment Play reports it as actually purchased.
 
-## Recommended future hardening (not required to ship)
+## Why no server-side purchase verification
 
-This app verifies purchases entirely client-side via the official Play Billing Library, which is
-Google's own recommended baseline and what this document's testing steps above confirm. For an
-extra layer of defense against a tampered/rooted client claiming a fake purchase state, the
-next step up is server-side verification via the [Google Play Developer
-API](https://developer.android.com/google/play/billing/security#verify) - a Cloud Function that
-re-checks a purchase token server-side before trusting it, the same shape as this project's
-existing `functions/` Cloud Functions used for leaderboard score re-validation (see
-`LEADERBOARD_SETUP.md`). Worth adding once this ships and gains real revenue to protect; not a
-blocker for an honest first launch.
+This app verifies purchases via `PurchaseSignatureVerifier` (checks the Play Billing Library's own
+purchase signature against your app's Play Console public key, entirely on-device - a patched
+client can't forge this without Google's private signing key, so this is real, meaningful
+protection against a fabricated purchase) plus `CosmeticCollectionGrantor`'s Firestore replay guard
+(`claimedPurchaseTokens/{sha256(token)}`, enforced by `firestore.rules`, not a server). This project
+deliberately runs no Cloud Function anywhere - a from-day-one decision to stay on the free Firebase
+Spark plan (see the Spark migration report) - so the Google Play Developer API's server-side
+purchase-state polling is out of scope by design, not a gap awaiting future hardening. The one thing
+that trade-off does give up: this app never learns if a purchase is later refunded/charged back, so
+a refunded purchase's grant is never automatically revoked (only Google's own Developer API would
+know that happened) - a real, accepted trade-off for a game with no subscription/renewal revenue at
+stake.

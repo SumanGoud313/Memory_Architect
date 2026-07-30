@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.suman.memoryarchitect.R
+import com.suman.memoryarchitect.core.ads.AdaptiveBannerAd
 import com.suman.memoryarchitect.core.common.toDisplayName
 import com.suman.memoryarchitect.domain.model.CosmeticCategory
 import com.suman.memoryarchitect.domain.model.CosmeticDefinition
@@ -179,6 +180,10 @@ fun CollectionsScreenBody(onOpenShop: () -> Unit = {}, viewModel: CollectionsVie
                 }
             }
         }
+
+        // Bottom-anchored, same convention as ShopScreenBody's own copy - see AdaptiveBannerAd's
+        // own doc for why this renders nothing at all for a Remove Ads purchaser.
+        AdaptiveBannerAd(placement = "collections", modifier = Modifier.align(Alignment.BottomCenter))
 
         val preview = previewDefinition
         val contentState = uiState as? CollectionsUiState.Content

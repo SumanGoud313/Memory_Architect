@@ -30,6 +30,8 @@ import com.suman.memoryarchitect.feature.modeselect.ModeSelectViewModel
 import com.suman.memoryarchitect.ui.screens.gameplay.GameplayScreen
 import com.suman.memoryarchitect.ui.screens.home.HomeScreen
 import com.suman.memoryarchitect.ui.screens.leaderboard.LeaderboardScreen
+import com.suman.memoryarchitect.ui.screens.legal.LegalDocument
+import com.suman.memoryarchitect.ui.screens.legal.LegalScreen
 import com.suman.memoryarchitect.ui.screens.levelselect.LevelSelectScreen
 import com.suman.memoryarchitect.ui.screens.missions.MissionsScreen
 import com.suman.memoryarchitect.ui.screens.modeselect.ModeSelectScreen
@@ -142,7 +144,15 @@ fun MemoryArchitectNavHost(
             SettingsScreen(
                 onBack = { navController.popBackStack() },
                 onOpenAnalyticsDashboard = { navController.navigate(Route.AnalyticsDashboard) },
+                onOpenPrivacyPolicy = { navController.navigate(Route.Legal(LegalDocument.PRIVACY_POLICY.name)) },
+                onOpenTerms = { navController.navigate(Route.Legal(LegalDocument.TERMS_AND_CONDITIONS.name)) },
             )
+        }
+        composable<Route.Legal>(enterTransition = NavAnimations.fadeEnter, exitTransition = NavAnimations.fadeExit) { backStackEntry ->
+            val route = backStackEntry.toRoute<Route.Legal>()
+            val document = LegalDocument.valueOf(route.document)
+            TrackScreenView(if (document == LegalDocument.PRIVACY_POLICY) "privacy_policy" else "terms_and_conditions", MusicTrack.HOME)
+            LegalScreen(document = document, onBack = { navController.popBackStack() })
         }
         composable<Route.RemoveAds>(enterTransition = NavAnimations.fadeEnter, exitTransition = NavAnimations.fadeExit) {
             TrackScreenView("remove_ads", MusicTrack.HOME)

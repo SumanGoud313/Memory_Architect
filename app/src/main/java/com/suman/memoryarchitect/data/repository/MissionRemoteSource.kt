@@ -30,10 +30,10 @@ interface MissionRemoteSource {
 
     /** [progressCount] is the client's own locally-tracked count at the moment of claiming -
      * trusted the same way [com.suman.memoryarchitect.domain.model.ScoreResult] values are for
-     * `submitScore`, and bounded the same "plausibility, not full re-derivation" way by the
-     * mirrored Cloud Function (see `functions/src/missions.ts`) rather than rejected outright,
-     * since the round/session-worth of gameplay actions that produced it were never sent to the
-     * server one at a time. */
+     * `submitScore`, since the round/session-worth of gameplay actions that produced it were never
+     * sent to the server one at a time. Only bounded by `firestore.rules`' shape checks, not
+     * re-derived - an accepted gap of running with no Cloud Function (see the Spark migration
+     * report). */
     suspend fun claimMissionReward(missionId: MissionId, periodKey: Long, progressCount: Int): MissionClaimResult
 
     /** Must be atomic against a double-consume race (a level loading twice, a retried request) -

@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.suman.memoryarchitect.R
+import com.suman.memoryarchitect.core.ads.AdaptiveBannerAd
 import com.suman.memoryarchitect.core.common.toDisplayMessage
 import com.suman.memoryarchitect.core.common.toDisplayTitle
 import com.suman.memoryarchitect.domain.model.CosmeticCategory
@@ -126,6 +127,10 @@ fun ProfileScreen(
         if (celebration != null) {
             DailyRewardCelebration(result = celebration, modifier = Modifier.align(Alignment.Center))
         }
+
+        // Bottom-anchored, same convention as every other non-gameplay screen's copy - see
+        // AdaptiveBannerAd's own doc for why this renders nothing at all for a Remove Ads purchaser.
+        AdaptiveBannerAd(placement = "profile", modifier = Modifier.align(Alignment.BottomCenter))
     }
 }
 

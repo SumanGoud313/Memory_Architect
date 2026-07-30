@@ -34,9 +34,8 @@ import javax.inject.Singleton
  *   epoch-ms claimed), the double-claim guard.
  * - `missionCategoryBonusClaims/{uid}` - same shape, keyed `"${period}_${periodKey}"` instead - the
  *   per-period completion bonus's own double-grant guard. Deliberately its own document, not a
- *   piggybacked key on `missionClaims/{uid}` - `functions/src/index.ts`'s `validateMissionClaims`
- *   rejects more than one new key per write and requires every key to parse as a real [MissionId],
- *   which a `"BONUS_..."`-shaped key never would.
+ *   piggybacked key on `missionClaims/{uid}` - a `"BONUS_..."`-shaped key would never parse as a
+ *   real [MissionId], which every key in that other map is expected to.
  * - `missionRefreshState/{uid}` - the "pay to skip the countdown" override, see
  *   [MissionRefreshState]'s doc.
  *
@@ -93,12 +92,9 @@ class FirestoreMissionRemoteSource @Inject constructor(
             }
 
             transaction.set(claimsRef, mapOf("claimedKeys" to (claimedKeys + (claimKey to clock.millis()))))
-            // lastWriteSource: see PROFILE_WRITE_SOURCES' doc in functions/src/index.ts - lets
-            // validateProfileWrite rate-limit this write independently of an unrelated action
-            // (a score submission, a shop purchase) landing within the same few seconds.
-            // SetOptions.merge() - see FirestoreShopRemoteSource.purchase's identical comment: a
-            // plain overwrite here would silently wipe flaggedForReview, the one field
-            // validateProfileWrite adds that this client map never knows about.
+            // lastWriteSource: no longer read by anything server-side (this project runs no Cloud
+            // Function), kept purely as a manual-debugging aid for which write path last touched a
+            // given profile.
             transaction.set(profileRef, updatedProfile.toFirestoreMap() + mapOf("lastWriteSource" to "claim_mission_reward"), SetOptions.merge())
             transaction.set(inventoryRef, currentQuantities.toFirestoreMap())
 
@@ -132,8 +128,8 @@ class FirestoreMissionRemoteSource @Inject constructor(
             val currentProfile = transaction.get(profileRef).toProfile() ?: PlayerProfile.EMPTY
             val updatedProfile = currentProfile.copy(coins = currentProfile.coins + reward.coinsAwarded)
 
-            // lastWriteSource: see PROFILE_WRITE_SOURCES' doc in functions/src/index.ts - lets
-            // validateProfileWrite rate-limit this write independently of an unrelated action.
+            // lastWriteSource: no longer read by anything server-side - see claimMissionReward's
+            // identical comment above.
             transaction.set(profileRef, updatedProfile.toFirestoreMap() + mapOf("lastWriteSource" to "mystery_chest_open"), SetOptions.merge())
             transaction.set(inventoryRef, currentQuantities.toFirestoreMap())
 

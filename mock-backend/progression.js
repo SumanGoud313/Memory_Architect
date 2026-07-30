@@ -106,7 +106,14 @@ function applyScoreSubmission(profile, mode, finalScore, comboCount, sceneAccura
     profile.longestStreak,
     profile.streakShields,
   );
-  const journeyPointsAwarded = journeyPointsAwardedFor(sceneAccuracy, streakUpdate.milestoneReached, newlyUnlockedAchievementCount);
+  // Mirrors FirestoreProgressionRemoteSource.kt/ProgressionRepositoryImpl.kt's own handling:
+  // awardXp is already false only for a repeat clear of an already-completed Classic level, so
+  // reusing it here excludes that same case from Memory Journey points too. Daily/Weekly
+  // Challenge rounds are excluded outright regardless of awardXp (always true for them).
+  const awardJourneyPoints = awardXp && mode !== 'DAILY_CHALLENGE' && mode !== 'WEEKLY_CHALLENGE';
+  const journeyPointsAwarded = awardJourneyPoints
+    ? journeyPointsAwardedFor(sceneAccuracy, streakUpdate.milestoneReached, newlyUnlockedAchievementCount)
+    : 0;
   const won = isChallengeWin(mode, sceneAccuracy);
   const nowEpochSecond = Math.floor(Date.now() / 1000);
   return {

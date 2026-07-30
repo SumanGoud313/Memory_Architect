@@ -43,6 +43,7 @@ class RewardedAdControllerImpl @Inject constructor(
     private val networkMonitor: NetworkMonitor,
     private val analytics: AnalyticsLogger,
     private val interstitialPacingGate: InterstitialPacingGate,
+    private val adConsentGate: AdConsentGate,
 ) : RewardedAdController {
 
     private val initMutex = Mutex()
@@ -51,6 +52,12 @@ class RewardedAdControllerImpl @Inject constructor(
     override suspend fun loadAndShow(activity: Activity, feature: String): RewardedAdResult {
         if (!networkMonitor.isOnline.value) {
             return RewardedAdResult.Failed(RewardedAdFailureReason.NO_INTERNET)
+        }
+        // UMP policy: never request an ad before consent is gathered (where required) - see
+        // AdConsentManager's own doc. Same "no ad available" outcome as any other unavailable-ad
+        // reason, since to a player these are indistinguishable anyway.
+        if (!adConsentGate.canRequestAds) {
+            return RewardedAdResult.Failed(RewardedAdFailureReason.AD_UNAVAILABLE)
         }
         ensureInitialized()
 
@@ -101,7 +108,7 @@ class RewardedAdControllerImpl @Inject constructor(
         suspendCancellableCoroutine { continuation ->
             RewardedAd.load(
                 context,
-                REWARDED_AD_UNIT_ID,
+                rewardedAdUnitIdFor(feature),
                 AdRequest.Builder().build(),
                 object : RewardedAdLoadCallback() {
                     override fun onAdLoaded(rewardedAd: RewardedAd) {
@@ -144,10 +151,21 @@ class RewardedAdControllerImpl @Inject constructor(
         ad.show(activity) { earnedReward = true }
     }
 
+    /** One real AdMob ad unit per rewarded placement - [feature] is the exact string every
+     * [RewardedAdFlow] call site already tags its requests with (see that class/`GameplayViewModel`/
+     * `LuckySpinViewModel`'s own construction sites), so this never needs its own separate enum. An
+     * unrecognized feature (should never happen - every real call site is listed here) falls back
+     * to the hint unit rather than crashing. */
+    private fun rewardedAdUnitIdFor(feature: String): String = when (feature) {
+        "hint" -> "ca-app-pub-6355592583655922/5586504172"
+        "rewatch" -> "ca-app-pub-6355592583655922/2015638836"
+        "redo" -> "ca-app-pub-6355592583655922/4642068104"
+        "lucky_spin" -> "ca-app-pub-6355592583655922/5943541482"
+        "lucky_spin_mystery_chest" -> "ca-app-pub-6355592583655922/5899877673"
+        else -> "ca-app-pub-6355592583655922/5586504172"
+    }
+
     private companion object {
-        /** Google's official Android test rewarded ad unit ID - always fills with a test creative,
-         * never a real ad, safe to ship in any build. Swap for a real ad unit ID before release. */
-        const val REWARDED_AD_UNIT_ID = "ca-app-pub-3940256099942544/5224354917"
         const val INIT_TIMEOUT_MS = 10_000L
         const val LOAD_TIMEOUT_MS = 15_000L
     }

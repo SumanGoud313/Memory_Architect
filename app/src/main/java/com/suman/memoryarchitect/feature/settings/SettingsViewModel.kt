@@ -7,6 +7,7 @@ import com.suman.memoryarchitect.core.analytics.logHapticsToggled
 import com.suman.memoryarchitect.core.datastore.UserPreferencesDataStore
 import com.suman.memoryarchitect.core.feedback.AudioSettings
 import com.suman.memoryarchitect.core.feedback.AudioSettingsManager
+import com.suman.memoryarchitect.domain.usecase.DeleteAccountUseCase
 import com.suman.memoryarchitect.domain.usecase.ResetProgressUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,6 +22,7 @@ import javax.inject.Inject
 class SettingsViewModel @Inject constructor(
     private val audioSettingsManager: AudioSettingsManager,
     private val resetProgressUseCase: ResetProgressUseCase,
+    private val deleteAccountUseCase: DeleteAccountUseCase,
     private val preferences: UserPreferencesDataStore,
     private val analytics: AnalyticsLogger,
 ) : ViewModel() {
@@ -39,6 +41,12 @@ class SettingsViewModel @Inject constructor(
 
     private val _isResetting = MutableStateFlow(false)
     val isResetting: StateFlow<Boolean> = _isResetting.asStateFlow()
+
+    private val _isDeletingAccount = MutableStateFlow(false)
+    val isDeletingAccount: StateFlow<Boolean> = _isDeletingAccount.asStateFlow()
+
+    private val _deleteAccountFailed = MutableStateFlow(false)
+    val deleteAccountFailed: StateFlow<Boolean> = _deleteAccountFailed.asStateFlow()
 
     fun setStreakReminderEnabled(enabled: Boolean) {
         viewModelScope.launch { preferences.setStreakReminderEnabled(enabled) }
@@ -81,5 +89,21 @@ class SettingsViewModel @Inject constructor(
             _isResetting.value = false
             onComplete()
         }
+    }
+
+    /** [onComplete] runs only once every Firestore document is actually gone - see
+     * [DeleteAccountUseCase]'s doc for why a failure here (a network error reaching Firestore, or
+     * not signed in) is safe to just retry, never a half-deleted state. */
+    fun deleteAccount(onComplete: () -> Unit) {
+        viewModelScope.launch {
+            _isDeletingAccount.value = true
+            _deleteAccountFailed.value = false
+            deleteAccountUseCase().onSuccess { onComplete() }.onFailure { _deleteAccountFailed.value = true }
+            _isDeletingAccount.value = false
+        }
+    }
+
+    fun dismissDeleteAccountError() {
+        _deleteAccountFailed.value = false
     }
 }

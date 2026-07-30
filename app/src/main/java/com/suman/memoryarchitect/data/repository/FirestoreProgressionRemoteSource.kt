@@ -93,7 +93,11 @@ class FirestoreProgressionRemoteSource @Inject constructor(
                 current.longestStreak,
                 current.streakShields,
             )
-            val journeyPointsAwarded = journeyPointsAwardedFor(score.sceneAccuracy, streakUpdate.milestoneReached, newlyUnlockedAchievementCount)
+            // See ProgressionRepositoryImpl.submitScore's identical comment - awardXp already
+            // excludes a repeat clear of an already-completed Classic level, and Daily/Weekly
+            // Challenge rounds are excluded outright regardless of awardXp.
+            val awardJourneyPoints = awardXp && mode != GameMode.DAILY_CHALLENGE && mode != GameMode.WEEKLY_CHALLENGE
+            val journeyPointsAwarded = if (awardJourneyPoints) journeyPointsAwardedFor(score.sceneAccuracy, streakUpdate.milestoneReached, newlyUnlockedAchievementCount) else 0L
             val updated = current.copy(
                 xp = current.xp + xpAwarded,
                 coins = current.coins + coinsAwarded,
@@ -106,13 +110,12 @@ class FirestoreProgressionRemoteSource @Inject constructor(
                 journeyPoints = current.journeyPoints + journeyPointsAwarded,
             )
             transaction.set(nonceRef, mapOf("uid" to uid, "createdAtEpochMs" to nowEpochMs))
-            // lastWriteSource: see PROFILE_WRITE_SOURCES' doc in functions/src/index.ts - lets
-            // validateProfileWrite rate-limit this write independently of an unrelated action
-            // (a shop purchase, a mission claim) landing within the same few seconds.
-            // SetOptions.merge() - a plain overwrite here would silently wipe flaggedForReview,
-            // the one field validateProfileWrite adds that this client map never knows about (see
-            // FirestoreShopRemoteSource.purchase's own identical comment - this write was the one
-            // remaining profile write that didn't already follow that convention).
+            // lastWriteSource: no longer read by anything server-side (this project runs no Cloud
+            // Function), kept purely as a manual-debugging aid for which write path last touched a
+            // given profile - see firestore.rules' isValidProfile doc.
+            // SetOptions.merge() - a plain overwrite here could silently wipe a legacy
+            // flaggedForReview field on an account flagged before this project's Spark migration
+            // (nothing writes that field anymore, but old documents may still carry it).
             transaction.set(docRef, updated.toFirestoreMap(clock) + mapOf("lastWriteSource" to "submit_score"), SetOptions.merge())
             updated
         }.await()
@@ -225,8 +228,7 @@ class FirestoreProgressionRemoteSource @Inject constructor(
     /** Mirrors `mock-backend/progression.js`'s `coinsAwardedFor`/[ProgressionRepositoryImpl]'s own
      * private copy - kept as three independent copies of the same small formula (client-optimistic,
      * mock-backend, Firestore) rather than a shared function, matching how the mock backend and
-     * client already independently mirror each other; a real Cloud Functions deployment would be
-     * the natural place to collapse this into one authoritative copy. */
+     * client already independently mirror each other. */
     private fun coinsAwardedFor(mode: GameMode, score: ScoreResult): Long {
         val rules = ProgressionRules.Default
         return when (mode) {

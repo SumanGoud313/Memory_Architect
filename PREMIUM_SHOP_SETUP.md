@@ -2,13 +2,13 @@
 
 This project ships with a complete, production-ready Premium Shop already wired in code - 7 new
 real-money cosmetic bundles (Founder's Pack, Starter Bundle, and 5 themed collections) sold via
-Google Play Billing, each server-verified against the Google Play Developer API before anything is
-granted. It sits alongside the pre-existing `remove_ads_lifetime` purchase (`BILLING_SETUP.md`) -
-same `BillingClient`, same Play Console, a separate product list. Like this project's other
-external integrations (`FIREBASE_SETUP.md`, `LEADERBOARD_SETUP.md`, `BILLING_SETUP.md`,
-`POINTS_SHOP_SETUP.md`), it stays inert until you create the products in **Google Play Console**
-and grant this project's Cloud Functions access to read purchase state - nothing in this repo can
-do either step for you.
+Google Play Billing. It sits alongside the pre-existing `remove_ads_lifetime` purchase
+(`BILLING_SETUP.md`) - same `BillingClient`, same Play Console, a separate product list. Like this
+project's other external integrations (`FIREBASE_SETUP.md`, `LEADERBOARD_SETUP.md`,
+`BILLING_SETUP.md`, `POINTS_SHOP_SETUP.md`), it stays inert until you create the products in
+**Google Play Console** - nothing in this repo can do that step for you. This project runs
+entirely on the free Firebase Spark plan (no Cloud Functions anywhere - see the Spark migration
+report), so there's no separate "grant server access" step either.
 
 ## What's already wired in code
 
@@ -17,17 +17,17 @@ do either step for you.
   `remove_ads_lifetime` entry, all rendered from one `PremiumProductCard`/`PremiumProductDetailDialog`
   pair in the Shop's 💎 Premium tab (`ui/screens/shop/ShopScreen.kt`) - visually and structurally
   separate from the 🪙 Coin tab's existing `ShopItemRow`s.
-- **Billing**: `core/billing/SharedBillingClient.kt` (the one `BillingClient` this app is allowed
-  to have, shared with the pre-existing `BillingManagerImpl`) and `core/billing/PremiumShopManagerImpl.kt`
-  (queries/purchases/restores the 7 bundle product IDs, isolated from `BillingManagerImpl`'s own
-  in-flight purchase by a separate `inFlightProductId` flag so the two flows can never cross-contaminate
-  each other's state).
-- **Server-side verification**: `functions/src/index.ts`'s `verifyPremiumPurchase` - unlike the
-  coin Point Shop's `purchase()` (a trusted client write, only checked *after* the fact by
-  `validateCosmeticsWrite`), a premium grant is **never** written until this function has confirmed
-  the purchase with Google's own Play Developer API, with two anti-fraud layers (account binding via
-  `setObfuscatedAccountId`, and a `claimedPurchaseTokens/{sha256(token)}` replay guard) - see that
-  function's doc comment in `functions/src/index.ts` for the full design.
+- **Billing**: `core/billing/SharedBillingClient.kt` (the one `BillingClient` this app has) and
+  `core/billing/BillingManagerImpl.kt` - one manager for both `remove_ads_lifetime` and every
+  Premium Shop bundle, branching on `BillingProductType` (Play Billing mechanics) and
+  `BillingEntitlementKind` (what actually gets granted) - see that class's own doc.
+- **Purchase verification**: `core/billing/PurchaseSignatureVerifier.kt` checks the Play Billing
+  Library's own purchase signature against your app's Play Console public key, entirely on-device -
+  a patched client can't forge this without Google's private signing key. `core/billing/
+  CosmeticCollectionGrantor.kt` then grants the bundle's cosmetics via a Firestore transaction,
+  guarded by a `claimedPurchaseTokens/{sha256(token)}` replay lock (`firestore.rules`-enforced
+  create-only, so the same token can never be claimed twice). See `BILLING_SETUP.md`'s "Why no
+  server-side purchase verification" for the accepted trade-off this design makes.
 - **Developer Test Mode**: `core/debug/DebugTestGrantor.debugGrantPremiumProduct()` - grants a
   product's cosmetics locally without any real Play Billing transaction, so every screen/flow is
   fully testable before a single product exists in Play Console. See below for how it's gated.
@@ -35,14 +35,12 @@ do either step for you.
 ## Why this stays inert until you do the steps below
 
 Google Play Billing refuses to return real product details/prices for a product ID Play Console
-doesn't know about, and `verifyPremiumPurchase` cannot call the Play Developer API at all until
-this Firebase project's Cloud Functions service account is granted read access to your app's
-purchase data. Until both are done: `productPrices` in `PremiumShopManagerImpl` stays empty, every
-`PremiumProductCard` shows a "Loading price…" state that - after the query genuinely fails, which
-it always will with no product configured - flips to a "Price unavailable" message with a Retry
-button (its Buy button stays disabled throughout), and `verifyPremiumPurchase` would fail even if a
-purchase somehow completed. **Developer Test Mode (below) is unaffected by any of this** - it's the
-intended way to build/test/demo the whole feature before Play Console is touched at all.
+doesn't know about. Until the products exist there: `productStates` in `BillingManagerImpl` stays
+empty for these product IDs, every `PremiumProductCard` shows a "Loading price…" state that - after
+the query genuinely fails, which it always will with no product configured - flips to a "Price
+unavailable" message with a Retry button (its Buy button stays disabled throughout). **Developer
+Test Mode (below) is unaffected by any of this** - it's the intended way to build/test/demo the
+whole feature before Play Console is touched at all.
 
 ## What you need to create
 
@@ -63,30 +61,17 @@ not a subscription. Product IDs must match `domain/progression/PremiumShopCatalo
 exactly (they're hardcoded there, same convention `BillingManagerImpl.REMOVE_ADS_PRODUCT_ID`
 already uses for `remove_ads_lifetime`).
 
-## Grant Cloud Functions access to the Play Developer API
+## No server-side Play Developer API step
 
-`verifyPremiumPurchase` calls `androidpublisher.purchases.products.get` using this Firebase
-project's default Cloud Functions service account. That account needs explicit access:
-
-1. **Play Console → Setup → API access.** Link this Firebase project's Google Cloud project (same
-   one `LEADERBOARD_SETUP.md`'s Play Integrity linking uses, if you've already done that step -
-   it's the same underlying Cloud project either way).
-2. Under the linked project's service accounts, find the **App Engine default service account**
-   (`<project-id>@appspot.gserviceaccount.com` - this is what Cloud Functions runs as by default)
-   and grant it access with the **"View financial data"** permission at minimum (required for
-   `purchases.products.get` to return purchase state).
-3. Enable the **Google Play Android Developer API** for this Google Cloud project
-   (console.cloud.google.com → APIs & Services → enable "Google Play Android Developer API").
-4. Deploy the updated Cloud Functions:
-   ```
-   cd functions
-   npm install
-   firebase deploy --only functions
-   ```
-
-No `firestore.rules` change is needed - `claimedPurchaseTokens` and `premiumPurchases` are
-Admin-SDK-only collections (Cloud Functions bypass rules entirely), same pattern
-`deviceIntegrity/{uid}` already uses.
+Earlier revisions of this feature called `androidpublisher.purchases.products.get` from a Cloud
+Function to re-verify a purchase server-side before granting it. This project no longer does that -
+it runs no Cloud Functions at all, to stay on the free Firebase Spark plan (see the Spark migration
+report). `PurchaseSignatureVerifier` (on-device signature check) plus `CosmeticCollectionGrantor`'s
+Firestore replay guard (`claimedPurchaseTokens/{sha256(token)}`, enforced by `firestore.rules`) are
+the full extent of purchase verification now - see `BILLING_SETUP.md`'s "Why no server-side
+purchase verification" for what that trades away (refund/chargeback revocation) and why it's an
+accepted trade-off for this app. Nothing to grant, nothing to deploy, no Google Cloud service
+account setup needed.
 
 ## Testing before going live
 
@@ -153,9 +138,9 @@ Same shape as `POINTS_SHOP_SETUP.md`'s coin-catalog expansion, but through the p
 2. Add their `CosmeticDefinition`s to `domain/progression/PremiumCatalog.kt` (never `ShopCatalog.kt`
    - a premium-only id must never be coin-purchasable or Lucky-Spin-eligible).
 3. Add their visual specs (`ui/theme/CosmeticVisualCatalog.kt`).
-4. Add a new `PremiumProduct` entry to `domain/progression/PremiumShopCatalog.kt` and a matching
-   grant list to `functions/src/premiumCatalog.ts`'s `PREMIUM_PRODUCT_GRANTS` (server-side truth for
-   what `verifyPremiumPurchase` actually grants - keep both in sync).
+4. Add a new `PremiumProduct` entry to `domain/progression/PremiumShopCatalog.kt` - this is now the
+   single source of truth for what each bundle grants (`CosmeticCollectionGrantor` reads it
+   directly, no separate server-side copy to keep in sync).
 5. Create the matching product in Play Console (see above).
 
 ## Out of scope by design

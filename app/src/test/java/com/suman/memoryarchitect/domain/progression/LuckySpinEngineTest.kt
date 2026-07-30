@@ -181,12 +181,12 @@ class LuckySpinEngineTest {
     }
 
     @Test
-    fun `every coin outcome stays under the server's per-write coin-gain cap`() {
-        // Mirrors functions/src/index.ts's MAX_PLAUSIBLE_COINS_GAIN_PER_WRITE (2,000) - see
-        // MysteryChestOdds's doc for why a client-rolled coins-only outcome needs no dedicated
-        // Cloud Function re-derivation as long as every entry stays comfortably under that bound.
+    fun `every coin outcome stays a modest, bounded amount by design`() {
+        // A design/balance sanity check, not tied to any server-enforced bound (this project runs
+        // no Cloud Function - see the Spark migration report) - a spin should never grant a coin
+        // amount large enough to meaningfully shortcut the Point Shop's economy.
         SpinRules.Default.coinOutcomes.forEach { (amount, _) ->
-            assertTrue("$amount exceeds the server's per-write coin-gain cap", amount < 2_000L)
+            assertTrue("$amount is too large for a Lucky Spin coin outcome", amount < 2_000L)
         }
     }
 }

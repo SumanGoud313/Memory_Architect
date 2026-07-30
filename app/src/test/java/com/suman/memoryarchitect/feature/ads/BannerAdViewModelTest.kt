@@ -1,5 +1,6 @@
 package com.suman.memoryarchitect.feature.ads
 
+import com.suman.memoryarchitect.core.ads.AdConsentGate
 import com.suman.memoryarchitect.domain.model.AppError
 import com.suman.memoryarchitect.domain.model.Outcome
 import com.suman.memoryarchitect.domain.model.RemoteConfig
@@ -26,6 +27,8 @@ private class FakeRemoteConfigRepository(private val bannerEnabled: Boolean = tr
 private class FailingRemoteConfigRepository : RemoteConfigRepository {
     override suspend fun getRemoteConfig(): Outcome<RemoteConfig> = Outcome.Error(AppError.FeatureUnavailable)
 }
+
+private class FakeAdConsentGate(override val canRequestAds: Boolean = true) : AdConsentGate
 
 /**
  * [FakeBillingManager]/[FakeAnalyticsLogger] used below live in AdsTestFakes.kt, shared with
@@ -56,7 +59,7 @@ class BannerAdViewModelTest {
     @Test
     fun `banner shows for a player who has not purchased Remove Ads`() = runTest {
         val billingManager = FakeBillingManager(hasRemovedAds = false)
-        val viewModel = BannerAdViewModel(billingManager, FakeRemoteConfigRepository(bannerEnabled = true), FakeAnalyticsLogger())
+        val viewModel = BannerAdViewModel(billingManager, FakeRemoteConfigRepository(bannerEnabled = true), FakeAdConsentGate(), FakeAnalyticsLogger())
         backgroundScope.launch { viewModel.shouldShowBanner.collect {} }
         advanceUntilIdle()
 
@@ -66,7 +69,7 @@ class BannerAdViewModelTest {
     @Test
     fun `banner stops the instant hasRemovedAds flips to true, with no restart needed`() = runTest {
         val billingManager = FakeBillingManager(hasRemovedAds = false)
-        val viewModel = BannerAdViewModel(billingManager, FakeRemoteConfigRepository(bannerEnabled = true), FakeAnalyticsLogger())
+        val viewModel = BannerAdViewModel(billingManager, FakeRemoteConfigRepository(bannerEnabled = true), FakeAdConsentGate(), FakeAnalyticsLogger())
         backgroundScope.launch { viewModel.shouldShowBanner.collect {} }
         advanceUntilIdle()
         assertTrue(viewModel.shouldShowBanner.value)
@@ -82,7 +85,7 @@ class BannerAdViewModelTest {
     @Test
     fun `banner never shows again after purchase even if Remote Config re-enables banners`() = runTest {
         val billingManager = FakeBillingManager(hasRemovedAds = true)
-        val viewModel = BannerAdViewModel(billingManager, FakeRemoteConfigRepository(bannerEnabled = true), FakeAnalyticsLogger())
+        val viewModel = BannerAdViewModel(billingManager, FakeRemoteConfigRepository(bannerEnabled = true), FakeAdConsentGate(), FakeAnalyticsLogger())
         backgroundScope.launch { viewModel.shouldShowBanner.collect {} }
         advanceUntilIdle()
 
@@ -92,7 +95,7 @@ class BannerAdViewModelTest {
     @Test
     fun `Remote Config banner_ads_enabled=false hides the banner independent of purchase state`() = runTest {
         val billingManager = FakeBillingManager(hasRemovedAds = false)
-        val viewModel = BannerAdViewModel(billingManager, FakeRemoteConfigRepository(bannerEnabled = false), FakeAnalyticsLogger())
+        val viewModel = BannerAdViewModel(billingManager, FakeRemoteConfigRepository(bannerEnabled = false), FakeAdConsentGate(), FakeAnalyticsLogger())
         backgroundScope.launch { viewModel.shouldShowBanner.collect {} }
         advanceUntilIdle()
 
@@ -102,7 +105,7 @@ class BannerAdViewModelTest {
     @Test
     fun `a Remote Config fetch failure keeps the optimistic default rather than hiding the banner`() = runTest {
         val billingManager = FakeBillingManager(hasRemovedAds = false)
-        val viewModel = BannerAdViewModel(billingManager, FailingRemoteConfigRepository(), FakeAnalyticsLogger())
+        val viewModel = BannerAdViewModel(billingManager, FailingRemoteConfigRepository(), FakeAdConsentGate(), FakeAnalyticsLogger())
         backgroundScope.launch { viewModel.shouldShowBanner.collect {} }
         advanceUntilIdle()
 

@@ -1,5 +1,6 @@
 package com.suman.memoryarchitect.di
 
+import com.suman.memoryarchitect.data.repository.AccountDeletionRepositoryImpl
 import com.suman.memoryarchitect.data.repository.AvatarUploadRepositoryImpl
 import com.suman.memoryarchitect.data.repository.ChallengeRepositoryImpl
 import com.suman.memoryarchitect.data.repository.HintRepositoryImpl
@@ -14,6 +15,7 @@ import com.suman.memoryarchitect.data.repository.RedoRepositoryImpl
 import com.suman.memoryarchitect.data.repository.RemoteConfigRepositoryImpl
 import com.suman.memoryarchitect.data.repository.RewatchRepositoryImpl
 import com.suman.memoryarchitect.data.repository.ShopRepositoryImpl
+import com.suman.memoryarchitect.domain.repository.AccountDeletionRepository
 import com.suman.memoryarchitect.domain.repository.AvatarUploadRepository
 import com.suman.memoryarchitect.domain.repository.ChallengeRepository
 import com.suman.memoryarchitect.domain.repository.HintRepository
@@ -121,4 +123,10 @@ abstract class RepositoryModule {
     abstract fun bindInventoryRepository(
         impl: InventoryRepositoryImpl,
     ): InventoryRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindAccountDeletionRepository(
+        impl: AccountDeletionRepositoryImpl,
+    ): AccountDeletionRepository
 }

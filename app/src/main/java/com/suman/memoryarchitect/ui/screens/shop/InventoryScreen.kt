@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.suman.memoryarchitect.R
+import com.suman.memoryarchitect.core.ads.AdaptiveBannerAd
 import com.suman.memoryarchitect.domain.model.InventoryItemKind
 import com.suman.memoryarchitect.feature.inventory.InventoryActionResult
 import com.suman.memoryarchitect.feature.inventory.InventoryViewModel
@@ -53,6 +54,10 @@ fun InventoryScreen(onBack: () -> Unit) {
                 InventoryScreenBody()
             }
         }
+
+        // "Rewards/Inventory" in this app's own naming (see LuckySpinScreen.kt's doc) - see
+        // AdaptiveBannerAd's own doc for why this renders nothing at all for a Remove Ads purchaser.
+        AdaptiveBannerAd(placement = "inventory", modifier = Modifier.align(Alignment.BottomCenter))
     }
 }
 

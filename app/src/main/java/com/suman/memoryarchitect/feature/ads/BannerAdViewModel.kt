@@ -2,6 +2,7 @@ package com.suman.memoryarchitect.feature.ads
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.suman.memoryarchitect.core.ads.AdConsentGate
 import com.suman.memoryarchitect.core.ads.bannerAdsEnabled
 import com.suman.memoryarchitect.core.analytics.AnalyticsLogger
 import com.suman.memoryarchitect.core.analytics.logAdLoadLatency
@@ -13,6 +14,7 @@ import com.suman.memoryarchitect.core.billing.BillingManager
 import com.suman.memoryarchitect.domain.model.Outcome
 import com.suman.memoryarchitect.domain.repository.RemoteConfigRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -28,10 +30,12 @@ import javax.inject.Inject
 class BannerAdViewModel @Inject constructor(
     private val billingManager: BillingManager,
     private val remoteConfigRepository: RemoteConfigRepository,
+    private val adConsentGate: AdConsentGate,
     private val analytics: AnalyticsLogger,
 ) : ViewModel() {
 
     private val _remoteConfigBannerEnabled = MutableStateFlow(true)
+    private val _canRequestAds = MutableStateFlow(adConsentGate.canRequestAds)
 
     init {
         viewModelScope.launch {
@@ -42,16 +46,28 @@ class BannerAdViewModel @Inject constructor(
             // failure mode.
             if (remoteConfig != null) _remoteConfigBannerEnabled.value = remoteConfig.bannerAdsEnabled()
         }
+        // UMP policy: never request an ad before consent is gathered (where required) - see
+        // AdConsentManager's own doc. Polled rather than a real Flow since ConsentInformation has
+        // no listener API of its own; short-lived in practice, since MainViewModel.requestAdConsent
+        // runs at app launch, well before a player reaches any banner-carrying screen.
+        viewModelScope.launch {
+            while (!adConsentGate.canRequestAds) {
+                delay(250L)
+            }
+            _canRequestAds.value = true
+        }
     }
 
-    /** `true` only once both gates agree: the player hasn't purchased Remove Ads, and Remote
-     * Config's `banner_ads_enabled`/`emergency_ads_disabled` combination allows it. Starts `true`
-     * (`WhileSubscribed`, not eagerly) rather than `false` so a slow first Remote Config fetch never
-     * flashes "no banner" for players who are eligible - the false-negative case here is a banner
-     * appearing a beat late, never one flashing then disappearing. */
-    val shouldShowBanner: StateFlow<Boolean> = combine(billingManager.hasRemovedAds, _remoteConfigBannerEnabled) { hasRemovedAds, enabled ->
-        !hasRemovedAds && enabled
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+    /** `true` only once every gate agrees: the player hasn't purchased Remove Ads, Remote Config's
+     * `banner_ads_enabled`/`emergency_ads_disabled` combination allows it, and ad-consent is
+     * resolved. Starts `true` (`WhileSubscribed`, not eagerly) rather than `false` so a slow first
+     * Remote Config fetch never flashes "no banner" for players who are eligible - the
+     * false-negative case here is a banner appearing a beat late, never one flashing then
+     * disappearing. */
+    val shouldShowBanner: StateFlow<Boolean> =
+        combine(billingManager.hasRemovedAds, _remoteConfigBannerEnabled, _canRequestAds) { hasRemovedAds, enabled, canRequestAds ->
+            !hasRemovedAds && enabled && canRequestAds
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
 
     fun onBannerImpression(placement: String) = analytics.logBannerImpression(placement)
 
