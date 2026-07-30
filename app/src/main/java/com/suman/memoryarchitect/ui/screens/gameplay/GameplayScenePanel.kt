@@ -1,5 +1,6 @@
 package com.suman.memoryarchitect.ui.screens.gameplay
 
+import android.os.Build
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
@@ -41,13 +42,14 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
@@ -80,7 +82,6 @@ import com.suman.memoryarchitect.ui.illustration.ObjectArtRegistry
 import com.suman.memoryarchitect.ui.illustration.RoomArt
 import com.suman.memoryarchitect.ui.illustration.RoomArtRegistry
 import com.suman.memoryarchitect.ui.theme.MemoryArchitectColors
-import com.suman.memoryarchitect.ui.theme.ObjectMaterialVisualSpec
 import com.suman.memoryarchitect.ui.theme.RoomSkinVisualSpec
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -133,11 +134,9 @@ fun GameplayScenePanel(
     highlightedSlotIndex: Int? = null,
     hintReveal: HintReveal? = null,
     onPanelPositioned: (LayoutCoordinates) -> Unit = {},
-    // Premium ROOM_SKIN/OBJECT_MATERIAL cosmetics - both `null` (nothing equipped) is a true no-op,
-    // reproducing today's exact look at every call site below. See RoomSkinOverlay's/
-    // objectMaterialTint's own docs for the recolor techniques.
+    // Premium ROOM_SKIN cosmetic - `null` (nothing equipped) is a true no-op, reproducing today's
+    // exact look at every call site below. See RoomSkinOverlay's own doc for the recolor technique.
     roomSkin: RoomSkinVisualSpec? = null,
-    objectMaterial: ObjectMaterialVisualSpec? = null,
 ) {
     val accentColor = roomSkin?.accentGlow ?: MemoryArchitectColors.accentGold
     var panelSizePx by remember { mutableStateOf(IntSize.Zero) }
@@ -266,7 +265,6 @@ fun GameplayScenePanel(
                         modifier = Modifier
                             .size(sizeDp * 0.82f)
                             .offset(sizeDp * 0.09f, sizeDp * 0.09f)
-                            .objectMaterialTint(objectMaterial)
                             .distractorDesaturation(obj.isDistractor),
                     )
                 }
@@ -289,7 +287,6 @@ fun GameplayScenePanel(
                     art = ObjectArtRegistry.get(reveal.objectId),
                     rotationDegrees = reveal.rotationDegrees,
                     accentColor = accentColor,
-                    objectMaterial = objectMaterial,
                 )
             }
         }
@@ -316,7 +313,6 @@ private fun HintRevealHighlight(
     rotationDegrees: Int,
     modifier: Modifier = Modifier,
     accentColor: Color = MemoryArchitectColors.accentGold,
-    objectMaterial: ObjectMaterialVisualSpec? = null,
 ) {
     val transition = rememberInfiniteTransition(label = "hintReveal")
     val pulseScale by transition.animateFloat(
@@ -385,7 +381,7 @@ private fun HintRevealHighlight(
                     rotationZ = rotationDegrees.toFloat()
                 },
         ) {
-            IdleAnimatedObject(art = art, modifier = Modifier.fillMaxSize().objectMaterialTint(objectMaterial))
+            IdleAnimatedObject(art = art, modifier = Modifier.fillMaxSize())
         }
         // Rotate badge — only when a turn is actually required, so the need to rotate is obvious
         // before the player has to study the ghost's exact angle.
@@ -507,61 +503,40 @@ private fun rememberRevealProgress(
 }
 
 /**
- * A premium `OBJECT_MATERIAL`'s paint-transform - the same `saveLayer` + `ColorFilter` compositing
- * technique [distractorDesaturation] below already establishes, kept as a fully independent second
- * pass (never merged into that function's logic) so distractor behavior stays byte-for-byte
- * unchanged regardless of what material is equipped. Applied *before* [distractorDesaturation] in
- * every call site's modifier chain, so a distractor still desaturates on top of its material tint
- * rather than the two fighting over which one "wins." A true no-op when [material] is `null`.
+ * Composites this content into an offscreen layer with a saturation-0.15 color filter - the
+ * Compose equivalent of the old `Drawable.colorFilter = distractorColorFilter` one-liner.
  *
- * `internal`, not `private` - [com.suman.memoryarchitect.ui.screens.gameplay.GameplayScreen]'s
- * `PremiumDragGhost` (the floating drag ghost, a different composable/file in this same package)
- * reuses this exact function so the ghost's material tint matches the tray chip and placed object
- * exactly, rather than duplicating the technique a third time.
- *
- * [BlendMode.Color], not [BlendMode.Overlay] - this is a correction, not the original design.
- * `Overlay`'s neutral (no-brightness-change) point is raw value 0.5 on *each* R/G/B channel
- * independently, which has nothing to do with a color's overall (WCAG-weighted) luminance - a
- * `tintColor` can look "medium brightness" by luminance while one channel (usually blue, weighted
- * only ~7% in luminance) still sits well under 0.5, so `Overlay` quietly crushed every object
- * toward black regardless of which of the 7 materials was equipped. `BlendMode.Color` is defined
- * (CSS Compositing spec, which the platform implements exactly) to take the *source*'s hue/
- * saturation while preserving the *destination*'s own luminance exactly - so no tint color, now or
- * added later, can ever darken or wash out an object. See `CosmeticColorBlendTest.kt` for the
- * computed proof (not just an eyeballed claim) that this actually holds.
- */
-internal fun Modifier.objectMaterialTint(material: ObjectMaterialVisualSpec?): Modifier {
-    if (material == null) return this
-    return this.drawWithCache {
-        val filterPaint = Paint().apply {
-            colorFilter = ColorFilter.tint(material.tintColor.copy(alpha = material.blendStrength), BlendMode.Color)
-        }
-        onDrawWithContent {
-            drawIntoCanvas { canvas ->
-                canvas.saveLayer(Rect(Offset.Zero, size), filterPaint)
-                drawContent()
-                canvas.restore()
-            }
-        }
-    }
-}
-
-/**
- * Composites this content into an offscreen layer with a saturation-0.15 color filter Paint —
- * the Compose equivalent of the old `Drawable.colorFilter = distractorColorFilter` one-liner,
- * using `Canvas.saveLayer` (broadly supported) rather than the newer GraphicsLayer API.
+ * On API 31+, applied via [GraphicsLayerScope.renderEffect] (a `graphicsLayer`'s own hardware
+ * layer, the same mechanism every other animated effect on this screen already goes through) -
+ * *not* a manual `Canvas.saveLayer` + `ColorFilter` Paint. Isolating a `drawWithContent` block
+ * into its own offscreen layer via raw `Canvas.saveLayer` was field-reported (and reproduced
+ * on-device, in the equivalent `objectMaterialTint` this app used to also apply here before that
+ * whole feature was removed) to corrupt the *entire* Gameplay screen's compositing - not just the
+ * affected object, the room backdrop and HUD too - to a flat, near-unreadable gray wash on at
+ * least one real device's GPU/compositor. Routing the same color-matrix blend through Compose's
+ * own `graphicsLayer`/`RenderEffect` path avoided it entirely in the same on-device repro.
+ * `RenderEffect` itself is API 31+, so pre-31 devices keep the old technique.
  */
 private fun Modifier.distractorDesaturation(enabled: Boolean): Modifier {
     if (!enabled) return this
-    return this.drawWithCache {
-        val filterPaint = Paint().apply {
-            colorFilter = ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0.15f) })
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        this.graphicsLayer {
+            compositingStrategy = CompositingStrategy.Offscreen
+            renderEffect = android.graphics.RenderEffect.createColorFilterEffect(
+                android.graphics.ColorMatrixColorFilter(ColorMatrix().apply { setToSaturation(0.15f) }.values),
+            ).asComposeRenderEffect()
         }
-        onDrawWithContent {
-            drawIntoCanvas { canvas ->
-                canvas.saveLayer(Rect(Offset.Zero, size), filterPaint)
-                drawContent()
-                canvas.restore()
+    } else {
+        this.drawWithCache {
+            val filterPaint = Paint().apply {
+                colorFilter = ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0.15f) })
+            }
+            onDrawWithContent {
+                drawIntoCanvas { canvas ->
+                    canvas.saveLayer(Rect(Offset.Zero, size), filterPaint)
+                    drawContent()
+                    canvas.restore()
+                }
             }
         }
     }

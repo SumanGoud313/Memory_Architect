@@ -37,26 +37,28 @@ class PremiumShopCatalogTest {
     }
 
     @Test
-    fun `Founder's Pack grants 10 items, Starter Bundle grants 7, each themed collection grants 10`() {
-        // Each product's original category set (8/5/8) plus one ROOM_SKIN + one OBJECT_MATERIAL id.
-        assertEquals(10, PremiumShopCatalog.requireProduct(PremiumShopCatalog.FOUNDERS_PACK_PRODUCT_ID).grantedCosmeticIds.size)
-        assertEquals(7, PremiumShopCatalog.requireProduct(PremiumShopCatalog.STARTER_BUNDLE_PRODUCT_ID).grantedCosmeticIds.size)
+    fun `Founder's Pack grants 9 items, Starter Bundle grants 6, each themed collection grants 9`() {
+        // Each product's original category set (8/5/8) plus one ROOM_SKIN id. Used to be one more
+        // (a MATERIAL_* OBJECT_MATERIAL id too) before that category was removed from the shop -
+        // see nonMaterialIds' doc in ShopCatalogTest.kt for why.
+        assertEquals(9, PremiumShopCatalog.requireProduct(PremiumShopCatalog.FOUNDERS_PACK_PRODUCT_ID).grantedCosmeticIds.size)
+        assertEquals(6, PremiumShopCatalog.requireProduct(PremiumShopCatalog.STARTER_BUNDLE_PRODUCT_ID).grantedCosmeticIds.size)
         listOf(
             PremiumShopCatalog.ROYAL_COLLECTION_PRODUCT_ID, PremiumShopCatalog.CYBER_COLLECTION_PRODUCT_ID,
             PremiumShopCatalog.SPACE_COLLECTION_PRODUCT_ID, PremiumShopCatalog.NATURE_COLLECTION_PRODUCT_ID,
             PremiumShopCatalog.LUXURY_COLLECTION_PRODUCT_ID,
         ).forEach { productId ->
-            assertEquals(10, PremiumShopCatalog.requireProduct(productId).grantedCosmeticIds.size)
+            assertEquals(9, PremiumShopCatalog.requireProduct(productId).grantedCosmeticIds.size)
         }
     }
 
     @Test
-    fun `every cosmetic collection grants exactly one ROOM_SKIN and one OBJECT_MATERIAL id`() {
+    fun `every cosmetic collection grants exactly one ROOM_SKIN id, and never an OBJECT_MATERIAL id`() {
         PremiumShopCatalog.cosmeticCollectionProductIds.forEach { productId ->
             val grantedIds = PremiumShopCatalog.requireProduct(productId).grantedCosmeticIds
             val categories = grantedIds.map { AllCosmeticsCatalog.requireDefinition(it).category }
             assertEquals("$productId should grant exactly one ROOM_SKIN id", 1, categories.count { it == com.suman.memoryarchitect.domain.model.CosmeticCategory.ROOM_SKIN })
-            assertEquals("$productId should grant exactly one OBJECT_MATERIAL id", 1, categories.count { it == com.suman.memoryarchitect.domain.model.CosmeticCategory.OBJECT_MATERIAL })
+            assertEquals("$productId should grant no OBJECT_MATERIAL id", 0, categories.count { it == com.suman.memoryarchitect.domain.model.CosmeticCategory.OBJECT_MATERIAL })
         }
     }
 

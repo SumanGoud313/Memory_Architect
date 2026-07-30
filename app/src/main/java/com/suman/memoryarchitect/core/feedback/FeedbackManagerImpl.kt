@@ -9,9 +9,7 @@ import com.suman.memoryarchitect.core.feedback.audio.SfxId
 import com.suman.memoryarchitect.core.feedback.audio.TimerAudioManager
 import com.suman.memoryarchitect.core.feedback.haptics.HapticPattern
 import com.suman.memoryarchitect.core.feedback.haptics.HapticsManager
-import com.suman.memoryarchitect.domain.model.CosmeticCategory
 import com.suman.memoryarchitect.domain.model.SfxMaterialFamily
-import com.suman.memoryarchitect.domain.progression.ObjectMaterialSfxCatalog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.launchIn
@@ -68,12 +66,10 @@ class FeedbackManagerImpl @Inject constructor(
         audioManager.play(id, (effectsVolume * volumeScale).coerceIn(0f, 1f), family)
     }
 
-    /** Which premium `OBJECT_MATERIAL` sound family, if any, is currently equipped - read fresh on
-     * every gameplay-object sfx call (not cached) since equipping is instant via
-     * [EquippedCosmeticsStore] and a mid-round change (Collections isn't reachable during
-     * gameplay, but this stays correct even if that ever changes) should apply immediately. */
-    private fun currentObjectMaterialFamily(): SfxMaterialFamily? =
-        equippedCosmeticsStore.equipped.value[CosmeticCategory.OBJECT_MATERIAL]?.let(ObjectMaterialSfxCatalog::get)
+    /** The premium `OBJECT_MATERIAL` cosmetic category has been removed from the shop entirely -
+     * always null now, kept as a function (rather than deleted, with its 3 call sites reverted to
+     * argument-less `sfx()` calls) purely to minimize the diff. */
+    private fun currentObjectMaterialFamily(): SfxMaterialFamily? = null
 
     private fun haptic(pattern: HapticPattern) {
         val current = settings

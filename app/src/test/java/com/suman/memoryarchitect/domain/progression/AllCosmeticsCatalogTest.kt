@@ -16,7 +16,12 @@ class AllCosmeticsCatalogTest {
 
     @Test
     fun `every CosmeticId resolves via requireDefinition and definitionOrNull`() {
-        CosmeticId.entries.forEach { id ->
+        // MATERIAL_* ids are the one deliberate exception: the OBJECT_MATERIAL category (and its
+        // premium-bundle grants) was removed from the shop entirely after a device-specific
+        // rendering bug (see GameplayScenePanel.kt's distractorDesaturation doc). The CosmeticId
+        // enum constants themselves stay defined - not deleted - since a real player profile may
+        // still reference one as already-owned/equipped; only their catalog *definitions* are gone.
+        CosmeticId.entries.filterNot { it.name.startsWith("MATERIAL_") }.forEach { id ->
             assertEquals(id, AllCosmeticsCatalog.requireDefinition(id).id)
             assertTrue(AllCosmeticsCatalog.definitionOrNull(id) != null)
         }

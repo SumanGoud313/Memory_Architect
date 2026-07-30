@@ -93,8 +93,6 @@ import com.suman.memoryarchitect.ui.illustration.RoomArt
 import com.suman.memoryarchitect.ui.illustration.RoomArtRegistry
 import com.suman.memoryarchitect.ui.theme.MemoryArchitectColors
 import com.suman.memoryarchitect.ui.theme.MemoryArchitectRadii
-import com.suman.memoryarchitect.ui.theme.ObjectMaterialVisualCatalog
-import com.suman.memoryarchitect.ui.theme.ObjectMaterialVisualSpec
 import com.suman.memoryarchitect.ui.theme.RoomSkinVisualCatalog
 import com.suman.memoryarchitect.ui.theme.RoomSkinVisualSpec
 import kotlinx.coroutines.delay
@@ -126,11 +124,10 @@ fun GameplayScreen(
     // CompositionLocal (see LocalEquippedCosmetics's doc), deliberately not part of
     // GameplayViewModel's own state.
     val equippedCosmetics = LocalEquippedCosmetics.current
-    // Premium ROOM_SKIN/OBJECT_MATERIAL cosmetics - resolved once here (not inside
-    // GameplayScenePanel/GameplayTray themselves) so the ghost/tray/panel all recolor from the
-    // exact same equipped pair. `null` (nothing equipped) is a true no-op everywhere these thread.
+    // Premium ROOM_SKIN cosmetic - resolved once here (not inside GameplayScenePanel/GameplayTray
+    // themselves) so the ghost/tray/panel all recolor from the exact same equipped value. `null`
+    // (nothing equipped) is a true no-op everywhere this threads.
     val roomSkin = remember(equippedCosmetics) { equippedCosmetics[CosmeticCategory.ROOM_SKIN]?.let(RoomSkinVisualCatalog::get) }
-    val objectMaterial = remember(equippedCosmetics) { equippedCosmetics[CosmeticCategory.OBJECT_MATERIAL]?.let(ObjectMaterialVisualCatalog::get) }
     val hintState by viewModel.hintState.collectAsStateWithLifecycle()
     val rewardedHintAdState by viewModel.rewardedHintAdState.collectAsStateWithLifecycle()
     val redoState by viewModel.redoState.collectAsStateWithLifecycle()
@@ -426,7 +423,6 @@ fun GameplayScreen(
                 state = state,
                 equippedTimerStyleId = equippedCosmetics[CosmeticCategory.TIMER_STYLE],
                 roomSkin = roomSkin,
-                objectMaterial = objectMaterial,
                 onRotate = viewModel::rotatePlacedObject,
                 onPickUp = viewModel::pickUpPlacedObject,
                 hintState = hintState,
@@ -553,7 +549,6 @@ fun GameplayScreen(
                 objectId = ghostDrag.objectId,
                 isSnapped = isSnapped,
                 snappedGlowColor = roomSkin?.accentGlow ?: MemoryArchitectColors.accentGold,
-                objectMaterial = objectMaterial,
                 modifier = Modifier
                     .offset {
                         IntOffset((renderPosition.x - 34.dp.toPx()).toInt(), (renderPosition.y - 34.dp.toPx()).toInt())
@@ -599,7 +594,6 @@ private fun PremiumDragGhost(
     isSnapped: Boolean,
     modifier: Modifier = Modifier,
     snappedGlowColor: Color = MemoryArchitectColors.accentGold,
-    objectMaterial: ObjectMaterialVisualSpec? = null,
 ) {
     val scale = if (isSnapped) 1.22f else 1.12f
     Box(modifier = modifier.size(68.dp), contentAlignment = Alignment.Center) {
@@ -622,7 +616,6 @@ private fun PremiumDragGhost(
         )
         TrayDragGhost(
             objectId = objectId,
-            objectMaterial = objectMaterial,
             modifier = Modifier.graphicsLayer { scaleX = scale; scaleY = scale },
         )
     }
@@ -637,7 +630,6 @@ private fun InProgressContent(
     state: GameplayUiState.InProgress,
     equippedTimerStyleId: CosmeticId?,
     roomSkin: RoomSkinVisualSpec?,
-    objectMaterial: ObjectMaterialVisualSpec?,
     onRotate: (String) -> Unit,
     onPickUp: (String) -> Unit,
     hintState: HintUiState,
@@ -723,7 +715,6 @@ private fun InProgressContent(
                 hintReveal = hintState.activeReveal,
                 onPanelPositioned = onScenePanelPositioned,
                 roomSkin = roomSkin,
-                objectMaterial = objectMaterial,
             )
         }
 
@@ -767,7 +758,6 @@ private fun InProgressContent(
                     onHintTargetSelected = onHintTargetSelected,
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                     accentColor = roomSkin?.accentGlow ?: MemoryArchitectColors.accentGold,
-                    objectMaterial = objectMaterial,
                 )
                 SubmitButton(
                     remainingCount = state.trayObjectIds.size,

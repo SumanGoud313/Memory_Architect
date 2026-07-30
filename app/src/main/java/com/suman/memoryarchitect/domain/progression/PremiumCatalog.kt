@@ -38,7 +38,6 @@ object PremiumCatalog {
         CosmeticDefinition(CosmeticId.CONFETTI_FOUNDER_JUBILEE, CosmeticCategory.CONFETTI_EFFECT, CosmeticRarity.LEGENDARY, 0L, spinEligible = false),
         CosmeticDefinition(CosmeticId.BADGE_FOUNDER_EMBLEM, CosmeticCategory.PROFILE_BADGE, CosmeticRarity.LEGENDARY, 0L, spinEligible = false),
         CosmeticDefinition(CosmeticId.ROOM_FOUNDER_HERITAGE, CosmeticCategory.ROOM_SKIN, CosmeticRarity.LEGENDARY, 0L, spinEligible = false),
-        CosmeticDefinition(CosmeticId.MATERIAL_FOUNDER_BRASS, CosmeticCategory.OBJECT_MATERIAL, CosmeticRarity.LEGENDARY, 0L, spinEligible = false),
 
         // Starter Bundle - an entry-level premium tier, priced/positioned below Founder's Pack
         // and the flagship collections (see PremiumShopCatalog.kt).
@@ -48,7 +47,6 @@ object PremiumCatalog {
         CosmeticDefinition(CosmeticId.VICTORY_STARTER_SPARK, CosmeticCategory.VICTORY_ANIMATION, CosmeticRarity.RARE, 0L, spinEligible = false),
         CosmeticDefinition(CosmeticId.FRAME_STARTER_WAYFARER, CosmeticCategory.AVATAR_FRAME, CosmeticRarity.RARE, 0L, spinEligible = false),
         CosmeticDefinition(CosmeticId.ROOM_STARTER_DAWN, CosmeticCategory.ROOM_SKIN, CosmeticRarity.RARE, 0L, spinEligible = false),
-        CosmeticDefinition(CosmeticId.MATERIAL_STARTER_CANVAS, CosmeticCategory.OBJECT_MATERIAL, CosmeticRarity.RARE, 0L, spinEligible = false),
 
         // Royal Collection
         CosmeticDefinition(CosmeticId.BORDER_ROYAL_CROWN, CosmeticCategory.PROFILE_BORDER, CosmeticRarity.LEGENDARY, 0L, spinEligible = false, isAnimated = true),
@@ -60,7 +58,6 @@ object PremiumCatalog {
         CosmeticDefinition(CosmeticId.BACKGROUND_ROYAL_THRONE, CosmeticCategory.BACKGROUND_THEME, CosmeticRarity.LEGENDARY, 0L, spinEligible = false),
         CosmeticDefinition(CosmeticId.BADGE_ROYAL_SEAL, CosmeticCategory.PROFILE_BADGE, CosmeticRarity.LEGENDARY, 0L, spinEligible = false),
         CosmeticDefinition(CosmeticId.ROOM_ROYAL_PALACE, CosmeticCategory.ROOM_SKIN, CosmeticRarity.LEGENDARY, 0L, spinEligible = false),
-        CosmeticDefinition(CosmeticId.MATERIAL_ROYAL_GILDED_MARBLE, CosmeticCategory.OBJECT_MATERIAL, CosmeticRarity.LEGENDARY, 0L, spinEligible = false),
 
         // Cyber Collection
         CosmeticDefinition(CosmeticId.BORDER_CYBER_CIRCUIT, CosmeticCategory.PROFILE_BORDER, CosmeticRarity.LEGENDARY, 0L, spinEligible = false, isAnimated = true),
@@ -72,7 +69,6 @@ object PremiumCatalog {
         CosmeticDefinition(CosmeticId.BACKGROUND_CYBER_GRID, CosmeticCategory.BACKGROUND_THEME, CosmeticRarity.LEGENDARY, 0L, spinEligible = false),
         CosmeticDefinition(CosmeticId.BADGE_CYBER_CHIP, CosmeticCategory.PROFILE_BADGE, CosmeticRarity.LEGENDARY, 0L, spinEligible = false),
         CosmeticDefinition(CosmeticId.ROOM_CYBER_GRIDWORKS, CosmeticCategory.ROOM_SKIN, CosmeticRarity.LEGENDARY, 0L, spinEligible = false),
-        CosmeticDefinition(CosmeticId.MATERIAL_CYBER_CHROME_CIRCUIT, CosmeticCategory.OBJECT_MATERIAL, CosmeticRarity.LEGENDARY, 0L, spinEligible = false),
 
         // Space Collection
         CosmeticDefinition(CosmeticId.BORDER_SPACE_ORBIT, CosmeticCategory.PROFILE_BORDER, CosmeticRarity.LEGENDARY, 0L, spinEligible = false, isAnimated = true),
@@ -84,7 +80,6 @@ object PremiumCatalog {
         CosmeticDefinition(CosmeticId.BACKGROUND_SPACE_GALAXY, CosmeticCategory.BACKGROUND_THEME, CosmeticRarity.LEGENDARY, 0L, spinEligible = false),
         CosmeticDefinition(CosmeticId.BADGE_SPACE_COMET, CosmeticCategory.PROFILE_BADGE, CosmeticRarity.LEGENDARY, 0L, spinEligible = false),
         CosmeticDefinition(CosmeticId.ROOM_SPACE_NEBULA_DOCK, CosmeticCategory.ROOM_SKIN, CosmeticRarity.LEGENDARY, 0L, spinEligible = false),
-        CosmeticDefinition(CosmeticId.MATERIAL_SPACE_GUNMETAL, CosmeticCategory.OBJECT_MATERIAL, CosmeticRarity.LEGENDARY, 0L, spinEligible = false),
 
         // Nature Collection
         CosmeticDefinition(CosmeticId.BORDER_NATURE_VINE, CosmeticCategory.PROFILE_BORDER, CosmeticRarity.LEGENDARY, 0L, spinEligible = false, isAnimated = true),
@@ -96,7 +91,6 @@ object PremiumCatalog {
         CosmeticDefinition(CosmeticId.BACKGROUND_NATURE_FOREST, CosmeticCategory.BACKGROUND_THEME, CosmeticRarity.LEGENDARY, 0L, spinEligible = false),
         CosmeticDefinition(CosmeticId.BADGE_NATURE_ACORN, CosmeticCategory.PROFILE_BADGE, CosmeticRarity.LEGENDARY, 0L, spinEligible = false),
         CosmeticDefinition(CosmeticId.ROOM_NATURE_GROVE, CosmeticCategory.ROOM_SKIN, CosmeticRarity.LEGENDARY, 0L, spinEligible = false),
-        CosmeticDefinition(CosmeticId.MATERIAL_NATURE_MOSS_WOOD, CosmeticCategory.OBJECT_MATERIAL, CosmeticRarity.LEGENDARY, 0L, spinEligible = false),
 
         // Luxury Collection
         CosmeticDefinition(CosmeticId.BORDER_LUXURY_ONYX, CosmeticCategory.PROFILE_BORDER, CosmeticRarity.LEGENDARY, 0L, spinEligible = false, isAnimated = true),
@@ -108,7 +102,6 @@ object PremiumCatalog {
         CosmeticDefinition(CosmeticId.BACKGROUND_LUXURY_PENTHOUSE, CosmeticCategory.BACKGROUND_THEME, CosmeticRarity.LEGENDARY, 0L, spinEligible = false),
         CosmeticDefinition(CosmeticId.BADGE_LUXURY_CREST, CosmeticCategory.PROFILE_BADGE, CosmeticRarity.LEGENDARY, 0L, spinEligible = false),
         CosmeticDefinition(CosmeticId.ROOM_LUXURY_SUITE, CosmeticCategory.ROOM_SKIN, CosmeticRarity.LEGENDARY, 0L, spinEligible = false),
-        CosmeticDefinition(CosmeticId.MATERIAL_LUXURY_SMOKED_GLASS, CosmeticCategory.OBJECT_MATERIAL, CosmeticRarity.LEGENDARY, 0L, spinEligible = false),
     )
 
     private val byId: Map<CosmeticId, CosmeticDefinition> = definitions.associateBy { it.id }

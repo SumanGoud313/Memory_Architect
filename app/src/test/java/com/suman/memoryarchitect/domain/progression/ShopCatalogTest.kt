@@ -9,6 +9,14 @@ import org.junit.Test
 
 class ShopCatalogTest {
 
+    // MATERIAL_* ids are the one deliberate exception to "every CosmeticId has a definition": the
+    // OBJECT_MATERIAL category (and its premium-bundle grants) was removed from the shop entirely
+    // after a device-specific gameplay rendering bug (see GameplayScenePanel.kt's
+    // distractorDesaturation doc). The enum constants stay defined - not deleted - since a real
+    // player profile may still reference one as already-owned/equipped; only their catalog
+    // *definitions* are gone, so they're excluded from these "resolves somewhere" invariants.
+    private val nonMaterialIds = CosmeticId.entries.filterNot { it.name.startsWith("MATERIAL_") }
+
     @Test
     fun `every CosmeticId has exactly one definition in the merged catalog`() {
         // ShopCatalog is deliberately coin-only since the Premium Shop split (see
@@ -16,9 +24,9 @@ class ShopCatalogTest {
         // so this "every id resolves somewhere" invariant now belongs on the merged catalog.
         val ids = AllCosmeticsCatalog.definitions.map { it.id }
 
-        assertEquals(CosmeticId.entries.size, AllCosmeticsCatalog.definitions.size)
+        assertEquals(nonMaterialIds.size, AllCosmeticsCatalog.definitions.size)
         assertEquals(ids.toSet().size, ids.size)
-        CosmeticId.entries.forEach { id -> assertTrue("$id has no definition", ids.contains(id)) }
+        nonMaterialIds.forEach { id -> assertTrue("$id has no definition", ids.contains(id)) }
     }
 
     @Test
@@ -26,7 +34,7 @@ class ShopCatalogTest {
         val coinIds = ShopCatalog.definitions.map { it.id }.toSet()
         val premiumIds = PremiumCatalog.definitions.map { it.id }.toSet()
         assertTrue("Coin and Premium catalogs must never overlap", coinIds.intersect(premiumIds).isEmpty())
-        assertEquals(CosmeticId.entries.size, coinIds.size + premiumIds.size)
+        assertEquals(nonMaterialIds.size, coinIds.size + premiumIds.size)
     }
 
     @Test
@@ -47,11 +55,12 @@ class ShopCatalogTest {
     }
 
     @Test
-    fun `ROOM_SKIN and OBJECT_MATERIAL are premium-only, absent from ShopCatalog`() {
+    fun `ROOM_SKIN is premium-only, absent from ShopCatalog - OBJECT_MATERIAL is absent from both`() {
         assertTrue(ShopCatalog.definitionsOfCategory(CosmeticCategory.ROOM_SKIN).isEmpty())
         assertTrue(ShopCatalog.definitionsOfCategory(CosmeticCategory.OBJECT_MATERIAL).isEmpty())
         assertEquals(7, PremiumCatalog.definitions.count { it.category == CosmeticCategory.ROOM_SKIN })
-        assertEquals(7, PremiumCatalog.definitions.count { it.category == CosmeticCategory.OBJECT_MATERIAL })
+        // OBJECT_MATERIAL was removed from the shop entirely - see nonMaterialIds' doc above.
+        assertEquals(0, PremiumCatalog.definitions.count { it.category == CosmeticCategory.OBJECT_MATERIAL })
     }
 
     @Test
@@ -94,8 +103,9 @@ class ShopCatalogTest {
 
     @Test
     fun `requireDefinition throws for a missing id is unreachable but definitionOrNull is null-safe`() {
-        // Every CosmeticId always has a definition in the merged catalog (see above); ShopCatalog
-        // itself is only expected to resolve its own coin-tier subset.
-        CosmeticId.entries.forEach { id -> assertTrue(AllCosmeticsCatalog.definitionOrNull(id) != null) }
+        // Every non-MATERIAL_* CosmeticId always has a definition in the merged catalog (see
+        // nonMaterialIds' doc above); ShopCatalog itself is only expected to resolve its own
+        // coin-tier subset.
+        nonMaterialIds.forEach { id -> assertTrue(AllCosmeticsCatalog.definitionOrNull(id) != null) }
     }
 }

@@ -51,7 +51,6 @@ import com.suman.memoryarchitect.ui.components.GlassCard
 import com.suman.memoryarchitect.ui.illustration.IdleAnimatedObject
 import com.suman.memoryarchitect.ui.illustration.ObjectArtRegistry
 import com.suman.memoryarchitect.ui.theme.MemoryArchitectColors
-import com.suman.memoryarchitect.ui.theme.ObjectMaterialVisualSpec
 import kotlinx.coroutines.launch
 
 /**
@@ -76,7 +75,6 @@ fun GameplayTray(
     isHintModeArmed: Boolean = false,
     onHintTargetSelected: (String) -> Unit = {},
     accentColor: Color = MemoryArchitectColors.accentGold,
-    objectMaterial: ObjectMaterialVisualSpec? = null,
 ) {
     val remainingCount = trayObjectIds.size
     Column(modifier = modifier) {
@@ -106,7 +104,6 @@ fun GameplayTray(
                     isHintModeArmed = isHintModeArmed,
                     onHintTargetSelected = onHintTargetSelected,
                     accentColor = accentColor,
-                    objectMaterial = objectMaterial,
                     modifier = Modifier.animateItem(),
                 )
             }
@@ -126,7 +123,6 @@ private fun TrayChip(
     isHintModeArmed: Boolean = false,
     onHintTargetSelected: (String) -> Unit = {},
     accentColor: Color = MemoryArchitectColors.accentGold,
-    objectMaterial: ObjectMaterialVisualSpec? = null,
 ) {
     var coordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
     var isLifting by remember { mutableStateOf(false) }
@@ -213,16 +209,16 @@ private fun TrayChip(
                     )
                 },
         ) {
-            IdleAnimatedObject(art = art, modifier = Modifier.fillMaxSize().objectMaterialTint(objectMaterial))
+            IdleAnimatedObject(art = art, modifier = Modifier.fillMaxSize())
         }
     }
 }
 
 /** The floating chip that follows the finger while dragging from tray toward the scene panel. */
 @Composable
-fun TrayDragGhost(objectId: String, modifier: Modifier = Modifier, objectMaterial: ObjectMaterialVisualSpec? = null) {
+fun TrayDragGhost(objectId: String, modifier: Modifier = Modifier) {
     val art = remember(objectId) { ObjectArtRegistry.get(objectId) }
     Box(modifier = modifier.size(68.dp)) {
-        IdleAnimatedObject(art = art, modifier = Modifier.fillMaxSize().objectMaterialTint(objectMaterial))
+        IdleAnimatedObject(art = art, modifier = Modifier.fillMaxSize())
     }
 }

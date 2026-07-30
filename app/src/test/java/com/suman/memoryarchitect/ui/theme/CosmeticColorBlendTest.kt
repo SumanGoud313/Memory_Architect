@@ -66,25 +66,9 @@ class CosmeticColorBlendTest {
         assertTrue(failures.joinToString("\n"), failures.isEmpty())
     }
 
-    @Test
-    fun `every OBJECT_MATERIAL tintColor preserves destination brightness across realistic object tones`() {
-        val materialIds = AllCosmeticsCatalog.definitionsOfCategory(CosmeticCategory.OBJECT_MATERIAL).map { it.id }
-        assertTrue("Expected at least one OBJECT_MATERIAL cosmetic to exist", materialIds.isNotEmpty())
-
-        val failures = mutableListOf<String>()
-        materialIds.forEach { id ->
-            val spec = ObjectMaterialVisualCatalog.get(id)
-            representativeDestinations.forEach { destination ->
-                val before = ContrastValidation.relativeLuminance(destination)
-                val after = ContrastValidation.relativeLuminance(ContrastValidation.simulateColorBlend(spec.tintColor, destination, spec.blendStrength))
-                val shift = Math.abs(after - before)
-                if (shift > ContrastValidation.MAX_BRIGHTNESS_SHIFT) {
-                    failures += "$id.tintColor (${spec.tintColor}) over destination $destination: luminance shifted from " +
-                        "${"%.3f".format(before)} to ${"%.3f".format(after)} (Δ${"%.3f".format(shift)}), exceeds the " +
-                        "${ContrastValidation.MAX_BRIGHTNESS_SHIFT} floor - the object would become too dark or too bright to identify"
-                }
-            }
-        }
-        assertTrue(failures.joinToString("\n"), failures.isEmpty())
-    }
+    // The OBJECT_MATERIAL category (and its ObjectMaterialVisualCatalog specs) was removed from
+    // the shop entirely after a device-specific gameplay rendering bug - see
+    // GameplayScenePanel.kt's distractorDesaturation doc, and ShopCatalogTest.kt's
+    // nonMaterialIds for why the underlying CosmeticId/CosmeticCategory enum constants themselves
+    // stay defined regardless. Nothing left in that category to validate here anymore.
 }

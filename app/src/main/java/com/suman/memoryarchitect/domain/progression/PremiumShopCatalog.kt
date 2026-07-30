@@ -56,7 +56,7 @@ object PremiumShopCatalog {
                 CosmeticId.BACKGROUND_FOUNDER_GENESIS, CosmeticId.NAME_COLOR_FOUNDER_ORIGIN,
                 CosmeticId.TIMER_FOUNDER_LEGACY, CosmeticId.VICTORY_FOUNDER_TRIUMPH,
                 CosmeticId.CONFETTI_FOUNDER_JUBILEE, CosmeticId.BADGE_FOUNDER_EMBLEM,
-                CosmeticId.ROOM_FOUNDER_HERITAGE, CosmeticId.MATERIAL_FOUNDER_BRASS,
+                CosmeticId.ROOM_FOUNDER_HERITAGE,
             ),
             isBestValue = true,
         ),
@@ -70,7 +70,7 @@ object PremiumShopCatalog {
                 CosmeticId.BORDER_STARTER_SUNRISE, CosmeticId.BACKGROUND_STARTER_HORIZON,
                 CosmeticId.TIMER_STARTER_COMPASS, CosmeticId.VICTORY_STARTER_SPARK,
                 CosmeticId.FRAME_STARTER_WAYFARER,
-                CosmeticId.ROOM_STARTER_DAWN, CosmeticId.MATERIAL_STARTER_CANVAS,
+                CosmeticId.ROOM_STARTER_DAWN,
             ),
         ),
         BillingCatalogProduct(
@@ -83,7 +83,7 @@ object PremiumShopCatalog {
                 CosmeticId.BORDER_ROYAL_CROWN, CosmeticId.FRAME_ROYAL_CREST, CosmeticId.NAME_COLOR_ROYAL_VELVET,
                 CosmeticId.TIMER_ROYAL_HOURGLASS, CosmeticId.VICTORY_ROYAL_FANFARE, CosmeticId.CONFETTI_ROYAL_PETALS,
                 CosmeticId.BACKGROUND_ROYAL_THRONE, CosmeticId.BADGE_ROYAL_SEAL,
-                CosmeticId.ROOM_ROYAL_PALACE, CosmeticId.MATERIAL_ROYAL_GILDED_MARBLE,
+                CosmeticId.ROOM_ROYAL_PALACE,
             ),
         ),
         BillingCatalogProduct(
@@ -96,7 +96,7 @@ object PremiumShopCatalog {
                 CosmeticId.BORDER_CYBER_CIRCUIT, CosmeticId.FRAME_CYBER_VISOR, CosmeticId.NAME_COLOR_CYBER_GLITCH,
                 CosmeticId.TIMER_CYBER_PULSE, CosmeticId.VICTORY_CYBER_OVERDRIVE, CosmeticId.CONFETTI_CYBER_SPARKS,
                 CosmeticId.BACKGROUND_CYBER_GRID, CosmeticId.BADGE_CYBER_CHIP,
-                CosmeticId.ROOM_CYBER_GRIDWORKS, CosmeticId.MATERIAL_CYBER_CHROME_CIRCUIT,
+                CosmeticId.ROOM_CYBER_GRIDWORKS,
             ),
         ),
         BillingCatalogProduct(
@@ -109,7 +109,7 @@ object PremiumShopCatalog {
                 CosmeticId.BORDER_SPACE_ORBIT, CosmeticId.FRAME_SPACE_NEBULA, CosmeticId.NAME_COLOR_SPACE_COSMOS,
                 CosmeticId.TIMER_SPACE_PULSAR, CosmeticId.VICTORY_SPACE_SUPERNOVA, CosmeticId.CONFETTI_SPACE_STARDUST,
                 CosmeticId.BACKGROUND_SPACE_GALAXY, CosmeticId.BADGE_SPACE_COMET,
-                CosmeticId.ROOM_SPACE_NEBULA_DOCK, CosmeticId.MATERIAL_SPACE_GUNMETAL,
+                CosmeticId.ROOM_SPACE_NEBULA_DOCK,
             ),
         ),
         BillingCatalogProduct(
@@ -122,7 +122,7 @@ object PremiumShopCatalog {
                 CosmeticId.BORDER_NATURE_VINE, CosmeticId.FRAME_NATURE_LEAF, CosmeticId.NAME_COLOR_NATURE_MOSS,
                 CosmeticId.TIMER_NATURE_BLOOM, CosmeticId.VICTORY_NATURE_BLOSSOM, CosmeticId.CONFETTI_NATURE_PETALS,
                 CosmeticId.BACKGROUND_NATURE_FOREST, CosmeticId.BADGE_NATURE_ACORN,
-                CosmeticId.ROOM_NATURE_GROVE, CosmeticId.MATERIAL_NATURE_MOSS_WOOD,
+                CosmeticId.ROOM_NATURE_GROVE,
             ),
         ),
         BillingCatalogProduct(
@@ -135,7 +135,7 @@ object PremiumShopCatalog {
                 CosmeticId.BORDER_LUXURY_ONYX, CosmeticId.FRAME_LUXURY_DIAMOND, CosmeticId.NAME_COLOR_LUXURY_PLATINUM,
                 CosmeticId.TIMER_LUXURY_CHRONOGRAPH, CosmeticId.VICTORY_LUXURY_SPOTLIGHT, CosmeticId.CONFETTI_LUXURY_GOLDLEAF,
                 CosmeticId.BACKGROUND_LUXURY_PENTHOUSE, CosmeticId.BADGE_LUXURY_CREST,
-                CosmeticId.ROOM_LUXURY_SUITE, CosmeticId.MATERIAL_LUXURY_SMOKED_GLASS,
+                CosmeticId.ROOM_LUXURY_SUITE,
             ),
         ),
     )
