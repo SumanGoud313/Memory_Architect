@@ -497,6 +497,7 @@
     <string name="shop_error_no_connectivity">इंटरनेट कनेक्शन नहीं है। कृपया अपना कनेक्शन जांचें और फिर से कोशिश करें।</string>
     <string name="shop_error_already_owned">यह वस्तु पहले से आपके पास है।</string>
     <string name="shop_error_spin_not_available">आप आज पहले ही यह स्पिन इस्तेमाल कर चुके हैं - कल फिर आएं!</string>
+    <string name="shop_error_mystery_chest_not_available">आपने आज के सभी रहस्यमय संदूक पहले ही पा लिए हैं - कल फिर आएं!</string>
     <string name="shop_error_generic">कुछ गलत हो गया। कृपया फिर से कोशिश करें।</string>
 
     <string name="collections_title">संग्रह</string>
@@ -553,6 +554,11 @@
     <string name="lucky_spin_go_to_collections">इसे इस्तेमाल करने के लिए दुकान → संग्रह पर जाएं!</string>
     <string name="lucky_spin_go_to_shop_action">दुकान पर जाएं</string>
     <string name="lucky_spin_ad_unavailable">अभी कोई विज्ञापन उपलब्ध नहीं है - जल्द ही फिर से कोशिश करें।</string>
+    <string name="mystery_chest_box_title">मिस्ट्री चेस्ट बॉक्स</string>
+    <string name="mystery_chest_watch_ad_description">1 मिस्ट्री बॉक्स पाने के लिए विज्ञापन देखें</string>
+    <string name="mystery_chest_watch_ad_action">विज्ञापन देखें</string>
+    <string name="mystery_chest_won_message">आपको 1 मिस्ट्री बॉक्स मिला!</string>
+    <string name="mystery_chest_available_action">अभी उपलब्ध</string>
 
     <string name="error_no_connectivity">इंटरनेट कनेक्शन नहीं है। कृपया अपना कनेक्शन जांचें और फिर से कोशिश करें।</string>
     <string name="error_network">सर्वर तक नहीं पहुंचा जा सका। कृपया फिर से कोशिश करें।</string>

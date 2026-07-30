@@ -497,6 +497,7 @@
     <string name="shop_error_no_connectivity">Sin conexión a Internet. Revisa tu conexión e inténtalo de nuevo.</string>
     <string name="shop_error_already_owned">Ya tienes este artículo.</string>
     <string name="shop_error_spin_not_available">Ya usaste ese giro hoy - ¡vuelve mañana!</string>
+    <string name="shop_error_mystery_chest_not_available">Ya has reclamado todos los cofres misteriosos de hoy - ¡vuelve mañana!</string>
     <string name="shop_error_generic">Algo salió mal. Inténtalo de nuevo.</string>
 
     <string name="collections_title">Colecciones</string>
@@ -553,6 +554,11 @@
     <string name="lucky_spin_go_to_collections">¡Ve a Tienda → Colecciones para equiparlo!</string>
     <string name="lucky_spin_go_to_shop_action">Ir a la tienda</string>
     <string name="lucky_spin_ad_unavailable">No hay anuncios disponibles ahora - inténtalo de nuevo en un momento.</string>
+    <string name="mystery_chest_box_title">Cofre Misterioso</string>
+    <string name="mystery_chest_watch_ad_description">Mira un anuncio para conseguir 1 cofre misterioso</string>
+    <string name="mystery_chest_watch_ad_action">Ver anuncio</string>
+    <string name="mystery_chest_won_message">¡Conseguiste 1 cofre misterioso!</string>
+    <string name="mystery_chest_available_action">Disponible ahora</string>
 
     <string name="error_no_connectivity">Sin conexión a Internet. Revisa tu conexión e inténtalo de nuevo.</string>
     <string name="error_network">No se pudo conectar con el servidor. Inténtalo de nuevo.</string>

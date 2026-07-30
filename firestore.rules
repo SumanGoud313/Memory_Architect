@@ -123,17 +123,18 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
-    // purchaseReceipts/{uid}_{nonce} - replay protection for purchase/spin, direct analog of
-    // submissionNonces above - same allow read requirement and reasoning: FirestoreShopRemoteSource
-    // .purchase/.spin both do transaction.get(receiptRef).exists() as their first step, so without
-    // read access every purchase/spin would fail with PERMISSION_DENIED, not just genuine replays.
+    // purchaseReceipts/{uid}_{nonce} - replay protection for purchase/spin/the Mystery Chest ad
+    // claim, direct analog of submissionNonces above - same allow read requirement and reasoning:
+    // FirestoreShopRemoteSource.purchase/.spin/.claimAdMysteryChest all do
+    // transaction.get(receiptRef).exists() as their first step, so without read access every one
+    // of those calls would fail with PERMISSION_DENIED, not just genuine replays.
     match /purchaseReceipts/{receiptId} {
       allow read: if request.auth != null && (resource == null || resource.data.uid == request.auth.uid);
       allow write: if request.auth != null
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.sku is string
         && request.resource.data.priceCoins is int && request.resource.data.priceCoins >= 0
-        && request.resource.data.kind in ['PURCHASE', 'SPIN']
+        && request.resource.data.kind in ['PURCHASE', 'SPIN', 'MYSTERY_CHEST_AD']
         && request.resource.data.createdAtEpochMs is int;
     }
 
@@ -144,6 +145,15 @@ service cloud.firestore {
     match /luckySpinState/{uid} {
       allow read: if isOwner(uid);
       allow write: if isOwner(uid) && isValidLuckySpinState(request.resource.data);
+    }
+
+    // mysteryChestAdState/{uid} - the ad-gated Mystery Chest claim's own daily-gate state, written
+    // by FirestoreShopRemoteSource.claimAdMysteryChest - deliberately its own document, separate
+    // from luckySpinState/{uid} even though both gate features on the same LuckySpinScreen, see
+    // MysteryChestAdState.kt's doc. Private, same reasoning as luckySpinState above.
+    match /mysteryChestAdState/{uid} {
+      allow read: if isOwner(uid);
+      allow write: if isOwner(uid) && isValidMysteryChestAdState(request.resource.data);
     }
 
     // inventory/{uid} - the permanent home for earned consumables (Hint/Redo/Rewatch tokens,
@@ -322,14 +332,26 @@ service cloud.firestore {
       return data.lastClaimedOnEpochDay is int;
     }
 
-    // Two epoch-day-or-null integers plus a bool - no economy bounds needed (these gate spin
-    // *frequency*, not coin amounts; the actual per-write coin-gain cap is enforced on
-    // playerProfiles/{uid} by validateProfileWrite regardless of which allowance a spin used), same
-    // "shape/type only" division of labor isValidInventory already uses.
+    // Two epoch-day-or-null integers, a bounded ad-spin counter, plus a bool - no economy bounds
+    // needed (these gate spin *frequency*, not coin amounts; the actual per-write coin-gain cap is
+    // enforced on playerProfiles/{uid} by validateProfileWrite regardless of which allowance a spin
+    // used), same "shape/type only" division of labor isValidInventory already uses.
+    // adSpinsUsedToday's upper bound (10) is a generous ceiling, not SpinRules.maxAdSpinsPerDay (3)
+    // itself - tuning that value server-side later shouldn't require a rules redeploy in lockstep.
     function isValidLuckySpinState(data) {
       return (data.lastFreeSpinEpochDay == null || data.lastFreeSpinEpochDay is int)
         && (data.lastAdSpinEpochDay == null || data.lastAdSpinEpochDay is int)
+        && data.adSpinsUsedToday is int && data.adSpinsUsedToday >= 0 && data.adSpinsUsedToday <= 10
         && data.hasEverSpun is bool;
+    }
+
+    // One epoch-day-or-null integer plus a bounded claim counter - same "shape/type only, generous
+    // ceiling rather than the exact tuning constant" reasoning isValidLuckySpinState's
+    // adSpinsUsedToday bound already documents, mirrored here for
+    // MysteryChestAdRules.maxClaimsPerDay (3) instead of SpinRules.maxAdSpinsPerDay.
+    function isValidMysteryChestAdState(data) {
+      return (data.lastClaimEpochDay == null || data.lastClaimEpochDay is int)
+        && data.claimsUsedToday is int && data.claimsUsedToday >= 0 && data.claimsUsedToday <= 10;
     }
   }
 }

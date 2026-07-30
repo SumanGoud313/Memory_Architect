@@ -497,6 +497,7 @@
     <string name="shop_error_no_connectivity">ইন্টারনেট সংযোগ নেই। দয়া করে আপনার সংযোগ পরীক্ষা করুন এবং আবার চেষ্টা করুন।</string>
     <string name="shop_error_already_owned">এই আইটেমটি ইতিমধ্যে আপনার আছে।</string>
     <string name="shop_error_spin_not_available">আপনি আজ ইতিমধ্যে এই স্পিন ব্যবহার করেছেন - আগামীকাল আবার আসুন!</string>
+    <string name="shop_error_mystery_chest_not_available">আপনি আজকের সব রহস্য বাক্স ইতিমধ্যে দাবি করেছেন - আগামীকাল আবার আসুন!</string>
     <string name="shop_error_generic">কিছু ভুল হয়েছে। দয়া করে আবার চেষ্টা করুন।</string>
 
     <string name="collections_title">সংগ্রহ</string>
@@ -553,6 +554,11 @@
     <string name="lucky_spin_go_to_collections">এটি পরতে দোকান → সংগ্রহে যান!</string>
     <string name="lucky_spin_go_to_shop_action">দোকানে যান</string>
     <string name="lucky_spin_ad_unavailable">এই মুহূর্তে কোনো বিজ্ঞাপন উপলব্ধ নেই - শীঘ্রই আবার চেষ্টা করুন।</string>
+    <string name="mystery_chest_box_title">মিস্ট্রি চেস্ট বক্স</string>
+    <string name="mystery_chest_watch_ad_description">১টি মিস্ট্রি বক্স পেতে বিজ্ঞাপন দেখুন</string>
+    <string name="mystery_chest_watch_ad_action">বিজ্ঞাপন দেখুন</string>
+    <string name="mystery_chest_won_message">আপনি ১টি মিস্ট্রি বক্স পেয়েছেন!</string>
+    <string name="mystery_chest_available_action">এখনই উপলব্ধ</string>
 
     <string name="error_no_connectivity">ইন্টারনেট সংযোগ নেই। দয়া করে আপনার সংযোগ পরীক্ষা করুন এবং আবার চেষ্টা করুন।</string>
     <string name="error_network">সার্ভারে পৌঁছানো যায়নি। দয়া করে আবার চেষ্টা করুন।</string>

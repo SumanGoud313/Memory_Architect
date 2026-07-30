@@ -158,6 +158,7 @@ fun MemoryArchitectNavHost(
             LuckySpinScreen(
                 onBack = { navController.popBackStack() },
                 onGoToCollections = { navController.navigate(Route.CosmeticsHub(startOnCollectionsTab = true)) },
+                onGoToInventory = { navController.navigate(Route.Inventory) },
             )
         }
         composable<Route.Missions>(enterTransition = NavAnimations.fadeEnter, exitTransition = NavAnimations.fadeExit) {

@@ -14,6 +14,9 @@ data class LuckySpinStateEntity(
     val lastFreeSpinEpochDay: Long?,
     val lastAdSpinEpochDay: Long?,
     val hasEverSpun: Boolean,
+    /** See [com.suman.memoryarchitect.domain.model.LuckySpinState.adSpinsUsedToday]'s doc. Added
+     * via `MIGRATION_23_24` - defaults to 0 for every row that predates this column. */
+    val adSpinsUsedToday: Int = 0,
 ) {
     companion object {
         const val SINGLETON_ID = 1

@@ -24,6 +24,10 @@ const CATALOG_PRICES = {
 const SPIN_DUPLICATE_REFUND_FRACTION = 0.5;
 // Mirrors DiscountCouponRules.Default.discountFraction (domain/progression/DiscountCouponRules.kt).
 const DISCOUNT_COUPON_FRACTION = 0.25;
+// Mirrors SpinRules.Default.maxAdSpinsPerDay (domain/progression/SpinRules.kt).
+const MAX_AD_SPINS_PER_DAY = 3;
+// Mirrors MysteryChestAdRules.Default.maxClaimsPerDay (domain/progression/MysteryChestAdRules.kt).
+const MAX_MYSTERY_CHEST_AD_CLAIMS_PER_DAY = 3;
 
 function priceOf(sku) {
   return CATALOG_PRICES[sku];
@@ -63,10 +67,11 @@ function purchaseCosmetic(profile, cosmeticsState, sku, inventory, useDiscountCo
 // client-computed LuckySpinEngine roll, already resolved to one shape before this is ever called.
 function spinLuckySpin(profile, cosmeticsState, luckySpinState, request, inventory, source, todayEpochDay) {
   let updatedInventory = inventory;
+  const adSpinsUsedToday = luckySpinState.lastAdSpinEpochDay === todayEpochDay ? (luckySpinState.adSpinsUsedToday || 0) : 0;
   if (source === 'FREE') {
     if (luckySpinState.lastFreeSpinEpochDay === todayEpochDay) return { error: 'spin_not_available' };
   } else if (source === 'AD') {
-    if (luckySpinState.lastAdSpinEpochDay === todayEpochDay) return { error: 'spin_not_available' };
+    if (adSpinsUsedToday >= MAX_AD_SPINS_PER_DAY) return { error: 'spin_not_available' };
   } else if (source === 'TICKET') {
     const owned = (inventory && inventory.LUCKY_SPIN_TICKET) || 0;
     if (owned < 1) return { error: 'insufficient_inventory' };
@@ -76,6 +81,7 @@ function spinLuckySpin(profile, cosmeticsState, luckySpinState, request, invento
   const updatedLuckySpinState = {
     lastFreeSpinEpochDay: source === 'FREE' ? todayEpochDay : luckySpinState.lastFreeSpinEpochDay,
     lastAdSpinEpochDay: source === 'AD' ? todayEpochDay : luckySpinState.lastAdSpinEpochDay,
+    adSpinsUsedToday: source === 'AD' ? adSpinsUsedToday + 1 : luckySpinState.adSpinsUsedToday,
     hasEverSpun: true,
   };
 
@@ -102,6 +108,19 @@ function spinLuckySpin(profile, cosmeticsState, luckySpinState, request, invento
   };
 }
 
+// Watch-ad-only, no coin cost, no free/ticket path - up to MAX_MYSTERY_CHEST_AD_CLAIMS_PER_DAY
+// claims per day, each granting exactly one MYSTERY_CHEST to inventory. Mirrors
+// FirestoreShopRemoteSource.claimAdMysteryChest's gating exactly.
+function claimAdMysteryChest(mysteryChestAdState, inventory, todayEpochDay) {
+  const claimsUsedToday = mysteryChestAdState.lastClaimEpochDay === todayEpochDay ? (mysteryChestAdState.claimsUsedToday || 0) : 0;
+  if (claimsUsedToday >= MAX_MYSTERY_CHEST_AD_CLAIMS_PER_DAY) return { error: 'spin_not_available' };
+
+  const owned = (inventory && inventory.MYSTERY_CHEST) || 0;
+  const updatedInventory = { ...inventory, MYSTERY_CHEST: owned + 1 };
+  const updatedState = { lastClaimEpochDay: todayEpochDay, claimsUsedToday: claimsUsedToday + 1 };
+  return { inventory: updatedInventory, mysteryChestAdState: updatedState };
+}
+
 function equipCosmetic(cosmeticsState, category, sku) {
   return { ...cosmeticsState, equipped: { ...(cosmeticsState.equipped || {}), [category]: sku } };
 }
@@ -115,6 +134,7 @@ module.exports = {
   CATALOG_PRICES,
   purchaseCosmetic,
   spinLuckySpin,
+  claimAdMysteryChest,
   equipCosmetic,
   unequipCosmetic,
 };

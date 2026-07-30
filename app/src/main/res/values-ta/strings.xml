@@ -497,6 +497,7 @@
     <string name="shop_error_no_connectivity">இணைய இணைப்பு இல்லை. உங்கள் இணைப்பை சரிபார்த்து மீண்டும் முயற்சிக்கவும்.</string>
     <string name="shop_error_already_owned">இந்த பொருள் ஏற்கனவே உங்களிடம் உள்ளது.</string>
     <string name="shop_error_spin_not_available">நீங்கள் இன்று ஏற்கனவே இந்த ஸ்பின்னைப் பயன்படுத்திவிட்டீர்கள் - நாளை மீண்டும் வாருங்கள்!</string>
+    <string name="shop_error_mystery_chest_not_available">இன்றைய அனைத்து மர்மப் பெட்டிகளையும் நீங்கள் ஏற்கனவே பெற்றுவிட்டீர்கள் - நாளை மீண்டும் வாருங்கள்!</string>
     <string name="shop_error_generic">ஏதோ தவறு நடந்தது. மீண்டும் முயற்சிக்கவும்.</string>
 
     <string name="collections_title">தொகுப்பு</string>
@@ -553,6 +554,11 @@
     <string name="lucky_spin_go_to_collections">அதை அணிய கடை → தொகுப்புக்குச் செல்லுங்கள்!</string>
     <string name="lucky_spin_go_to_shop_action">கடைக்குச் செல்</string>
     <string name="lucky_spin_ad_unavailable">தற்போது விளம்பரங்கள் எதுவும் இல்லை - விரைவில் மீண்டும் முயற்சிக்கவும்.</string>
+    <string name="mystery_chest_box_title">மர்மப் பெட்டி பாக்ஸ்</string>
+    <string name="mystery_chest_watch_ad_description">1 மர்மப் பெட்டியைப் பெற விளம்பரத்தைப் பாருங்கள்</string>
+    <string name="mystery_chest_watch_ad_action">விளம்பரத்தைப் பார்க்கவும்</string>
+    <string name="mystery_chest_won_message">உங்களுக்கு 1 மர்மப் பெட்டி கிடைத்தது!</string>
+    <string name="mystery_chest_available_action">இப்போது கிடைக்கிறது</string>
 
     <string name="error_no_connectivity">இணைய இணைப்பு இல்லை. உங்கள் இணைப்பை சரிபார்த்து மீண்டும் முயற்சிக்கவும்.</string>
     <string name="error_network">சேவையகத்தை அடைய முடியவில்லை. மீண்டும் முயற்சிக்கவும்.</string>

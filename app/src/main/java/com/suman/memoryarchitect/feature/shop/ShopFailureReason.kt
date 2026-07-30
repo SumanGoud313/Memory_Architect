@@ -12,6 +12,11 @@ enum class ShopFailureReason {
      * Spin allowance was already spent today. The Spin button is already disabled for this case
      * on the client, so this only ever surfaces from a stale/race-condition retry. */
     SPIN_NOT_AVAILABLE,
+    /** [com.suman.memoryarchitect.data.repository.MysteryChestClaimNotAvailableException] - every
+     * one of today's ad-gated Mystery Chest claims was already spent. The chest tile is already
+     * disabled for this case on the client, so this only ever surfaces from a stale/race-condition
+     * retry, same reasoning [SPIN_NOT_AVAILABLE] documents. */
+    MYSTERY_CHEST_NOT_AVAILABLE,
     GENERIC,
 }
 
@@ -22,6 +27,7 @@ fun AppError.toShopFailureReason(): ShopFailureReason = when (this) {
         402 -> ShopFailureReason.INSUFFICIENT_COINS
         409 -> ShopFailureReason.ALREADY_OWNED
         429 -> ShopFailureReason.SPIN_NOT_AVAILABLE
+        430 -> ShopFailureReason.MYSTERY_CHEST_NOT_AVAILABLE
         else -> ShopFailureReason.GENERIC
     }
     else -> ShopFailureReason.GENERIC

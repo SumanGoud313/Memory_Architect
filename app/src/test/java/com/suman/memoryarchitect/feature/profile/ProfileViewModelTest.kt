@@ -20,6 +20,8 @@ import com.suman.memoryarchitect.domain.model.ScoreSubmissionResult
 import com.suman.memoryarchitect.domain.model.CosmeticCategory
 import com.suman.memoryarchitect.domain.model.CosmeticId
 import com.suman.memoryarchitect.domain.model.LuckySpinState
+import com.suman.memoryarchitect.domain.model.MysteryChestAdClaimResult
+import com.suman.memoryarchitect.domain.model.MysteryChestAdState
 import com.suman.memoryarchitect.domain.model.PurchaseResult
 import com.suman.memoryarchitect.domain.model.SpinResult
 import com.suman.memoryarchitect.domain.repository.LevelCampaignRepository
@@ -86,6 +88,9 @@ private class FakeShopRepository : ShopRepository {
         throw UnsupportedOperationException("not used by ProfileViewModel")
     override suspend fun getLuckySpinState(): LuckySpinState = LuckySpinState.EMPTY
     override suspend fun spin(spinNonce: String, source: SpinSource): Outcome<SpinResult> =
+        throw UnsupportedOperationException("not used by ProfileViewModel")
+    override suspend fun getMysteryChestAdState(): MysteryChestAdState = MysteryChestAdState.EMPTY
+    override suspend fun claimAdMysteryChest(claimNonce: String): Outcome<MysteryChestAdClaimResult> =
         throw UnsupportedOperationException("not used by ProfileViewModel")
     override suspend fun toggleFavorite(id: CosmeticId) =
         throw UnsupportedOperationException("not used by ProfileViewModel")

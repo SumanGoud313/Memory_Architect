@@ -12,6 +12,7 @@ import com.suman.memoryarchitect.core.database.LevelCampaignProgressDao
 import com.suman.memoryarchitect.core.database.LuckySpinStateDao
 import com.suman.memoryarchitect.core.database.MissionProgressDao
 import com.suman.memoryarchitect.core.database.MissionRefreshStateDao
+import com.suman.memoryarchitect.core.database.MysteryChestAdStateDao
 import com.suman.memoryarchitect.core.database.OwnedCosmeticDao
 import com.suman.memoryarchitect.core.database.PendingMissionClaimDao
 import com.suman.memoryarchitect.core.database.PendingScoreSubmissionDao
@@ -103,4 +104,7 @@ object DatabaseModule {
 
     @Provides
     fun provideMissionRefreshStateDao(database: AppDatabase): MissionRefreshStateDao = database.missionRefreshStateDao()
+
+    @Provides
+    fun provideMysteryChestAdStateDao(database: AppDatabase): MysteryChestAdStateDao = database.mysteryChestAdStateDao()
 }

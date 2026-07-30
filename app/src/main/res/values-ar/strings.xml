@@ -521,6 +521,7 @@
     <string name="shop_error_no_connectivity">لا يوجد اتصال بالإنترنت. يرجى التحقق من اتصالك والمحاولة مرة أخرى.</string>
     <string name="shop_error_already_owned">أنت تمتلك هذا العنصر بالفعل.</string>
     <string name="shop_error_spin_not_available">لقد استخدمت هذا الدوران اليوم بالفعل - عد غدًا!</string>
+    <string name="shop_error_mystery_chest_not_available">لقد حصلت بالفعل على جميع الصناديق الغامضة لهذا اليوم - عد غدًا!</string>
     <string name="shop_error_generic">حدث خطأ ما. يرجى المحاولة مرة أخرى.</string>
 
     <string name="collections_title">المجموعات</string>
@@ -577,6 +578,11 @@
     <string name="lucky_spin_go_to_collections">اذهب إلى المتجر ← المجموعات لتجهيزه!</string>
     <string name="lucky_spin_go_to_shop_action">الذهاب إلى المتجر</string>
     <string name="lucky_spin_ad_unavailable">لا توجد إعلانات متاحة الآن - حاول مرة أخرى قريبًا.</string>
+    <string name="mystery_chest_box_title">صندوق الكنز الغامض</string>
+    <string name="mystery_chest_watch_ad_description">شاهد إعلانًا للحصول على صندوق غامض واحد</string>
+    <string name="mystery_chest_watch_ad_action">مشاهدة إعلان</string>
+    <string name="mystery_chest_won_message">لقد حصلت على صندوق غامض واحد!</string>
+    <string name="mystery_chest_available_action">متاح الآن</string>
 
     <string name="error_no_connectivity">لا يوجد اتصال بالإنترنت. يرجى التحقق من اتصالك والمحاولة مرة أخرى.</string>
     <string name="error_network">تعذّر الوصول إلى الخادم. يرجى المحاولة مرة أخرى.</string>

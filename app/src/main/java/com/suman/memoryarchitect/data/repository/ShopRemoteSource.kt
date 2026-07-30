@@ -3,7 +3,9 @@ package com.suman.memoryarchitect.data.repository
 import com.suman.memoryarchitect.domain.model.CosmeticCategory
 import com.suman.memoryarchitect.domain.model.CosmeticId
 import com.suman.memoryarchitect.domain.model.CosmeticRarity
+import com.suman.memoryarchitect.domain.model.InventoryItemKind
 import com.suman.memoryarchitect.domain.model.LuckySpinState
+import com.suman.memoryarchitect.domain.model.MysteryChestAdState
 import com.suman.memoryarchitect.domain.model.PlayerProfile
 import com.suman.memoryarchitect.domain.model.SpinRewardKind
 import com.suman.memoryarchitect.domain.repository.SpinSource
@@ -52,6 +54,16 @@ interface ShopRemoteSource {
     /** Clears whatever's equipped for [category] - a no-op (returns the map unchanged) if nothing
      * was equipped there to begin with. */
     suspend fun unequip(category: CosmeticCategory): Map<String, String>
+
+    /** Local-only-cache-backing read - see [com.suman.memoryarchitect.domain.repository.ShopRepository.getMysteryChestAdState]'s doc. */
+    suspend fun getMysteryChestAdState(): MysteryChestAdState
+
+    /** Throws [MysteryChestClaimNotAvailableException] if every one of today's
+     * [com.suman.memoryarchitect.domain.progression.MysteryChestAdRules.maxClaimsPerDay] claims is
+     * already spent - re-verified here, not trusted from the caller. [claimNonce] is the same
+     * replay-guard role [spinNonce] plays for [spin]. [todayEpochDay] is caller-computed, same
+     * convention [spin] already uses. */
+    suspend fun claimAdMysteryChest(claimNonce: String, todayEpochDay: Long): MysteryChestAdClaimOutcome
 }
 
 /** The two shapes a client-computed [com.suman.memoryarchitect.domain.progression.LuckySpinEngine]
@@ -69,4 +81,13 @@ data class SpinOutcome(
     val profile: PlayerProfile,
     val ownedSkus: Set<String>,
     val spinState: LuckySpinState,
+)
+
+/** [inventoryQuantities] is the full, post-grant quantities map (same "whole snapshot back, not
+ * just a delta" shape [SpinOutcome] itself doesn't need since a spin's ticket consumption is the
+ * only inventory-affecting path there, but a Mystery Chest ad claim's *entire* purpose is an
+ * inventory grant). */
+data class MysteryChestAdClaimOutcome(
+    val inventoryQuantities: Map<InventoryItemKind, Int>,
+    val claimState: MysteryChestAdState,
 )

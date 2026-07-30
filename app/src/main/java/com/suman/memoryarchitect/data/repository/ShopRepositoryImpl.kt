@@ -6,8 +6,12 @@ import com.suman.memoryarchitect.core.common.DispatcherProvider
 import com.suman.memoryarchitect.core.cosmetics.EquippedCosmeticsStore
 import com.suman.memoryarchitect.core.database.EquippedCosmeticDao
 import com.suman.memoryarchitect.core.database.EquippedCosmeticEntity
+import com.suman.memoryarchitect.core.database.InventoryItemDao
+import com.suman.memoryarchitect.core.database.InventoryItemEntity
 import com.suman.memoryarchitect.core.database.LuckySpinStateDao
 import com.suman.memoryarchitect.core.database.LuckySpinStateEntity
+import com.suman.memoryarchitect.core.database.MysteryChestAdStateDao
+import com.suman.memoryarchitect.core.database.MysteryChestAdStateEntity
 import com.suman.memoryarchitect.core.database.OwnedCosmeticDao
 import com.suman.memoryarchitect.core.database.OwnedCosmeticEntity
 import com.suman.memoryarchitect.core.database.PlayerProgressCacheEntity
@@ -15,7 +19,11 @@ import com.suman.memoryarchitect.core.database.PlayerProgressDao
 import com.suman.memoryarchitect.domain.model.AppError
 import com.suman.memoryarchitect.domain.model.CosmeticCategory
 import com.suman.memoryarchitect.domain.model.CosmeticId
+import com.suman.memoryarchitect.domain.model.Inventory
+import com.suman.memoryarchitect.domain.model.InventoryItemKind
 import com.suman.memoryarchitect.domain.model.LuckySpinState
+import com.suman.memoryarchitect.domain.model.MysteryChestAdClaimResult
+import com.suman.memoryarchitect.domain.model.MysteryChestAdState
 import com.suman.memoryarchitect.domain.model.Outcome
 import com.suman.memoryarchitect.domain.model.PlayerProfile
 import com.suman.memoryarchitect.domain.model.PurchaseResult
@@ -53,6 +61,8 @@ class ShopRepositoryImpl @Inject constructor(
     private val ownedCosmeticDao: OwnedCosmeticDao,
     private val equippedCosmeticDao: EquippedCosmeticDao,
     private val luckySpinStateDao: LuckySpinStateDao,
+    private val mysteryChestAdStateDao: MysteryChestAdStateDao,
+    private val inventoryItemDao: InventoryItemDao,
     private val equippedCosmeticsStore: EquippedCosmeticsStore,
     private val clock: Clock,
     private val dispatchers: DispatcherProvider,
@@ -187,6 +197,28 @@ class ShopRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getMysteryChestAdState(): MysteryChestAdState = withContext(dispatchers.io) {
+        mysteryChestAdStateDao.get()?.toDomain() ?: MysteryChestAdState.EMPTY
+    }
+
+    override suspend fun claimAdMysteryChest(claimNonce: String): Outcome<MysteryChestAdClaimResult> = withContext(dispatchers.io) {
+        val todayEpochDay = LocalDate.now(clock).toEpochDay()
+        try {
+            val outcome = activeRemoteSource().claimAdMysteryChest(claimNonce, todayEpochDay)
+            InventoryItemKind.entries.forEach { kind ->
+                inventoryItemDao.upsert(InventoryItemEntity(kind.name, outcome.inventoryQuantities[kind] ?: 0))
+            }
+            mysteryChestAdStateDao.upsert(outcome.claimState.toCacheEntity())
+            Outcome.Success(MysteryChestAdClaimResult(Inventory(outcome.inventoryQuantities), outcome.claimState))
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (notAvailable: MysteryChestClaimNotAvailableException) {
+            Outcome.Error(AppError.Server(code = 430, message = notAvailable.message))
+        } catch (failure: Throwable) {
+            Outcome.Error(with(errorMapper) { failure.toAppError() })
+        }
+    }
+
     override suspend fun toggleFavorite(id: CosmeticId) = withContext(dispatchers.io) {
         val current = ownedCosmeticDao.getAll().firstOrNull { it.sku == id.name } ?: return@withContext
         ownedCosmeticDao.setFavorite(id.name, !current.isFavorite)
@@ -217,13 +249,25 @@ class ShopRepositoryImpl @Inject constructor(
     private fun LuckySpinStateEntity.toDomain() = LuckySpinState(
         lastFreeSpinEpochDay = lastFreeSpinEpochDay,
         lastAdSpinEpochDay = lastAdSpinEpochDay,
+        adSpinsUsedToday = adSpinsUsedToday,
         hasEverSpun = hasEverSpun,
     )
 
     private fun LuckySpinState.toCacheEntity() = LuckySpinStateEntity(
         lastFreeSpinEpochDay = lastFreeSpinEpochDay,
         lastAdSpinEpochDay = lastAdSpinEpochDay,
+        adSpinsUsedToday = adSpinsUsedToday,
         hasEverSpun = hasEverSpun,
+    )
+
+    private fun MysteryChestAdStateEntity.toDomain() = MysteryChestAdState(
+        lastClaimEpochDay = lastClaimEpochDay,
+        claimsUsedToday = claimsUsedToday,
+    )
+
+    private fun MysteryChestAdState.toCacheEntity() = MysteryChestAdStateEntity(
+        lastClaimEpochDay = lastClaimEpochDay,
+        claimsUsedToday = claimsUsedToday,
     )
 
     private fun PlayerProfile.toCacheEntity() = PlayerProgressCacheEntity(

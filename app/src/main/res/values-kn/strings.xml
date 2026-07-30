@@ -497,6 +497,7 @@
     <string name="shop_error_no_connectivity">ಇಂಟರ್ನೆಟ್ ಸಂಪರ್ಕ ಇಲ್ಲ. ದಯವಿಟ್ಟು ನಿಮ್ಮ ಸಂಪರ್ಕವನ್ನು ಪರಿಶೀಲಿಸಿ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.</string>
     <string name="shop_error_already_owned">ಈ ವಸ್ತು ಈಗಾಗಲೇ ನಿಮ್ಮ ಬಳಿ ಇದೆ.</string>
     <string name="shop_error_spin_not_available">ನೀವು ಇಂದು ಈಗಾಗಲೇ ಈ ಸ್ಪಿನ್ ಬಳಸಿದ್ದೀರಿ - ನಾಳೆ ಮತ್ತೆ ಬನ್ನಿ!</string>
+    <string name="shop_error_mystery_chest_not_available">ನೀವು ಇಂದಿನ ಎಲ್ಲಾ ರಹಸ್ಯ ಪೆಟ್ಟಿಗೆಗಳನ್ನು ಈಗಾಗಲೇ ಪಡೆದಿದ್ದೀರಿ - ನಾಳೆ ಮತ್ತೆ ಬನ್ನಿ!</string>
     <string name="shop_error_generic">ಏನೋ ತಪ್ಪಾಗಿದೆ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.</string>
 
     <string name="collections_title">ಸಂಗ್ರಹ</string>
@@ -553,6 +554,11 @@
     <string name="lucky_spin_go_to_collections">ಅದನ್ನು ಧರಿಸಲು ಅಂಗಡಿ → ಸಂಗ್ರಹಕ್ಕೆ ಹೋಗಿ!</string>
     <string name="lucky_spin_go_to_shop_action">ಅಂಗಡಿಗೆ ಹೋಗಿ</string>
     <string name="lucky_spin_ad_unavailable">ಪ್ರಸ್ತುತ ಯಾವುದೇ ಜಾಹೀರಾತುಗಳಿಲ್ಲ - ಶೀಘ್ರದಲ್ಲೇ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.</string>
+    <string name="mystery_chest_box_title">ಮಿಸ್ಟರಿ ಚೆಸ್ಟ್ ಬಾಕ್ಸ್</string>
+    <string name="mystery_chest_watch_ad_description">1 ಮಿಸ್ಟರಿ ಬಾಕ್ಸ್ ಪಡೆಯಲು ಜಾಹೀರಾತು ನೋಡಿ</string>
+    <string name="mystery_chest_watch_ad_action">ಜಾಹೀರಾತು ನೋಡಿ</string>
+    <string name="mystery_chest_won_message">ನಿಮಗೆ 1 ಮಿಸ್ಟರಿ ಬಾಕ್ಸ್ ಸಿಕ್ಕಿದೆ!</string>
+    <string name="mystery_chest_available_action">ಈಗ ಲಭ್ಯವಿದೆ</string>
 
     <string name="error_no_connectivity">ಇಂಟರ್ನೆಟ್ ಸಂಪರ್ಕ ಇಲ್ಲ. ದಯವಿಟ್ಟು ನಿಮ್ಮ ಸಂಪರ್ಕವನ್ನು ಪರಿಶೀಲಿಸಿ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.</string>
     <string name="error_network">ಸರ್ವರ್ ಅನ್ನು ತಲುಪಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.</string>

@@ -497,6 +497,7 @@
     <string name="shop_error_no_connectivity">Sem conexão à internet. Verifique sua conexão e tente novamente.</string>
     <string name="shop_error_already_owned">Você já possui este item.</string>
     <string name="shop_error_spin_not_available">Você já usou esse giro hoje - volte amanhã!</string>
+    <string name="shop_error_mystery_chest_not_available">Você já resgatou todos os Baús Misteriosos de hoje - volte amanhã!</string>
     <string name="shop_error_generic">Algo deu errado. Tente novamente.</string>
 
     <string name="collections_title">Coleções</string>
@@ -553,6 +554,11 @@
     <string name="lucky_spin_go_to_collections">Vá para Loja → Coleções para equipá-lo!</string>
     <string name="lucky_spin_go_to_shop_action">Ir para a loja</string>
     <string name="lucky_spin_ad_unavailable">Nenhum anúncio disponível agora - tente novamente em breve.</string>
+    <string name="mystery_chest_box_title">Baú Misterioso</string>
+    <string name="mystery_chest_watch_ad_description">Assista a um anúncio para ganhar 1 Baú Misterioso</string>
+    <string name="mystery_chest_watch_ad_action">Assistir Anúncio</string>
+    <string name="mystery_chest_won_message">Você ganhou 1 Baú Misterioso!</string>
+    <string name="mystery_chest_available_action">Disponível agora</string>
 
     <string name="error_no_connectivity">Sem conexão à internet. Verifique sua conexão e tente novamente.</string>
     <string name="error_network">Não foi possível conectar ao servidor. Tente novamente.</string>

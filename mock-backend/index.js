@@ -3,7 +3,7 @@
 const express = require('express');
 const { TIER_INDEX, computeConstraints, generateLevel } = require('./generation');
 const { applyScoreSubmission, canClaimDailyReward, nextDailyRewardCycleDay, claimDailyReward, claimReturningPlayerGift } = require('./progression');
-const { purchaseCosmetic, spinLuckySpin, equipCosmetic, unequipCosmetic } = require('./shop');
+const { purchaseCosmetic, spinLuckySpin, claimAdMysteryChest, equipCosmetic, unequipCosmetic } = require('./shop');
 const {
   claimMissionReward, consumeInventoryItem, openMysteryChest, applyXpBoost,
   claimCategoryBonus, unlockAllMissionsEarly,
@@ -67,7 +67,13 @@ let playerCosmetics = {
 let luckySpinState = {
   lastFreeSpinEpochDay: null,
   lastAdSpinEpochDay: null,
+  adSpinsUsedToday: 0,
   hasEverSpun: false,
+};
+
+let mysteryChestAdState = {
+  lastClaimEpochDay: null,
+  claimsUsedToday: 0,
 };
 
 let missionState = {
@@ -190,7 +196,8 @@ app.post('/v1/profile/reset', (req, res) => {
   dailyReward = { cycleDay: 0, lastClaimedEpochDay: null };
   returningPlayerGift = { lastClaimedOnEpochDay: null };
   playerCosmetics = { ownedSkus: [], equipped: {} };
-  luckySpinState = { lastFreeSpinEpochDay: null, lastAdSpinEpochDay: null, hasEverSpun: false };
+  luckySpinState = { lastFreeSpinEpochDay: null, lastAdSpinEpochDay: null, adSpinsUsedToday: 0, hasEverSpun: false };
+  mysteryChestAdState = { lastClaimEpochDay: null, claimsUsedToday: 0 };
   missionState = { claimedKeys: {}, bonusClaimedKeys: {}, inventory: {} };
   missionRefreshState = { dailyForcedPeriodKey: null, weeklyForcedPeriodKey: null, monthlyForcedPeriodKey: null };
   res.json(playerProfile);
@@ -202,6 +209,10 @@ app.get('/v1/cosmetics', (req, res) => {
 
 app.get('/v1/cosmetics/luckySpinState', (req, res) => {
   res.json(luckySpinState);
+});
+
+app.get('/v1/cosmetics/mysteryChestAdState', (req, res) => {
+  res.json(mysteryChestAdState);
 });
 
 app.post('/v1/cosmetics/purchase', (req, res) => {
@@ -273,6 +284,26 @@ app.post('/v1/cosmetics/spin', (req, res) => {
     inventory: { quantities: missionState.inventory },
     luckySpinState,
   });
+});
+
+app.post('/v1/cosmetics/claimAdMysteryChest', (req, res) => {
+  const { claimNonce, todayEpochDay } = req.body || {};
+  if (typeof claimNonce !== 'string') {
+    res.status(400).json({ error: 'claimNonce is required' });
+    return;
+  }
+  if (!Number.isFinite(todayEpochDay)) {
+    res.status(400).json({ error: 'todayEpochDay is required' });
+    return;
+  }
+  const result = claimAdMysteryChest(mysteryChestAdState, missionState.inventory, todayEpochDay);
+  if (result.error) {
+    res.status(409).json({ error: result.error });
+    return;
+  }
+  missionState = { ...missionState, inventory: result.inventory };
+  mysteryChestAdState = result.mysteryChestAdState;
+  res.json({ inventory: { quantities: missionState.inventory }, mysteryChestAdState });
 });
 
 app.post('/v1/cosmetics/equip', (req, res) => {

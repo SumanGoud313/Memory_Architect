@@ -491,6 +491,7 @@
     <string name="shop_error_no_connectivity">无网络连接。请检查网络后重试。</string>
     <string name="shop_error_already_owned">你已经拥有此物品。</string>
     <string name="shop_error_spin_not_available">你今天已经使用过这次转盘机会 — 明天再来吧！</string>
+    <string name="shop_error_mystery_chest_not_available">你今天已经领取了所有神秘宝箱 — 明天再来吧！</string>
     <string name="shop_error_generic">出了点问题，请重试。</string>
 
     <string name="collections_title">收藏</string>
@@ -547,6 +548,11 @@
     <string name="lucky_spin_go_to_collections">前往商店 → 收藏进行装备！</string>
     <string name="lucky_spin_go_to_shop_action">前往商店</string>
     <string name="lucky_spin_ad_unavailable">暂时没有可用广告 — 请稍后再试。</string>
+    <string name="mystery_chest_box_title">神秘宝箱</string>
+    <string name="mystery_chest_watch_ad_description">观看广告获得 1 个神秘宝箱</string>
+    <string name="mystery_chest_watch_ad_action">观看广告</string>
+    <string name="mystery_chest_won_message">你获得了 1 个神秘宝箱！</string>
+    <string name="mystery_chest_available_action">立即领取</string>
 
     <string name="error_no_connectivity">无网络连接。请检查网络后重试。</string>
     <string name="error_network">无法连接到服务器，请重试。</string>

@@ -1,8 +1,10 @@
 package com.suman.memoryarchitect.data.repository
 
 import com.suman.memoryarchitect.data.remote.ShopApi
+import com.suman.memoryarchitect.data.remote.dto.ClaimAdMysteryChestRequestDto
 import com.suman.memoryarchitect.data.remote.dto.EquipCosmeticRequestDto
 import com.suman.memoryarchitect.data.remote.dto.LuckySpinStateDto
+import com.suman.memoryarchitect.data.remote.dto.MysteryChestAdStateDto
 import com.suman.memoryarchitect.data.remote.dto.PlayerProfileDto
 import com.suman.memoryarchitect.data.remote.dto.PurchaseCosmeticRequestDto
 import com.suman.memoryarchitect.data.remote.dto.SpinLuckySpinRequestDto
@@ -10,7 +12,9 @@ import com.suman.memoryarchitect.data.remote.dto.UnequipCosmeticRequestDto
 import com.suman.memoryarchitect.domain.model.CosmeticCategory
 import com.suman.memoryarchitect.domain.model.CosmeticId
 import com.suman.memoryarchitect.domain.model.CosmeticRarity
+import com.suman.memoryarchitect.domain.model.InventoryItemKind
 import com.suman.memoryarchitect.domain.model.LuckySpinState
+import com.suman.memoryarchitect.domain.model.MysteryChestAdState
 import com.suman.memoryarchitect.domain.model.PlayerProfile
 import com.suman.memoryarchitect.domain.model.SpinRewardKind
 import com.suman.memoryarchitect.domain.repository.SpinSource
@@ -66,10 +70,26 @@ class MockBackendShopRemoteSource @Inject constructor(
     override suspend fun unequip(category: CosmeticCategory): Map<String, String> =
         api.unequip(UnequipCosmeticRequestDto(category.name)).equipped
 
+    override suspend fun getMysteryChestAdState(): MysteryChestAdState = api.getMysteryChestAdState().toDomain()
+
+    override suspend fun claimAdMysteryChest(claimNonce: String, todayEpochDay: Long): MysteryChestAdClaimOutcome {
+        val response = api.claimAdMysteryChest(ClaimAdMysteryChestRequestDto(claimNonce, todayEpochDay))
+        val quantities = response.inventory.quantities.mapNotNull { (key, value) ->
+            runCatching { InventoryItemKind.valueOf(key) }.getOrNull()?.let { it to value }
+        }.toMap()
+        return MysteryChestAdClaimOutcome(quantities, response.mysteryChestAdState.toDomain())
+    }
+
     private fun LuckySpinStateDto.toDomain() = LuckySpinState(
         lastFreeSpinEpochDay = lastFreeSpinEpochDay,
         lastAdSpinEpochDay = lastAdSpinEpochDay,
+        adSpinsUsedToday = adSpinsUsedToday,
         hasEverSpun = hasEverSpun,
+    )
+
+    private fun MysteryChestAdStateDto.toDomain() = MysteryChestAdState(
+        lastClaimEpochDay = lastClaimEpochDay,
+        claimsUsedToday = claimsUsedToday,
     )
 
     private fun PlayerProfileDto.toDomain() = PlayerProfile(

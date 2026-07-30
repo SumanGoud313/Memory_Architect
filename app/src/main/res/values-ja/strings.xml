@@ -491,6 +491,7 @@
     <string name="shop_error_no_connectivity">インターネット接続がありません。接続を確認して再試行してください。</string>
     <string name="shop_error_already_owned">このアイテムは既に所持しています。</string>
     <string name="shop_error_spin_not_available">今日はもうこのスピンを使用しました — また明日！</string>
+    <string name="shop_error_mystery_chest_not_available">本日のミステリーチェストはすべて受け取り済みです — また明日！</string>
     <string name="shop_error_generic">問題が発生しました。もう一度お試しください。</string>
 
     <string name="collections_title">コレクション</string>
@@ -547,6 +548,11 @@
     <string name="lucky_spin_go_to_collections">ショップ → コレクションで装備しましょう！</string>
     <string name="lucky_spin_go_to_shop_action">ショップへ移動</string>
     <string name="lucky_spin_ad_unavailable">現在利用できる広告がありません — またすぐにお試しください。</string>
+    <string name="mystery_chest_box_title">ミステリーチェストボックス</string>
+    <string name="mystery_chest_watch_ad_description">広告を見てミステリーボックスを1個獲得しよう</string>
+    <string name="mystery_chest_watch_ad_action">広告を見る</string>
+    <string name="mystery_chest_won_message">ミステリーボックスを1個獲得しました！</string>
+    <string name="mystery_chest_available_action">今すぐ受け取る</string>
 
     <string name="error_no_connectivity">インターネット接続がありません。接続を確認して再試行してください。</string>
     <string name="error_network">サーバーに接続できませんでした。もう一度お試しください。</string>

@@ -497,6 +497,7 @@
     <string name="shop_error_no_connectivity">ఇంటర్నెట్ కనెక్షన్ లేదు. దయచేసి మీ కనెక్షన్‌ను తనిఖీ చేసి మళ్లీ ప్రయత్నించండి.</string>
     <string name="shop_error_already_owned">మీరు ఇప్పటికే ఈ వస్తువును కలిగి ఉన్నారు.</string>
     <string name="shop_error_spin_not_available">మీరు ఈరోజు ఇప్పటికే ఈ స్పిన్‌ను ఉపయోగించారు - రేపు మళ్లీ రండి!</string>
+    <string name="shop_error_mystery_chest_not_available">మీరు ఈరోజు అన్ని రహస్య పెట్టెలను ఇప్పటికే పొందారు - రేపు మళ్లీ రండి!</string>
     <string name="shop_error_generic">ఏదో తప్పు జరిగింది. దయచేసి మళ్లీ ప్రయత్నించండి.</string>
 
     <string name="collections_title">సేకరణ</string>
@@ -553,6 +554,11 @@
     <string name="lucky_spin_go_to_collections">దీన్ని ధరించడానికి షాప్ → సేకరణకు వెళ్లండి!</string>
     <string name="lucky_spin_go_to_shop_action">షాప్‌కు వెళ్ళండి</string>
     <string name="lucky_spin_ad_unavailable">ప్రస్తుతం ప్రకటనలు అందుబాటులో లేవు - త్వరలో మళ్లీ ప్రయత్నించండి.</string>
+    <string name="mystery_chest_box_title">మిస్టరీ చెస్ట్ బాక్స్</string>
+    <string name="mystery_chest_watch_ad_description">1 మిస్టరీ బాక్స్ పొందడానికి ప్రకటన చూడండి</string>
+    <string name="mystery_chest_watch_ad_action">ప్రకటన చూడండి</string>
+    <string name="mystery_chest_won_message">మీకు 1 మిస్టరీ బాక్స్ లభించింది!</string>
+    <string name="mystery_chest_available_action">ఇప్పుడు అందుబాటులో ఉంది</string>
 
     <string name="error_no_connectivity">ఇంటర్నెట్ కనెక్షన్ లేదు. దయచేసి మీ కనెక్షన్‌ను తనిఖీ చేసి మళ్లీ ప్రయత్నించండి.</string>
     <string name="error_network">సర్వర్‌ను చేరుకోలేకపోయాము. దయచేసి మళ్లీ ప్రయత్నించండి.</string>

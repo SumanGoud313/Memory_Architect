@@ -49,7 +49,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  * loss when reopened at the same version.
  */
 object Migrations {
-    const val CURRENT_VERSION = 23
+    const val CURRENT_VERSION = 25
 
     /** Every version in this (inclusive) range may still fall back to a destructive wipe on
      * upgrade - see this object's own doc for why 19 belongs here too, not just 1-18: it was never
@@ -94,9 +94,34 @@ object Migrations {
         }
     }
 
+    /** 23 -> 24: adds `lucky_spin_state.adSpinsUsedToday` (default `0`, so every already-existing
+     * row starts at "no ad spins used today yet" - correct regardless of what
+     * `lastAdSpinEpochDay` happened to hold, since that field is only ever consulted together with
+     * this one) for the "1 -> 3 ad-gated bonus spins per day" change - see
+     * [LuckySpinStateEntity.adSpinsUsedToday]'s own doc. A pure `ALTER TABLE ADD COLUMN`, so every
+     * existing row and every other table is untouched. */
+    private val MIGRATION_23_24 = object : Migration(23, 24) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE `lucky_spin_state` ADD COLUMN `adSpinsUsedToday` INTEGER NOT NULL DEFAULT 0")
+        }
+    }
+
+    /** 24 -> 25: adds the `mystery_chest_ad_state` table (one singleton row, same shape
+     * `lucky_spin_state`'s table has) for the watch-ad-only Mystery Chest claim feature on
+     * [com.suman.memoryarchitect.ui.screens.shop.LuckySpinScreen] - see
+     * [MysteryChestAdStateEntity]'s doc. A pure `CREATE TABLE`, so every existing row in every
+     * other table is untouched. */
+    private val MIGRATION_24_25 = object : Migration(24, 25) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `mystery_chest_ad_state` (`id` INTEGER NOT NULL, `lastClaimEpochDay` INTEGER, `claimsUsedToday` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+            )
+        }
+    }
+
     /** Real, incremental migrations for version 20 and beyond, in order - the next schema change
      * adds one more [Migration] here (from [CURRENT_VERSION] to `CURRENT_VERSION + 1`) alongside
      * bumping [AppDatabase]'s version, never one without the other - see this object's own doc for
      * why this is the version that discipline actually starts being trustworthy from. */
-    val ALL: Array<Migration> = arrayOf(MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23)
+    val ALL: Array<Migration> = arrayOf(MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25)
 }

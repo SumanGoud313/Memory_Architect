@@ -491,6 +491,7 @@
     <string name="shop_error_no_connectivity">인터넷 연결이 없습니다. 연결 상태를 확인하고 다시 시도하세요.</string>
     <string name="shop_error_already_owned">이미 이 아이템을 보유하고 있습니다.</string>
     <string name="shop_error_spin_not_available">오늘 이미 이 스핀을 사용했습니다 - 내일 다시 오세요!</string>
+    <string name="shop_error_mystery_chest_not_available">오늘의 미스터리 상자를 모두 받았습니다 - 내일 다시 오세요!</string>
     <string name="shop_error_generic">문제가 발생했습니다. 다시 시도하세요.</string>
 
     <string name="collections_title">컬렉션</string>
@@ -547,6 +548,11 @@
     <string name="lucky_spin_go_to_collections">상점 → 컬렉션으로 이동하여 장착하세요!</string>
     <string name="lucky_spin_go_to_shop_action">상점으로 이동</string>
     <string name="lucky_spin_ad_unavailable">지금은 이용 가능한 광고가 없습니다 - 잠시 후 다시 시도하세요.</string>
+    <string name="mystery_chest_box_title">미스터리 상자</string>
+    <string name="mystery_chest_watch_ad_description">광고를 보고 미스터리 상자 1개 받기</string>
+    <string name="mystery_chest_watch_ad_action">광고 시청</string>
+    <string name="mystery_chest_won_message">미스터리 상자 1개를 획득했습니다!</string>
+    <string name="mystery_chest_available_action">지금 받기</string>
 
     <string name="error_no_connectivity">인터넷 연결이 없습니다. 연결 상태를 확인하고 다시 시도하세요.</string>
     <string name="error_network">서버에 연결할 수 없습니다. 다시 시도하세요.</string>

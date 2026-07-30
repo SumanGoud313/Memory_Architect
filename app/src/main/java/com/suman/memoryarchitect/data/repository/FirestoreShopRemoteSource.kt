@@ -10,9 +10,11 @@ import com.suman.memoryarchitect.domain.model.CosmeticCategory
 import com.suman.memoryarchitect.domain.model.CosmeticId
 import com.suman.memoryarchitect.domain.model.InventoryItemKind
 import com.suman.memoryarchitect.domain.model.LuckySpinState
+import com.suman.memoryarchitect.domain.model.MysteryChestAdState
 import com.suman.memoryarchitect.domain.model.PlayerProfile
 import com.suman.memoryarchitect.domain.model.SpinRewardKind
 import com.suman.memoryarchitect.domain.progression.DiscountCouponRules
+import com.suman.memoryarchitect.domain.progression.MysteryChestAdRules
 import com.suman.memoryarchitect.domain.progression.ShopCatalog
 import com.suman.memoryarchitect.domain.progression.SpinRules
 import com.suman.memoryarchitect.domain.repository.SpinSource
@@ -145,9 +147,10 @@ class FirestoreShopRemoteSource @Inject constructor(
             // Re-verified here, not trusted from the caller's own button-enabled state - see
             // ShopRepository.spin's doc. A ticket spend (below) is never subject to this gate.
             var updatedInventoryQuantities: Map<InventoryItemKind, Int>? = null
+            val adSpinsUsedToday = if (currentSpinState.lastAdSpinEpochDay == todayEpochDay) currentSpinState.adSpinsUsedToday else 0
             when (source) {
                 SpinSource.FREE -> if (currentSpinState.lastFreeSpinEpochDay == todayEpochDay) throw SpinNotAvailableException()
-                SpinSource.AD -> if (currentSpinState.lastAdSpinEpochDay == todayEpochDay) throw SpinNotAvailableException()
+                SpinSource.AD -> if (adSpinsUsedToday >= SpinRules.Default.maxAdSpinsPerDay) throw SpinNotAvailableException()
                 SpinSource.TICKET -> {
                     // Consumed atomically with the spin itself - see ShopRemoteSource.spin's own
                     // SpinSource.TICKET doc for why this can't be a separate write.
@@ -191,6 +194,7 @@ class FirestoreShopRemoteSource @Inject constructor(
             val updatedSpinState = currentSpinState.copy(
                 lastFreeSpinEpochDay = if (source == SpinSource.FREE) todayEpochDay else currentSpinState.lastFreeSpinEpochDay,
                 lastAdSpinEpochDay = if (source == SpinSource.AD) todayEpochDay else currentSpinState.lastAdSpinEpochDay,
+                adSpinsUsedToday = if (source == SpinSource.AD) adSpinsUsedToday + 1 else currentSpinState.adSpinsUsedToday,
                 hasEverSpun = true,
             )
 
@@ -347,6 +351,7 @@ class FirestoreShopRemoteSource @Inject constructor(
         return LuckySpinState(
             lastFreeSpinEpochDay = getLong("lastFreeSpinEpochDay"),
             lastAdSpinEpochDay = getLong("lastAdSpinEpochDay"),
+            adSpinsUsedToday = (getLong("adSpinsUsedToday") ?: 0L).toInt(),
             hasEverSpun = getBoolean("hasEverSpun") ?: false,
         )
     }
@@ -354,7 +359,67 @@ class FirestoreShopRemoteSource @Inject constructor(
     private fun LuckySpinState.toFirestoreMap(clock: Clock): Map<String, Any?> = mapOf(
         "lastFreeSpinEpochDay" to lastFreeSpinEpochDay,
         "lastAdSpinEpochDay" to lastAdSpinEpochDay,
+        "adSpinsUsedToday" to adSpinsUsedToday,
         "hasEverSpun" to hasEverSpun,
+        "updatedAtEpochMs" to clock.millis(),
+    )
+
+    override suspend fun getMysteryChestAdState(): MysteryChestAdState {
+        val uid = requireUid()
+        val snapshot = firestore.collection(MYSTERY_CHEST_AD_STATE_COLLECTION).document(uid).get().await()
+        return snapshot.toMysteryChestAdState()
+    }
+
+    override suspend fun claimAdMysteryChest(claimNonce: String, todayEpochDay: Long): MysteryChestAdClaimOutcome {
+        val uid = requireUid()
+        val receiptRef = firestore.collection(RECEIPTS_COLLECTION).document(receiptDocId(uid, claimNonce))
+        val inventoryRef = firestore.collection(INVENTORY_COLLECTION).document(uid)
+        val claimStateRef = firestore.collection(MYSTERY_CHEST_AD_STATE_COLLECTION).document(uid)
+        val nowEpochMs = clock.millis()
+
+        return firestore.runTransaction { transaction ->
+            if (transaction.get(receiptRef).exists()) throw DuplicatePurchaseException()
+            val currentClaimState = transaction.get(claimStateRef).toMysteryChestAdState()
+
+            // Re-verified here, not trusted from the caller's own button-enabled state - same
+            // "recognize, don't just trust" posture spin()'s SpinSource.FREE/SpinSource.AD gates
+            // already have.
+            val claimsUsedToday = if (currentClaimState.lastClaimEpochDay == todayEpochDay) currentClaimState.claimsUsedToday else 0
+            if (claimsUsedToday >= MysteryChestAdRules.Default.maxClaimsPerDay) throw MysteryChestClaimNotAvailableException()
+
+            val currentQuantities = transaction.get(inventoryRef).toQuantities()
+            val updatedQuantities = currentQuantities + (InventoryItemKind.MYSTERY_CHEST to (currentQuantities[InventoryItemKind.MYSTERY_CHEST] ?: 0) + 1)
+            val updatedClaimState = MysteryChestAdState(lastClaimEpochDay = todayEpochDay, claimsUsedToday = claimsUsedToday + 1)
+
+            // Same fixed-sentinel-sku reasoning as spin()'s own receipt above - this replay guard
+            // is only ever read back via .exists(), never inspected for meaning.
+            transaction.set(
+                receiptRef,
+                mapOf(
+                    "uid" to uid,
+                    "sku" to "MYSTERY_CHEST_AD",
+                    "priceCoins" to 0L,
+                    "kind" to "MYSTERY_CHEST_AD",
+                    "createdAtEpochMs" to nowEpochMs,
+                ),
+            )
+            transaction.set(inventoryRef, updatedQuantities.toFirestoreMap())
+            transaction.set(claimStateRef, updatedClaimState.toFirestoreMap(clock), SetOptions.merge())
+            MysteryChestAdClaimOutcome(updatedQuantities, updatedClaimState)
+        }.await()
+    }
+
+    private fun DocumentSnapshot.toMysteryChestAdState(): MysteryChestAdState {
+        if (!exists()) return MysteryChestAdState.EMPTY
+        return MysteryChestAdState(
+            lastClaimEpochDay = getLong("lastClaimEpochDay"),
+            claimsUsedToday = (getLong("claimsUsedToday") ?: 0L).toInt(),
+        )
+    }
+
+    private fun MysteryChestAdState.toFirestoreMap(clock: Clock): Map<String, Any?> = mapOf(
+        "lastClaimEpochDay" to lastClaimEpochDay,
+        "claimsUsedToday" to claimsUsedToday,
         "updatedAtEpochMs" to clock.millis(),
     )
 
@@ -364,6 +429,7 @@ class FirestoreShopRemoteSource @Inject constructor(
         const val RECEIPTS_COLLECTION = "purchaseReceipts"
         const val INVENTORY_COLLECTION = "inventory"
         const val LUCKY_SPIN_STATE_COLLECTION = "luckySpinState"
+        const val MYSTERY_CHEST_AD_STATE_COLLECTION = "mysteryChestAdState"
 
         fun receiptDocId(uid: String, nonce: String): String = "${uid}_$nonce"
     }

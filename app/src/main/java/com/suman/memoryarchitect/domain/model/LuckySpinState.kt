@@ -14,8 +14,17 @@ data class LuckySpinState(
      * against `todayEpochDay`, same "one claim per day" shape as
      * [com.suman.memoryarchitect.domain.progression.DailyRewardCatalog.canClaim]. */
     val lastFreeSpinEpochDay: Long? = null,
-    /** Same shape as [lastFreeSpinEpochDay], for the one bonus spin a rewarded ad unlocks per day. */
+    /** Which epoch-day [adSpinsUsedToday] counts against - the count only actually applies "today"
+     * when this equals `todayEpochDay`; any other value (including a stale prior day) means the
+     * effective count for today is 0, same "day changed, allowance refreshed" shape
+     * [lastFreeSpinEpochDay] already has. */
     val lastAdSpinEpochDay: Long? = null,
+    /** How many of [com.suman.memoryarchitect.domain.progression.SpinRules.maxAdSpinsPerDay]'s
+     * rewarded-ad bonus spins have been spent on [lastAdSpinEpochDay] - was a plain boolean
+     * (0 or 1 per day) before this field existed; now a bounded counter so up to
+     * `maxAdSpinsPerDay` ad-gated spins are allowed per day instead of just one. Only meaningful
+     * when [lastAdSpinEpochDay] equals "today" - see that field's doc. */
+    val adSpinsUsedToday: Int = 0,
     /** True once this player has ever completed a Lucky Spin, by any
      * [com.suman.memoryarchitect.domain.repository.SpinSource] - the very first one is guaranteed
      * to resolve to [SpinRewardKind.Cosmetic] regardless of the odds table (see

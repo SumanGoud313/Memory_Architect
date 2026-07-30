@@ -3,6 +3,8 @@ package com.suman.memoryarchitect.domain.repository
 import com.suman.memoryarchitect.domain.model.CosmeticCategory
 import com.suman.memoryarchitect.domain.model.CosmeticId
 import com.suman.memoryarchitect.domain.model.LuckySpinState
+import com.suman.memoryarchitect.domain.model.MysteryChestAdClaimResult
+import com.suman.memoryarchitect.domain.model.MysteryChestAdState
 import com.suman.memoryarchitect.domain.model.Outcome
 import com.suman.memoryarchitect.domain.model.PurchaseResult
 import com.suman.memoryarchitect.domain.model.SpinResult
@@ -58,6 +60,22 @@ interface ShopRepository {
      * [source]) always resolves to a [com.suman.memoryarchitect.domain.model.SpinRewardKind.Cosmetic] -
      * see [LuckySpinState.hasEverSpun]'s doc. */
     suspend fun spin(spinNonce: String, source: SpinSource): Outcome<SpinResult>
+
+    /** Local-only read (Room cache, synced from whichever remote source is active) - the ad-gated
+     * Mystery Chest claim's own daily-gate state, see
+     * [com.suman.memoryarchitect.domain.model.MysteryChestAdState]'s doc. Used to compute how many
+     * of today's claims remain before ever calling [claimAdMysteryChest]. */
+    suspend fun getMysteryChestAdState(): MysteryChestAdState
+
+    /** Grants one [com.suman.memoryarchitect.domain.model.InventoryItemKind.MYSTERY_CHEST] to
+     * Inventory once a rewarded ad fully resolves - gated at
+     * [com.suman.memoryarchitect.domain.progression.MysteryChestAdRules.maxClaimsPerDay] per day,
+     * re-verified server-side against [MysteryChestAdState] rather than trusted from the caller
+     * (same "recognize, don't just trust" posture [spin]'s [SpinSource.FREE]/[SpinSource.AD] gates
+     * already have). No coin cost, no free/ticket alternative - watch-ad-only by design (see
+     * [com.suman.memoryarchitect.domain.progression.MysteryChestAdRules]'s doc). [claimNonce] is
+     * the same replay-guard role [spinNonce] plays above. */
+    suspend fun claimAdMysteryChest(claimNonce: String): Outcome<MysteryChestAdClaimResult>
 
     /** Local-only preference, never synced to any remote source - deliberately simpler than
      * [equip]/[unequip] (no economic stake, no cross-device sync need strong enough to justify a

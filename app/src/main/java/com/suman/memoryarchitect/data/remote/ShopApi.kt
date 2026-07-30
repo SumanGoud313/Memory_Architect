@@ -1,8 +1,11 @@
 package com.suman.memoryarchitect.data.remote
 
+import com.suman.memoryarchitect.data.remote.dto.ClaimAdMysteryChestRequestDto
+import com.suman.memoryarchitect.data.remote.dto.ClaimAdMysteryChestResponseDto
 import com.suman.memoryarchitect.data.remote.dto.CosmeticsStateDto
 import com.suman.memoryarchitect.data.remote.dto.EquipCosmeticRequestDto
 import com.suman.memoryarchitect.data.remote.dto.LuckySpinStateDto
+import com.suman.memoryarchitect.data.remote.dto.MysteryChestAdStateDto
 import com.suman.memoryarchitect.data.remote.dto.PurchaseCosmeticRequestDto
 import com.suman.memoryarchitect.data.remote.dto.PurchaseCosmeticResponseDto
 import com.suman.memoryarchitect.data.remote.dto.SpinLuckySpinRequestDto
@@ -33,4 +36,10 @@ interface ShopApi {
 
     @POST("v1/cosmetics/unequip")
     suspend fun unequip(@Body body: UnequipCosmeticRequestDto): CosmeticsStateDto
+
+    @GET("v1/cosmetics/mysteryChestAdState")
+    suspend fun getMysteryChestAdState(): MysteryChestAdStateDto
+
+    @POST("v1/cosmetics/claimAdMysteryChest")
+    suspend fun claimAdMysteryChest(@Body body: ClaimAdMysteryChestRequestDto): ClaimAdMysteryChestResponseDto
 }

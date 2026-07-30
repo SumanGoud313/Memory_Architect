@@ -497,6 +497,7 @@
     <string name="shop_error_no_connectivity">Keine Internetverbindung. Bitte prüfe deine Verbindung und versuche es erneut.</string>
     <string name="shop_error_already_owned">Du besitzt diesen Artikel bereits.</string>
     <string name="shop_error_spin_not_available">Du hast diesen Dreh heute schon genutzt - komm morgen wieder!</string>
+    <string name="shop_error_mystery_chest_not_available">Du hast heute bereits alle Mystery-Truhen eingelöst - komm morgen wieder!</string>
     <string name="shop_error_generic">Etwas ist schiefgelaufen. Bitte versuche es erneut.</string>
 
     <string name="collections_title">Sammlungen</string>
@@ -553,6 +554,11 @@
     <string name="lucky_spin_go_to_collections">Geh zu Shop → Sammlungen, um es auszurüsten!</string>
     <string name="lucky_spin_go_to_shop_action">Zum Shop</string>
     <string name="lucky_spin_ad_unavailable">Derzeit keine Werbung verfügbar - versuch es in Kürze erneut.</string>
+    <string name="mystery_chest_box_title">Mystery-Truhe</string>
+    <string name="mystery_chest_watch_ad_description">Werbung ansehen, um 1 Mystery-Truhe zu erhalten</string>
+    <string name="mystery_chest_watch_ad_action">Werbung ansehen</string>
+    <string name="mystery_chest_won_message">Du hast 1 Mystery-Truhe erhalten!</string>
+    <string name="mystery_chest_available_action">Jetzt verfügbar</string>
 
     <string name="error_no_connectivity">Keine Internetverbindung. Bitte prüfe deine Verbindung und versuche es erneut.</string>
     <string name="error_network">Server konnte nicht erreicht werden. Bitte versuche es erneut.</string>

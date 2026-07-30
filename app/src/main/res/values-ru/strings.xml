@@ -509,6 +509,7 @@
     <string name="shop_error_no_connectivity">Нет подключения к интернету. Проверьте подключение и попробуйте снова.</string>
     <string name="shop_error_already_owned">У вас уже есть этот предмет.</string>
     <string name="shop_error_spin_not_available">Вы уже использовали это вращение сегодня - возвращайтесь завтра!</string>
+    <string name="shop_error_mystery_chest_not_available">Вы уже забрали все Таинственные сундуки на сегодня - возвращайтесь завтра!</string>
     <string name="shop_error_generic">Что-то пошло не так. Попробуйте снова.</string>
 
     <string name="collections_title">Коллекции</string>
@@ -565,6 +566,11 @@
     <string name="lucky_spin_go_to_collections">Перейдите в Магазин → Коллекции, чтобы надеть!</string>
     <string name="lucky_spin_go_to_shop_action">Перейти в магазин</string>
     <string name="lucky_spin_ad_unavailable">Сейчас реклама недоступна - попробуйте немного позже.</string>
+    <string name="mystery_chest_box_title">Таинственный сундук</string>
+    <string name="mystery_chest_watch_ad_description">Смотрите рекламу, чтобы получить 1 таинственный сундук</string>
+    <string name="mystery_chest_watch_ad_action">Смотреть рекламу</string>
+    <string name="mystery_chest_won_message">Вы получили 1 таинственный сундук!</string>
+    <string name="mystery_chest_available_action">Доступно сейчас</string>
 
     <string name="error_no_connectivity">Нет подключения к интернету. Проверьте подключение и попробуйте снова.</string>
     <string name="error_network">Не удалось связаться с сервером. Попробуйте снова.</string>

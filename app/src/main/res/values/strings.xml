@@ -527,6 +527,7 @@
     <string name="shop_error_no_connectivity">No internet connection. Please check your connection and try again.</string>
     <string name="shop_error_already_owned">You already own this item.</string>
     <string name="shop_error_spin_not_available">You\'ve already used that spin today - come back tomorrow!</string>
+    <string name="shop_error_mystery_chest_not_available">You\'ve already claimed all Mystery Chests for today - come back tomorrow!</string>
     <string name="shop_error_generic">Something went wrong. Please try again.</string>
 
     <string name="collections_title">Collections</string>
@@ -583,6 +584,11 @@
     <string name="lucky_spin_go_to_collections">Head to Shop → Collections to equip it!</string>
     <string name="lucky_spin_go_to_shop_action">Go to Shop</string>
     <string name="lucky_spin_ad_unavailable">No ad available right now - try again shortly.</string>
+    <string name="mystery_chest_box_title">Mystery Chest Box</string>
+    <string name="mystery_chest_watch_ad_description">Watch Ad to get 1 Mystery Box</string>
+    <string name="mystery_chest_watch_ad_action">Watch Ad</string>
+    <string name="mystery_chest_won_message">You got 1 Mystery Chest Box!</string>
+    <string name="mystery_chest_available_action">Avail Now</string>
 
     <string name="error_no_connectivity">No internet connection. Please check your connection and try again.</string>
     <string name="error_network">Couldn\'t reach the server. Please try again.</string>

@@ -7,10 +7,16 @@ import com.suman.memoryarchitect.core.ads.RewardedAdController
 import com.suman.memoryarchitect.core.ads.RewardedAdFlow
 import com.suman.memoryarchitect.core.ads.RewardedAdUiState
 import com.suman.memoryarchitect.domain.model.InventoryItemKind
+import com.suman.memoryarchitect.domain.model.LuckySpinState
+import com.suman.memoryarchitect.domain.model.MysteryChestAdState
 import com.suman.memoryarchitect.domain.model.Outcome
+import com.suman.memoryarchitect.domain.progression.MysteryChestAdRules
+import com.suman.memoryarchitect.domain.progression.SpinRules
 import com.suman.memoryarchitect.domain.repository.SpinSource
+import com.suman.memoryarchitect.domain.usecase.ClaimAdMysteryChestUseCase
 import com.suman.memoryarchitect.domain.usecase.GetInventoryUseCase
 import com.suman.memoryarchitect.domain.usecase.GetLuckySpinStateUseCase
+import com.suman.memoryarchitect.domain.usecase.GetMysteryChestAdStateUseCase
 import com.suman.memoryarchitect.domain.usecase.GetPlayerProfileUseCase
 import com.suman.memoryarchitect.domain.usecase.SpinLuckySpinUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -36,6 +42,8 @@ class LuckySpinViewModel @Inject constructor(
     private val getInventory: GetInventoryUseCase,
     private val getLuckySpinState: GetLuckySpinStateUseCase,
     private val spinLuckySpin: SpinLuckySpinUseCase,
+    private val getMysteryChestAdState: GetMysteryChestAdStateUseCase,
+    private val claimAdMysteryChest: ClaimAdMysteryChestUseCase,
     rewardedAdController: RewardedAdController,
     private val clock: Clock,
 ) : ViewModel() {
@@ -46,6 +54,13 @@ class LuckySpinViewModel @Inject constructor(
     private val adFlow = RewardedAdFlow(viewModelScope, rewardedAdController, featureName = "lucky_spin")
     val rewardedAdState: StateFlow<RewardedAdUiState> = adFlow.state
 
+    /** Its own [RewardedAdFlow] instance, entirely independent of [adFlow] above - a Mystery Chest
+     * ad claim and a wheel spin are two separate daily allowances (see
+     * [com.suman.memoryarchitect.domain.model.MysteryChestAdState]'s doc) that can each be
+     * mid-flight without affecting the other's loading state. */
+    private val mysteryChestAdFlow = RewardedAdFlow(viewModelScope, rewardedAdController, featureName = "lucky_spin_mystery_chest")
+    val mysteryChestRewardedAdState: StateFlow<RewardedAdUiState> = mysteryChestAdFlow.state
+
     init {
         viewModelScope.launch { refresh() }
     }
@@ -53,15 +68,32 @@ class LuckySpinViewModel @Inject constructor(
     private suspend fun refresh() {
         val profile = (getProfile() as? Outcome.Success)?.data
         val spinState = getLuckySpinState()
+        val mysteryChestState = getMysteryChestAdState()
         val ticketCount = (getInventory() as? Outcome.Success)?.data?.quantityOf(InventoryItemKind.LUCKY_SPIN_TICKET) ?: 0
         val todayEpochDay = LocalDate.now(clock).toEpochDay()
         _uiState.value = LuckySpinUiState.Content(
             coins = profile?.coins ?: 0L,
             canSpinFree = spinState.lastFreeSpinEpochDay != todayEpochDay,
-            canSpinAd = spinState.lastAdSpinEpochDay != todayEpochDay,
+            adSpinsRemaining = spinState.adSpinsRemaining(todayEpochDay),
             ticketCount = ticketCount,
             isFirstSpinEver = !spinState.hasEverSpun,
+            mysteryChestClaimsRemaining = mysteryChestState.claimsRemaining(todayEpochDay),
         )
+    }
+
+    /** How many of [SpinRules.maxAdSpinsPerDay]'s rewarded-ad bonus spins are still unspent today -
+     * 0 once [LuckySpinState.adSpinsUsedToday] (for today's [LuckySpinState.lastAdSpinEpochDay])
+     * reaches the cap, [SpinRules.maxAdSpinsPerDay] in full on a day with no ad spins yet. */
+    private fun LuckySpinState.adSpinsRemaining(todayEpochDay: Long): Int {
+        val usedToday = if (lastAdSpinEpochDay == todayEpochDay) adSpinsUsedToday else 0
+        return (SpinRules.Default.maxAdSpinsPerDay - usedToday).coerceAtLeast(0)
+    }
+
+    /** Same shape as [LuckySpinState.adSpinsRemaining] above, for
+     * [MysteryChestAdRules.maxClaimsPerDay] instead of [SpinRules.maxAdSpinsPerDay]. */
+    private fun MysteryChestAdState.claimsRemaining(todayEpochDay: Long): Int {
+        val usedToday = if (lastClaimEpochDay == todayEpochDay) claimsUsedToday else 0
+        return (MysteryChestAdRules.Default.maxClaimsPerDay - usedToday).coerceAtLeast(0)
     }
 
     /** [source] must already be available per the current [LuckySpinUiState.Content] (the caller -
@@ -103,7 +135,7 @@ class LuckySpinViewModel @Inject constructor(
                     _uiState.value = latest.copy(
                         coins = outcome.data.updatedProfile.coins,
                         canSpinFree = spinState.lastFreeSpinEpochDay != todayEpochDay,
-                        canSpinAd = spinState.lastAdSpinEpochDay != todayEpochDay,
+                        adSpinsRemaining = spinState.adSpinsRemaining(todayEpochDay),
                         ticketCount = ticketCount,
                         isFirstSpinEver = false,
                         isSpinning = false,
@@ -128,5 +160,40 @@ class LuckySpinViewModel @Inject constructor(
         adFlow.watch(activity) {
             spin(SpinSource.AD)
         }
+    }
+
+    /** Grants one Mystery Chest once the ad fully resolves - re-validated against the *current*
+     * state inside the [RewardedAdFlow.watch] callback, same "an ad's load/show round-trip can
+     * outlast a cap being hit some other way" reasoning [watchRewardedAd]'s own doc gives. Unlike
+     * [spin], this has no free/ticket alternative to fall back to - watch-ad-only by design (see
+     * [MysteryChestAdRules]'s doc), so there is nothing else for this button to ever offer once
+     * [LuckySpinUiState.Content.mysteryChestClaimsRemaining] hits 0 for the day. */
+    fun watchRewardedAdForMysteryChest(activity: Activity) {
+        val current = _uiState.value as? LuckySpinUiState.Content ?: return
+        if (current.mysteryChestClaimsRemaining <= 0) return
+        mysteryChestAdFlow.watch(activity) {
+            val latest = _uiState.value as? LuckySpinUiState.Content ?: return@watch
+            when (val outcome = claimAdMysteryChest()) {
+                is Outcome.Success -> {
+                    val todayEpochDay = LocalDate.now(clock).toEpochDay()
+                    _uiState.value = latest.copy(
+                        mysteryChestClaimsRemaining = outcome.data.claimState.claimsRemaining(todayEpochDay),
+                        mysteryChestJustClaimed = true,
+                    )
+                }
+                is Outcome.Error -> {
+                    _uiState.value = latest.copy(errorReason = outcome.error.toShopFailureReason())
+                }
+            }
+        }
+    }
+
+    /** Called right before [com.suman.memoryarchitect.ui.screens.shop.LuckySpinScreen] navigates
+     * to Inventory from the "Available" button - clears the callout so the tile goes back to
+     * offering another ad watch (if any of today's claims remain) instead of getting stuck
+     * showing "Available" for a chest the player has already gone to look at. */
+    fun onMysteryChestAvailableClicked() {
+        val current = _uiState.value as? LuckySpinUiState.Content ?: return
+        _uiState.value = current.copy(mysteryChestJustClaimed = false)
     }
 }

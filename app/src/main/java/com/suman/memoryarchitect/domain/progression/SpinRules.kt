@@ -50,6 +50,13 @@ data class SpinRules(
     /** A roll that lands on an already-owned item converts to a coin refund of `priceCoins *
      * duplicateRefundFraction` instead of a no-op - see [LuckySpinEngine.spin]'s doc for why. */
     val duplicateRefundFraction: Double = 0.5,
+    /** How many rewarded-ad-gated bonus spins [com.suman.memoryarchitect.domain.repository.SpinSource.AD]
+     * allows per day - was a single spin (a plain boolean gate) before this; raised to 3 per the
+     * request this was tuned for. Re-verified against
+     * [com.suman.memoryarchitect.domain.model.LuckySpinState.adSpinsUsedToday] server-side
+     * (Firestore transaction / mock backend), same "recognize, don't just trust" posture the
+     * free-spin gate already has - never trusted from the caller's own button-enabled state. */
+    val maxAdSpinsPerDay: Int = 3,
 ) {
     companion object {
         val Default = SpinRules()

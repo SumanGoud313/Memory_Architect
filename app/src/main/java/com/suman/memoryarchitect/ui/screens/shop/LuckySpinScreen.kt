@@ -6,12 +6,16 @@ import android.content.ContextWrapper
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,6 +29,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -33,8 +39,11 @@ import com.suman.memoryarchitect.core.ads.AdaptiveBannerAd
 import com.suman.memoryarchitect.core.ads.RewardedAdUiState
 import com.suman.memoryarchitect.core.common.toDisplayMessage
 import com.suman.memoryarchitect.core.common.toDisplayName
+import com.suman.memoryarchitect.core.common.toIcon
 import com.suman.memoryarchitect.core.feedback.ui.rememberFeedback
+import com.suman.memoryarchitect.domain.model.InventoryItemKind
 import com.suman.memoryarchitect.domain.model.SpinRewardKind
+import com.suman.memoryarchitect.domain.progression.MysteryChestAdRules
 import com.suman.memoryarchitect.domain.progression.ShopCatalog
 import com.suman.memoryarchitect.domain.repository.SpinSource
 import com.suman.memoryarchitect.feature.shop.LuckySpinUiState
@@ -59,7 +68,12 @@ import com.suman.memoryarchitect.ui.theme.MemoryArchitectColors
  * first-ever spin. [onGoToCollections] navigates to the Shop/Collections hub so a won cosmetic can
  * actually be equipped from here. */
 @Composable
-fun LuckySpinScreen(onBack: () -> Unit, onGoToCollections: () -> Unit, viewModel: LuckySpinViewModel = hiltViewModel()) {
+fun LuckySpinScreen(
+    onBack: () -> Unit,
+    onGoToCollections: () -> Unit,
+    onGoToInventory: () -> Unit,
+    viewModel: LuckySpinViewModel = hiltViewModel(),
+) {
     val particles = rememberParticleFieldState()
     AmbientBackground(nearParticles = particles, modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -68,7 +82,7 @@ fun LuckySpinScreen(onBack: () -> Unit, onGoToCollections: () -> Unit, viewModel
                 onBack = onBack,
                 modifier = Modifier.fillMaxWidth().padding(24.dp).staggeredReveal(0),
             )
-            LuckySpinScreenBody(onGoToCollections = onGoToCollections, viewModel = viewModel)
+            LuckySpinScreenBody(onGoToCollections = onGoToCollections, onGoToInventory = onGoToInventory, viewModel = viewModel)
         }
     }
 }
@@ -76,10 +90,12 @@ fun LuckySpinScreen(onBack: () -> Unit, onGoToCollections: () -> Unit, viewModel
 @Composable
 fun LuckySpinScreenBody(
     onGoToCollections: () -> Unit = {},
+    onGoToInventory: () -> Unit = {},
     viewModel: LuckySpinViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val rewardedAdState by viewModel.rewardedAdState.collectAsStateWithLifecycle()
+    val mysteryChestRewardedAdState by viewModel.mysteryChestRewardedAdState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
     val feedback = rememberFeedback()
@@ -155,7 +171,7 @@ fun LuckySpinScreenBody(
                             modifier = Modifier.padding(top = 16.dp),
                         )
                     }
-                    if (rewardedAdState is RewardedAdUiState.Failed) {
+                    if (rewardedAdState is RewardedAdUiState.Failed || mysteryChestRewardedAdState is RewardedAdUiState.Failed) {
                         Text(
                             text = stringResource(R.string.lucky_spin_ad_unavailable),
                             color = MemoryArchitectColors.danger,
@@ -188,6 +204,95 @@ fun LuckySpinScreenBody(
         val content = uiState as? LuckySpinUiState.Content
         if (content != null && !content.isSpinning) {
             AdaptiveBannerAd(placement = "lucky_spin", modifier = Modifier.align(Alignment.BottomCenter))
+            MysteryChestAdTile(
+                state = content,
+                isAdLoading = mysteryChestRewardedAdState is RewardedAdUiState.Loading,
+                onWatchAd = { activity?.let(viewModel::watchRewardedAdForMysteryChest) },
+                onAvailableClick = { viewModel.onMysteryChestAvailableClicked(); onGoToInventory() },
+                modifier = Modifier.align(Alignment.TopEnd).padding(end = 16.dp, top = 8.dp),
+            )
+        }
+    }
+}
+
+/** Top-right corner callout - clear of both the centered wheel/button column below it and the
+ * [ScreenHeader] above it (a sibling in the outer `Column`, not this `Box`, so this `Box`'s own
+ * [Alignment.TopEnd] already starts below the header with no extra offset needed) - a small,
+ * self-contained ad-gated grant entirely separate from the spin wheel (see
+ * [com.suman.memoryarchitect.domain.model.MysteryChestAdState]'s doc for why it's tracked as its
+ * own daily allowance). The `X/[MysteryChestAdRules.maxClaimsPerDay]` claimed-today count is
+ * always shown, not just once exhausted - every player should be able to see the daily limit up
+ * front, not discover it only after hitting it. Watch-ad-only by design: unlike
+ * [SpinActionButton], there is deliberately no free/ticket alternative offered here at all, even
+ * once [LuckySpinUiState.Content.mysteryChestClaimsRemaining] hits 0 for the day - the tile just
+ * goes quiet (no button) until the next day resets it. Once a claim succeeds,
+ * [LuckySpinUiState.Content.mysteryChestJustClaimed] flips this to a "you got one" callout with an
+ * "Avail Now" button instead, so the player has an explicit next step (open it from the Rewards/
+ * Inventory screen) rather than the chest silently landing in their balance with no callout at
+ * all. */
+@Composable
+private fun MysteryChestAdTile(
+    state: LuckySpinUiState.Content,
+    isAdLoading: Boolean,
+    onWatchAd: () -> Unit,
+    onAvailableClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    val claimsUsedToday = MysteryChestAdRules.Default.maxClaimsPerDay - state.mysteryChestClaimsRemaining
+    GlassCard(modifier = modifier.widthIn(max = 160.dp), tint = MemoryArchitectColors.accentGold.copy(alpha = 0.14f)) {
+        Column(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Icon(
+                imageVector = InventoryItemKind.MYSTERY_CHEST.toIcon(),
+                contentDescription = null,
+                tint = MemoryArchitectColors.accentGold,
+                modifier = Modifier.size(18.dp).padding(bottom = 2.dp),
+            )
+            Text(
+                text = stringResource(R.string.mystery_chest_box_title),
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = MemoryArchitectColors.accentGold,
+                textAlign = TextAlign.Center,
+            )
+            if (state.mysteryChestJustClaimed) {
+                Text(
+                    text = stringResource(R.string.mystery_chest_won_message),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MemoryArchitectColors.textPrimary,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(top = 2.dp, bottom = 6.dp),
+                )
+                OutlineButton(
+                    text = stringResource(R.string.mystery_chest_available_action),
+                    onClick = onAvailableClick,
+                    horizontalPadding = 12.dp,
+                )
+            } else {
+                Text(
+                    text = stringResource(R.string.mystery_chest_watch_ad_description),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MemoryArchitectColors.textSecondary,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+                Text(
+                    text = context.getString(R.string.missions_progress_format, claimsUsedToday, MysteryChestAdRules.Default.maxClaimsPerDay),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MemoryArchitectColors.textTertiary,
+                    modifier = Modifier.padding(top = 2.dp, bottom = 6.dp),
+                )
+                if (state.mysteryChestClaimsRemaining > 0) {
+                    OutlineButton(
+                        text = if (isAdLoading) "…" else stringResource(R.string.mystery_chest_watch_ad_action),
+                        onClick = onWatchAd,
+                        horizontalPadding = 12.dp,
+                    )
+                }
+            }
         }
     }
 }

@@ -497,6 +497,7 @@
     <string name="shop_error_no_connectivity">Pas de connexion Internet. Vérifiez votre connexion et réessayez.</string>
     <string name="shop_error_already_owned">Vous possédez déjà cet article.</string>
     <string name="shop_error_spin_not_available">Vous avez déjà utilisé ce tour aujourd\'hui - revenez demain !</string>
+    <string name="shop_error_mystery_chest_not_available">Vous avez déjà réclamé tous les coffres mystères d\'aujourd\'hui - revenez demain !</string>
     <string name="shop_error_generic">Une erreur est survenue. Réessayez.</string>
 
     <string name="collections_title">Collections</string>
@@ -553,6 +554,11 @@
     <string name="lucky_spin_go_to_collections">Allez dans Boutique → Collections pour l\'équiper !</string>
     <string name="lucky_spin_go_to_shop_action">Aller à la boutique</string>
     <string name="lucky_spin_ad_unavailable">Aucune pub disponible pour le moment - réessayez bientôt.</string>
+    <string name="mystery_chest_box_title">Coffre Mystère</string>
+    <string name="mystery_chest_watch_ad_description">Regardez une pub pour obtenir 1 coffre mystère</string>
+    <string name="mystery_chest_watch_ad_action">Regarder une pub</string>
+    <string name="mystery_chest_won_message">Vous avez obtenu 1 coffre mystère !</string>
+    <string name="mystery_chest_available_action">Disponible maintenant</string>
 
     <string name="error_no_connectivity">Pas de connexion Internet. Vérifiez votre connexion et réessayez.</string>
     <string name="error_network">Impossible de joindre le serveur. Veuillez réessayer.</string>

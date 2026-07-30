@@ -8,6 +8,7 @@ import com.squareup.moshi.JsonClass
 data class LuckySpinStateDto(
     val lastFreeSpinEpochDay: Long? = null,
     val lastAdSpinEpochDay: Long? = null,
+    val adSpinsUsedToday: Int = 0,
     val hasEverSpun: Boolean = false,
 )
 

@@ -23,11 +23,12 @@ import androidx.room.RoomDatabase
         PendingMissionClaimEntity::class,
         LuckySpinStateEntity::class,
         MissionRefreshStateEntity::class,
+        MysteryChestAdStateEntity::class,
     ],
     // Keep in sync with Migrations.CURRENT_VERSION - see that object's doc for the migration
     // policy this version number is part of. Not referenced directly (the @Database annotation
     // needs a compile-time constant), but Migrations.CURRENT_VERSION exists specifically to spell
-    // out why 22 is significant, and AppDatabaseMigrationTest asserts the two stay equal.
+    // out why 25 is significant, and AppDatabaseMigrationTest asserts the two stay equal.
     //
     // 21 -> 22 adds mission_refresh_state (the Missions pay-to-reroll-early overhaul) - see
     // Migrations.ALL's MIGRATION_21_22; this version is deliberately NOT added to
@@ -35,7 +36,13 @@ import androidx.room.RoomDatabase
     //
     // 22 -> 23 adds pending_score_submissions.awardXp (the "no XP for repeat level completions"
     // fix) - see Migrations.ALL's MIGRATION_22_23.
-    version = 23,
+    //
+    // 23 -> 24 adds lucky_spin_state.adSpinsUsedToday (1 -> 3 ad-gated bonus spins per day) - see
+    // Migrations.ALL's MIGRATION_23_24.
+    //
+    // 24 -> 25 adds mystery_chest_ad_state (the watch-ad-only Mystery Chest claim feature) - see
+    // Migrations.ALL's MIGRATION_24_25.
+    version = 25,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -57,4 +64,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun pendingMissionClaimDao(): PendingMissionClaimDao
     abstract fun luckySpinStateDao(): LuckySpinStateDao
     abstract fun missionRefreshStateDao(): MissionRefreshStateDao
+    abstract fun mysteryChestAdStateDao(): MysteryChestAdStateDao
 }
