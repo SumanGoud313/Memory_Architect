@@ -71,13 +71,40 @@ class LuckySpinViewModel @Inject constructor(
         val mysteryChestState = getMysteryChestAdState()
         val ticketCount = (getInventory() as? Outcome.Success)?.data?.quantityOf(InventoryItemKind.LUCKY_SPIN_TICKET) ?: 0
         val todayEpochDay = LocalDate.now(clock).toEpochDay()
+        val canSpinFree = spinState.lastFreeSpinEpochDay != todayEpochDay
         _uiState.value = LuckySpinUiState.Content(
             coins = profile?.coins ?: 0L,
-            canSpinFree = spinState.lastFreeSpinEpochDay != todayEpochDay,
+            canSpinFree = canSpinFree,
             adSpinsRemaining = spinState.adSpinsRemaining(todayEpochDay),
+            nextFreeSpinAtEpochSecond = nextFreeSpinAtEpochSecond(canSpinFree, todayEpochDay),
             ticketCount = ticketCount,
             isFirstSpinEver = !spinState.hasEverSpun,
             mysteryChestClaimsRemaining = mysteryChestState.claimsRemaining(todayEpochDay),
+        )
+    }
+
+    /** `null` once [canSpinFree] is already true (nothing to count down to) - otherwise this
+     * device's next local midnight, in epoch seconds, matching the exact same [clock] zone
+     * [todayEpochDay]/[LuckySpinState.lastFreeSpinEpochDay] are already compared in. */
+    private fun nextFreeSpinAtEpochSecond(canSpinFree: Boolean, todayEpochDay: Long): Long? {
+        if (canSpinFree) return null
+        return LocalDate.ofEpochDay(todayEpochDay + 1).atStartOfDay(clock.zone).toEpochSecond()
+    }
+
+    /** Called by [com.suman.memoryarchitect.ui.screens.shop.FreeSpinResetCountdown] the instant its
+     * own countdown reaches zero - flips [LuckySpinUiState.Content.canSpinFree] (and re-derives
+     * [LuckySpinUiState.Content.adSpinsRemaining], which resets on the exact same day boundary)
+     * back to their fresh-day defaults entirely in-place, with no server round-trip: crossing this
+     * boundary doesn't change anything server-side (the stored [LuckySpinState.lastFreeSpinEpochDay]
+     * is unchanged, it's just no longer "today"), so recomputing locally is both correct and
+     * instant rather than waiting on a network fetch just to notice the calendar turned over. */
+    fun onFreeSpinResetReached() {
+        val current = _uiState.value as? LuckySpinUiState.Content ?: return
+        if (current.canSpinFree) return
+        _uiState.value = current.copy(
+            canSpinFree = true,
+            adSpinsRemaining = SpinRules.Default.maxAdSpinsPerDay,
+            nextFreeSpinAtEpochSecond = null,
         )
     }
 
@@ -127,6 +154,7 @@ class LuckySpinViewModel @Inject constructor(
                 is Outcome.Success -> {
                     val spinState = outcome.data.updatedSpinState
                     val todayEpochDay = LocalDate.now(clock).toEpochDay()
+                    val canSpinFree = spinState.lastFreeSpinEpochDay != todayEpochDay
                     val ticketCount = if (source == SpinSource.TICKET) {
                         (getInventory() as? Outcome.Success)?.data?.quantityOf(InventoryItemKind.LUCKY_SPIN_TICKET) ?: 0
                     } else {
@@ -134,8 +162,9 @@ class LuckySpinViewModel @Inject constructor(
                     }
                     _uiState.value = latest.copy(
                         coins = outcome.data.updatedProfile.coins,
-                        canSpinFree = spinState.lastFreeSpinEpochDay != todayEpochDay,
+                        canSpinFree = canSpinFree,
                         adSpinsRemaining = spinState.adSpinsRemaining(todayEpochDay),
+                        nextFreeSpinAtEpochSecond = nextFreeSpinAtEpochSecond(canSpinFree, todayEpochDay),
                         ticketCount = ticketCount,
                         isFirstSpinEver = false,
                         isSpinning = false,

@@ -592,6 +592,10 @@
     <string name="lucky_spin_go_to_collections">Head to Shop → Collections to equip it!</string>
     <string name="lucky_spin_go_to_shop_action">Go to Shop</string>
     <string name="lucky_spin_ad_unavailable">No ad available right now - try again shortly.</string>
+    <string name="lucky_spin_daily_allowance">1 Free Spin every day</string>
+    <string name="lucky_spin_ad_spins_remaining">%1$d of %2$d bonus ad spins left today</string>
+    <string name="lucky_spin_next_free_spin_hours_minutes">Next free spin in %1$dh %2$dm</string>
+    <string name="lucky_spin_next_free_spin_minutes">Next free spin in %1$dm</string>
     <string name="lucky_spin_odds_action">View odds</string>
     <string name="lucky_spin_odds_title">Spin odds</string>
     <string name="lucky_spin_odds_intro">The chance of each outcome on any given spin:</string>

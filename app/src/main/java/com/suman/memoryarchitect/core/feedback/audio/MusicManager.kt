@@ -33,8 +33,8 @@ enum class MusicTrack {
     FAILURE,
 
     /** Explicitly "leave whatever is already playing alone" - used only for destinations that
-     * intentionally sit on top of another screen without their own mood (e.g. the debug-only
-     * Analytics Dashboard reached from Settings). */
+     * intentionally sit on top of another screen without their own mood (e.g. Gameplay, which picks
+     * its own per-mode track a beat after entering rather than at composition time). */
     UNCHANGED,
     /** Stops music entirely. */
     NONE,

@@ -62,8 +62,7 @@ import javax.inject.Singleton
  * Spark-plan-compatible local verification that replaces the old `verifyRemoveAdsPurchase`/
  * `verifyPremiumPurchase` server round-trip, and [CosmeticCollectionGrantor] for the direct client
  * Firestore write (guarded by a `firestore.rules`-enforced create-only replay token) that replaces
- * what a Cloud Function used to do transactionally - shared with `core.debug.DebugTestGrantor`'s own
- * debug-only grant path, so that logic exists in exactly one place.
+ * what a Cloud Function used to do transactionally.
  */
 @Singleton
 class BillingManagerImpl @Inject constructor(

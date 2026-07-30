@@ -63,11 +63,6 @@ sealed interface Route {
     @Serializable
     data object Inventory : Route
 
-    /** Debug-build-only - see `SettingsScreen`'s `BuildConfig.DEBUG`-gated entry point, the only
-     * place this is ever navigated to from. */
-    @Serializable
-    data object AnalyticsDashboard : Route
-
     /** Privacy Policy / Terms & Conditions - [document] is [com.suman.memoryarchitect.ui.screens.legal.LegalDocument]'s
      * `.name`, reached via Settings' two new rows. See `LegalScreen.kt`'s own doc. */
     @Serializable

@@ -24,6 +24,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -51,6 +52,10 @@ private enum class AchievementsHubTab { ACHIEVEMENTS, UNLOCKS }
 fun AchievementsScreen(onBack: () -> Unit) {
     val particles = rememberParticleFieldState()
     var selectedTab by remember { mutableStateOf(AchievementsHubTab.ACHIEVEMENTS) }
+    // The real, currently-rendered banner height (0.dp whenever nothing shows) - see
+    // AdaptiveBannerAd's own doc. Without this, the last row of either tab could scroll to a
+    // resting position still hidden underneath the banner overlay below.
+    var bannerHeight by remember { mutableStateOf(0.dp) }
 
     AmbientBackground(nearParticles = particles, modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -68,8 +73,8 @@ fun AchievementsScreen(onBack: () -> Unit) {
                 )
 
                 when (selectedTab) {
-                    AchievementsHubTab.ACHIEVEMENTS -> AchievementsBody()
-                    AchievementsHubTab.UNLOCKS -> UnlocksBody()
+                    AchievementsHubTab.ACHIEVEMENTS -> AchievementsBody(bannerHeight = bannerHeight)
+                    AchievementsHubTab.UNLOCKS -> UnlocksBody(bannerHeight = bannerHeight)
                 }
             }
 
@@ -80,13 +85,17 @@ fun AchievementsScreen(onBack: () -> Unit) {
             // UnlocksBody already own their own full-size scrollable content. See
             // AdaptiveBannerAd's own doc for why this renders nothing at all for a Remove Ads
             // purchaser.
-            AdaptiveBannerAd(placement = "achievements", modifier = Modifier.align(Alignment.BottomCenter))
+            AdaptiveBannerAd(
+                placement = "achievements",
+                onHeightChanged = { bannerHeight = it },
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
         }
     }
 }
 
 @Composable
-private fun AchievementsBody(viewModel: AchievementsViewModel = hiltViewModel()) {
+private fun AchievementsBody(bannerHeight: Dp = 0.dp, viewModel: AchievementsViewModel = hiltViewModel()) {
     val unlockedIds by viewModel.unlockedIds.collectAsStateWithLifecycle()
     val ids = unlockedIds
     if (ids == null) {
@@ -95,7 +104,9 @@ private fun AchievementsBody(viewModel: AchievementsViewModel = hiltViewModel())
         }
     } else {
         Column(
-            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 8.dp),
+            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp, vertical = 8.dp)
+                .padding(bottom = bannerHeight),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             AchievementCatalog.definitions.forEachIndexed { index, definition ->

@@ -30,8 +30,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -67,11 +69,6 @@ private val BottomExtraPadding = 24.dp
 // than reading as just one more item in the same list.
 private val FooterButtonsExtraTopSpacing = 20.dp
 
-// IconGlassButton's own fixed 56dp circle + its label's top padding/line height - there's no
-// shared layout primitive to measure this from, so it's hand-tuned to clear the Cosmetics/Lucky
-// Spin/Remove Ads row above without overlapping it.
-private val TopIconRowHeight = 92.dp
-
 /** Compose replacement for ModeSelectFragment — one card per [GameMode], plus a Missions/Inventory
  * row anchored under the last card. Safe-area aware: top/bottom padding starts from the status/
  * navigation bar insets and adds breathing room on top of them, never instead of them, since the
@@ -93,6 +90,11 @@ fun ModeSelectScreen(
     val progress by viewModel.progress.collectAsStateWithLifecycle()
     val hasRemovedAds by viewModel.hasRemovedAds.collectAsStateWithLifecycle()
     val layoutDirection = LocalLayoutDirection.current
+    // The real, currently-rendered banner height (0.dp whenever nothing shows) - see
+    // AdaptiveBannerAd's own doc. BottomExtraPadding alone (a fixed 24dp) isn't enough clearance
+    // for the ~50-90dp an adaptive banner actually renders at, so on a shorter viewport the last
+    // mode card could scroll to a resting position still partly hidden underneath it.
+    var bannerHeight by remember { mutableStateOf(0.dp) }
     val modes = GameMode.entries.toList()
 
     // Re-fetches every time this screen is (re-)entered, not just once - see
@@ -115,10 +117,18 @@ fun ModeSelectScreen(
                         start = ScreenHorizontalMargin + systemBarPadding.calculateStartPadding(layoutDirection),
                         end = ScreenHorizontalMargin + systemBarPadding.calculateEndPadding(layoutDirection),
                         top = systemBarPadding.calculateTopPadding() + TopExtraPadding,
-                        bottom = systemBarPadding.calculateBottomPadding() + BottomExtraPadding,
+                        bottom = systemBarPadding.calculateBottomPadding() + BottomExtraPadding + bannerHeight,
                     ),
                 verticalArrangement = Arrangement.spacedBy(CardVerticalSpacing),
             ) {
+                // Lives in the column, right-aligned directly above Classic (the first mode
+                // card), instead of a fixed top-offset overlay - anchoring it to the actual
+                // column meant it drifted into Classic whenever this centered column shifted
+                // (e.g. banner ad height changing the column's total measured height), since a
+                // fixed distance from the screen top has no idea where Classic actually ended up.
+                Row(modifier = Modifier.fillMaxWidth().staggeredReveal(0), horizontalArrangement = Arrangement.End) {
+                    LeaderboardMiniButton(onClick = onOpenLeaderboard)
+                }
                 modes.forEachIndexed { index, mode ->
                     val unlockAtEpochSecond = when (mode) {
                         GameMode.DAILY_CHALLENGE -> progress.dailyChallengeUnlockAtEpochSecond
@@ -222,26 +232,13 @@ fun ModeSelectScreen(
                 }
             }
 
-            // Sits in the gap between the icon row above and Classic (the first mode card) below,
-            // right-aligned - a small utility shortcut, not another primary action, so it
-            // deliberately doesn't match IconGlassButton's round/labeled treatment.
-            LeaderboardMiniButton(
-                onClick = onOpenLeaderboard,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(
-                        end = ScreenHorizontalMargin + systemBarPadding.calculateEndPadding(layoutDirection),
-                        top = systemBarPadding.calculateTopPadding() + TopExtraPadding + TopIconRowHeight,
-                    )
-                    .staggeredReveal(0),
-            )
-
             // Bottom-anchored, never overlapping the scrollable mode-card column above (which
             // already reserves its own bottom padding) - a non-gameplay screen, exactly the
             // placement this ad format is meant for. Renders nothing at all for a Remove Ads
             // purchaser or if Remote Config has banners off - see AdaptiveBannerAd's own doc.
             AdaptiveBannerAd(
                 placement = "mode_select",
+                onHeightChanged = { bannerHeight = it },
                 modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = systemBarPadding.calculateBottomPadding()),
             )
         }

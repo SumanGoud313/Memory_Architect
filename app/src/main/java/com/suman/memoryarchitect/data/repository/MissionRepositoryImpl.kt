@@ -1,10 +1,8 @@
 package com.suman.memoryarchitect.data.repository
 
-import com.suman.memoryarchitect.BuildConfig
 import com.suman.memoryarchitect.core.analytics.FirebaseAvailabilityProvider
 import com.suman.memoryarchitect.core.auth.PlayerIdentityManager
 import com.suman.memoryarchitect.core.common.DispatcherProvider
-import com.suman.memoryarchitect.core.debug.DebugLiveEventOverride
 import com.suman.memoryarchitect.core.database.InventoryItemDao
 import com.suman.memoryarchitect.core.database.InventoryItemEntity
 import com.suman.memoryarchitect.core.database.MissionProgressDao
@@ -67,7 +65,6 @@ class MissionRepositoryImpl @Inject constructor(
     private val inventoryItemDao: InventoryItemDao,
     private val playerProgressDao: PlayerProgressDao,
     private val remoteConfigDao: RemoteConfigDao,
-    private val debugLiveEventOverride: DebugLiveEventOverride,
     private val pendingMissionClaimDao: PendingMissionClaimDao,
     private val pendingMissionClaimSyncScheduler: PendingMissionClaimSyncScheduler,
     private val missionRefreshStateDao: MissionRefreshStateDao,
@@ -84,15 +81,8 @@ class MissionRepositoryImpl @Inject constructor(
     }
 
     /** `null` whenever no event is live (including a cold Remote Config cache) - see this class's
-     * own doc for why this reads [remoteConfigDao] directly instead of a live network fetch.
-     * [debugLiveEventOverride] is checked first, debug builds only - see its own doc for why: the
-     * live Remote Config fetch [com.suman.memoryarchitect.domain.usecase.GetActiveLiveEventUseCase]
-     * runs elsewhere in the same refresh writes straight over this same cache, so without this
-     * check a debug override could already be gone by the time this method reads it. */
+     * own doc for why this reads [remoteConfigDao] directly instead of a live network fetch. */
     private suspend fun activeEvent(): LiveEvent? {
-        if (BuildConfig.DEBUG) {
-            debugLiveEventOverride.activeEventId?.let { id -> return LiveEventCatalog.events.firstOrNull { it.id == id } }
-        }
         val cached = remoteConfigDao.getAll()
         if (cached.isEmpty()) return null
         val remoteConfig = RemoteConfig(cached.associate { it.configKey to it.value }, fetchedAt = 0L)

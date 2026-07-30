@@ -15,9 +15,7 @@ import javax.inject.Singleton
  *
  * Every repository/service that gates behavior on this injects [FirebaseAvailabilityProvider]
  * instead of reading [isConfigured] here directly (see that interface's doc for why) - this
- * `object` itself is only ever read by [RealFirebaseAvailabilityProvider] and by
- * [AnalyticsDashboardUiState][com.suman.memoryarchitect.feature.analyticsdashboard.AnalyticsDashboardUiState]'s
- * plain data-class default (a UI display value, not a behavioral gate).
+ * `object` itself is only ever read by [RealFirebaseAvailabilityProvider].
  */
 object FirebaseAvailability {
     val isConfigured: Boolean = BuildConfig.FIREBASE_CONFIGURED
@@ -35,9 +33,8 @@ object FirebaseAvailability {
  * Injectable seam around [FirebaseAvailability.isConfigured] - every repository/service that
  * gates behavior on Firebase's availability (dual-source repositories' `activeRemoteSource()`
  * routing, [com.suman.memoryarchitect.core.auth.PlayerIdentityManager]'s sign-in gate, the
- * Firebase-backed `core/analytics` classes' no-op checks, [com.suman.memoryarchitect.core.debug.DebugTestGrantor]'s
- * preconditions, etc.) takes this as a constructor dependency instead of reading
- * [FirebaseAvailability.isConfigured] directly.
+ * Firebase-backed `core/analytics` classes' no-op checks, etc.) takes this as a constructor
+ * dependency instead of reading [FirebaseAvailability.isConfigured] directly.
  *
  * [FirebaseAvailability] itself stays a plain `object` backed by a build-time [BuildConfig]
  * constant - fine for production, where it only ever runs against the real, current build

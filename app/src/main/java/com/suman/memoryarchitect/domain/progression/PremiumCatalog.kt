@@ -13,8 +13,8 @@ import com.suman.memoryarchitect.domain.model.CosmeticRarity
  * see or grant a premium id - those call sites stay on [ShopCatalog] alone by construction. Every
  * item here is granted exclusively through [PremiumShopCatalog]'s bundles, via
  * `core.billing.CosmeticCollectionGrantor` right after a verified Google Play purchase (see
- * `BillingManagerImpl`'s own doc) or `DebugTestGrantor.debugGrantPremiumProduct` in debug builds -
- * never coin-purchasable, never a Lucky Spin prize (`spinEligible = false` throughout).
+ * `BillingManagerImpl`'s own doc) - never coin-purchasable, never a Lucky Spin prize
+ * (`spinEligible = false` throughout).
  *
  * [CosmeticDefinition.priceCoins] is inert here (always `0L`) - only the coin-purchase transaction
  * path ever reads that field, and premium items never reach it. [CosmeticDefinition.isAnimated] is

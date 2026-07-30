@@ -17,10 +17,8 @@ import javax.inject.Singleton
 
 /**
  * The one place a [BillingCatalogProduct] with `entitlement = BillingEntitlementKind.COSMETIC_COLLECTION`
- * actually gets granted - shared by [BillingManagerImpl] (a real purchase, [replayGuardToken] is the
- * Play purchase token) and `core.debug.DebugTestGrantor` (a Developer Test Mode grant, no real
- * purchase behind it, so [replayGuardToken] is a synthetic per-attempt value instead) so this logic
- * exists in exactly one place rather than two independently-maintained copies.
+ * actually gets granted, called by [BillingManagerImpl] right after a real Play purchase
+ * ([replayGuardToken] is the Play purchase token).
  *
  * Local Room cache first (works even offline/signed-out), then - only if Firebase is configured and
  * a uid is available - a Firestore transaction mirrors the grant for cross-device restore. The

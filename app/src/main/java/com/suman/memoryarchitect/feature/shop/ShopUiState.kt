@@ -17,11 +17,6 @@ sealed interface ShopUiState {
         val ownedIds: Set<CosmeticId>,
         val purchasingId: CosmeticId? = null,
         val errorReason: ShopFailureReason? = null,
-        // Debug-build testing convenience only - see ShopViewModel.debugTriggerSeasonalEvent's doc.
-        // Every other DEBUG button here is verified by visiting the screen it shows up on, but that
-        // screen is exactly what this one button controls the visibility of, so a tester had no way
-        // to tell success from a no-op without this.
-        val debugMessage: String? = null,
         val selectedTab: ShopTab = ShopTab.COIN,
         // Every real-money product's live Play Billing state, keyed by billingProductId - one
         // unified map covering Remove Ads and every Premium Collection alike, since

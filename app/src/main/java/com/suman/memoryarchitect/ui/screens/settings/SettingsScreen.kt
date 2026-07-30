@@ -90,7 +90,6 @@ import java.util.Locale
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
-    onOpenAnalyticsDashboard: () -> Unit = {},
     onOpenPrivacyPolicy: () -> Unit = {},
     onOpenTerms: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
@@ -200,14 +199,7 @@ fun SettingsScreen(
                     onClick = { showDeleteAccountConfirmation = true },
                     modifier = Modifier.staggeredReveal(10),
                 )
-                AboutRow(
-                    // Debug builds only, and never advertised in the UI - tapping the app name 7
-                    // times (the same convention Android's own Settings uses to reveal Developer
-                    // Options) is the only way in, so a tester holding a debug build never
-                    // stumbles onto internal analytics data by casually browsing Settings.
-                    onSecretUnlock = if (BuildConfig.DEBUG) onOpenAnalyticsDashboard else null,
-                    modifier = Modifier.staggeredReveal(11),
-                )
+                AboutRow(modifier = Modifier.staggeredReveal(11))
             }
 
             // Explicitly "optional" per the placement audit (Settings is a low-traffic, low-
@@ -755,38 +747,9 @@ private fun DeleteAccountErrorDialog(onDismiss: () -> Unit) {
     )
 }
 
-/** [onSecretUnlock], when non-null (debug builds only - see the call site), fires once this row
- * is tapped [SECRET_TAP_COUNT] times in a row - the app's own hidden entry point to the debug
- * Analytics Dashboard, deliberately never advertised anywhere in the UI. A tap that lands more
- * than [SECRET_TAP_TIMEOUT_MS] after the previous one resets the count, so it has to be a real
- * deliberate rapid-tap sequence, not an accumulation of casual taps over a session. */
 @Composable
-private fun AboutRow(onSecretUnlock: (() -> Unit)?, modifier: Modifier = Modifier) {
-    var tapCount by remember { mutableStateOf(0) }
-    var lastTapAtMs by remember { mutableStateOf(0L) }
-    val interactionSource = remember { MutableInteractionSource() }
-
-    GlassCard(
-        modifier = modifier
-            .fillMaxWidth()
-            .then(
-                if (onSecretUnlock != null) {
-                    Modifier
-                        .pressableScale(interactionSource)
-                        .clickable(interactionSource = interactionSource, indication = null) {
-                            val now = System.currentTimeMillis()
-                            tapCount = if (now - lastTapAtMs > SECRET_TAP_TIMEOUT_MS) 1 else tapCount + 1
-                            lastTapAtMs = now
-                            if (tapCount >= SECRET_TAP_COUNT) {
-                                tapCount = 0
-                                onSecretUnlock()
-                            }
-                        }
-                } else {
-                    Modifier
-                },
-            ),
-    ) {
+private fun AboutRow(modifier: Modifier = Modifier) {
+    GlassCard(modifier = modifier.fillMaxWidth()) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             // The real app logo (see MainActivity/SplashScreen.kt) rather than a generic Material
             // info glyph - this row is this app's closest equivalent to an "About" section, so it's
@@ -810,9 +773,6 @@ private fun AboutRow(onSecretUnlock: (() -> Unit)?, modifier: Modifier = Modifie
         }
     }
 }
-
-private const val SECRET_TAP_COUNT = 7
-private const val SECRET_TAP_TIMEOUT_MS = 1_500L
 
 @Composable
 private fun ResetProgressDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {

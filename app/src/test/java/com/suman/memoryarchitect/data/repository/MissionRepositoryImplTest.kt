@@ -4,7 +4,6 @@ import com.suman.memoryarchitect.core.analytics.CrashReporter
 import com.suman.memoryarchitect.core.analytics.FirebaseAvailabilityProvider
 import com.suman.memoryarchitect.core.auth.PlayerIdentityManager
 import com.suman.memoryarchitect.core.common.ImmediateDispatcherProvider
-import com.suman.memoryarchitect.core.debug.DebugLiveEventOverride
 import com.suman.memoryarchitect.core.database.InventoryItemDao
 import com.suman.memoryarchitect.core.database.InventoryItemEntity
 import com.suman.memoryarchitect.core.database.MissionProgressDao
@@ -239,7 +238,6 @@ class MissionRepositoryImplTest {
         inventoryItemDao: InventoryItemDao = FakeInventoryItemDao(),
         playerProgressDao: PlayerProgressDao = FakeMissionPlayerProgressDao(),
         remoteConfigDao: RemoteConfigDao = FakeMissionRemoteConfigDao(),
-        debugLiveEventOverride: DebugLiveEventOverride = DebugLiveEventOverride(),
         pendingMissionClaimDao: PendingMissionClaimDao = FakePendingMissionClaimDao(),
         pendingMissionClaimSyncScheduler: PendingMissionClaimSyncScheduler = FakePendingMissionClaimSyncScheduler(),
         missionRefreshStateDao: MissionRefreshStateDao = FakeMissionRefreshStateDao(),
@@ -252,7 +250,6 @@ class MissionRepositoryImplTest {
         inventoryItemDao = inventoryItemDao,
         playerProgressDao = playerProgressDao,
         remoteConfigDao = remoteConfigDao,
-        debugLiveEventOverride = debugLiveEventOverride,
         pendingMissionClaimDao = pendingMissionClaimDao,
         pendingMissionClaimSyncScheduler = pendingMissionClaimSyncScheduler,
         missionRefreshStateDao = missionRefreshStateDao,
@@ -460,23 +457,6 @@ class MissionRepositoryImplTest {
         val eventMissions = missions.filter { it.definition.period == MissionPeriod.EVENT }
         assertEquals(3, eventMissions.size)
         assertTrue(eventMissions.all { it.periodKey == 1000L })
-    }
-
-    @Test
-    fun `getActiveMissions includes Event missions from the debug override even with an empty Remote Config cache`() = runTest {
-        // Reproduces the real bug this override exists to fix - see DebugLiveEventOverride's own
-        // doc: a cold/empty Remote Config cache (exactly what a live fetch clobbers a debug
-        // override back to) must not defeat the override.
-        val debugOverride = DebugLiveEventOverride().apply { activeEventId = "HALLOWEEN" }
-        val repository = buildRepository(
-            api = FakeMissionApi(),
-            remoteConfigDao = FakeMissionRemoteConfigDao(),
-            debugLiveEventOverride = debugOverride,
-        )
-
-        val missions = repository.getActiveMissions(todayEpochDay = 1000L)
-
-        assertEquals(3, missions.count { it.definition.period == MissionPeriod.EVENT })
     }
 
     @Test

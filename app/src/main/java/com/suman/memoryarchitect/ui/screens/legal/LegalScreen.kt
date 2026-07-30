@@ -46,7 +46,7 @@ fun LegalScreen(document: LegalDocument, onBack: () -> Unit) {
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 Text(
-                    text = "Last updated: 2026-07-30",
+                    text = "Last updated: 2026-07-31",
                     style = MaterialTheme.typography.labelMedium,
                     color = MemoryArchitectColors.textTertiary,
                 )
@@ -104,6 +104,15 @@ private fun PrivacyPolicyBody() {
             "identifiers to serve and measure ads. Where required by law (e.g. the EEA, UK, and " +
             "Switzerland), you'll be asked for consent to personalized advertising the first time the " +
             "app is used, and can change that choice at any time from Settings.",
+    )
+    LegalHeading("Notifications")
+    LegalBody(
+        "With your permission, the app schedules local reminder notifications (e.g. a streak " +
+            "about to lapse, or a new Daily Challenge available) directly on your device. These are " +
+            "generated on-device from your own gameplay data - nothing is sent to a server to produce " +
+            "them, and no separate notification/device token is collected. You can turn reminders off " +
+            "at any time from Settings, or by revoking the notification permission in your device's " +
+            "system settings.",
     )
     LegalHeading("Analytics & crash reporting")
     LegalBody(

@@ -26,8 +26,9 @@ class AppLifecycleTracker @Inject constructor(
 ) : DefaultLifecycleObserver {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
-    /** When the app most recently entered the foreground - exposed for the debug Analytics
-     * Dashboard's "Session Duration" readout. `null` before the first [onStart]. */
+    /** When the app most recently entered the foreground - used by [onStop] to compute this
+     * session's duration for [UserPreferencesDataStore]'s lifetime-play-time counter. `null`
+     * before the first [onStart]. */
     var foregroundedAtMs: Long? = null
         private set
 

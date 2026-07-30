@@ -77,6 +77,10 @@ fun CollectionsScreenBody(onOpenShop: () -> Unit = {}, viewModel: CollectionsVie
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var previewDefinition by remember { mutableStateOf<CosmeticDefinition?>(null) }
     val showcaseHeader = stringResource(R.string.profile_showcase_header)
+    // The real, currently-rendered banner height (0.dp whenever nothing shows) - see
+    // AdaptiveBannerAd's own doc. Without this, the last cosmetic row could scroll to a resting
+    // position still hidden underneath the banner overlay below.
+    var bannerHeight by remember { mutableStateOf(0.dp) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -88,7 +92,9 @@ fun CollectionsScreenBody(onOpenShop: () -> Unit = {}, viewModel: CollectionsVie
                     val ownedCount = state.ownedIds.size
                     val totalCount = AllCosmeticsCatalog.definitions.size
                     Column(
-                        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 8.dp),
+                        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+                            .padding(horizontal = 24.dp, vertical = 8.dp)
+                            .padding(bottom = bannerHeight),
                         verticalArrangement = Arrangement.spacedBy(24.dp),
                     ) {
                         Column(modifier = Modifier.staggeredReveal(0)) {
@@ -183,7 +189,11 @@ fun CollectionsScreenBody(onOpenShop: () -> Unit = {}, viewModel: CollectionsVie
 
         // Bottom-anchored, same convention as ShopScreenBody's own copy - see AdaptiveBannerAd's
         // own doc for why this renders nothing at all for a Remove Ads purchaser.
-        AdaptiveBannerAd(placement = "collections", modifier = Modifier.align(Alignment.BottomCenter))
+        AdaptiveBannerAd(
+            placement = "collections",
+            onHeightChanged = { bannerHeight = it },
+            modifier = Modifier.align(Alignment.BottomCenter),
+        )
 
         val preview = previewDefinition
         val contentState = uiState as? CollectionsUiState.Content

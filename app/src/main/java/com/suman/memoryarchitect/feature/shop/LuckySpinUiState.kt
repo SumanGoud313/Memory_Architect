@@ -15,6 +15,14 @@ sealed interface LuckySpinUiState {
          * unspent - only ever relevant once [canSpinFree] is false, matching
          * [com.suman.memoryarchitect.ui.screens.gameplay.HintButton]'s free-then-ad priority. */
         val adSpinsRemaining: Int,
+        /** `null` whenever [canSpinFree] is true (nothing to count down to) - otherwise the epoch
+         * second the free spin resets at (this device's local next midnight, matching whatever
+         * clock zone [canSpinFree]/[lastFreeSpinEpochDay] were already compared in). Drives
+         * [com.suman.memoryarchitect.ui.screens.shop.FreeSpinResetCountdown]'s "come back in Xh Ym"
+         * readout, and flips [canSpinFree] back to `true` in-place the instant it reaches zero -
+         * see [com.suman.memoryarchitect.feature.shop.LuckySpinViewModel.onFreeSpinResetReached]'s
+         * doc for why that doesn't need a fresh server round-trip. */
+        val nextFreeSpinAtEpochSecond: Long? = null,
         /** Owned Lucky Spin Tickets - each is an extra spin independent of [canSpinFree]/[canSpinAd],
          * see [com.suman.memoryarchitect.domain.repository.ShopRepository.spin]'s doc. */
         val ticketCount: Int,

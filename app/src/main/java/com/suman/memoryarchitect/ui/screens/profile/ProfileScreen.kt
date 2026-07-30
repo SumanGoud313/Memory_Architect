@@ -43,6 +43,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -89,6 +90,11 @@ fun ProfileScreen(
     val context = LocalContext.current
     val particles = rememberParticleFieldState()
     var celebration by remember { mutableStateOf<DailyRewardClaimResult?>(null) }
+    // The real, currently-rendered banner height (0.dp whenever nothing shows) - see
+    // AdaptiveBannerAd's own doc. Without this, the Achievements/Rewards row (this screen's
+    // bottom-most interactive content) could scroll to a resting position still hidden/unclickable
+    // underneath the banner overlay below.
+    var bannerHeight by remember { mutableStateOf(0.dp) }
 
     LaunchedEffect(Unit) {
         viewModel.claimEvents.collect { result ->
@@ -121,6 +127,7 @@ fun ProfileScreen(
                 onOpenStatistics = onOpenStatistics,
                 onOpenAchievements = onOpenAchievements,
                 onOpenMemoryJourney = onOpenMemoryJourney,
+                bannerHeight = bannerHeight,
             )
         }
 
@@ -130,7 +137,11 @@ fun ProfileScreen(
 
         // Bottom-anchored, same convention as every other non-gameplay screen's copy - see
         // AdaptiveBannerAd's own doc for why this renders nothing at all for a Remove Ads purchaser.
-        AdaptiveBannerAd(placement = "profile", modifier = Modifier.align(Alignment.BottomCenter))
+        AdaptiveBannerAd(
+            placement = "profile",
+            onHeightChanged = { bannerHeight = it },
+            modifier = Modifier.align(Alignment.BottomCenter),
+        )
     }
 }
 
@@ -142,6 +153,7 @@ private fun ProfileContent(
     onOpenStatistics: () -> Unit,
     onOpenAchievements: () -> Unit,
     onOpenMemoryJourney: () -> Unit,
+    bannerHeight: Dp = 0.dp,
 ) {
     val context = LocalContext.current
     // The Achievements/Rewards row is the new bottom-most interactive content on this screen -
@@ -150,13 +162,15 @@ private fun ProfileContent(
     // scrollable screen in this app that reaches near the bottom edge (e.g. ModeSelectScreen)
     // already adds this; Profile just never needed to before. An extra fixed margin on top of the
     // raw inset gives the last row real clearance from the very edge of the gesture-nav zone, not
-    // just flush against its boundary.
+    // just flush against its boundary. [bannerHeight] on top of all that is what actually clears the
+    // banner ad overlaid below this scrollable column - a fixed guess isn't reliable across every
+    // device/orientation the adaptive banner can render at.
     val systemBarBottomPadding = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding()
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 24.dp + systemBarBottomPadding + 32.dp),
+            .padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 24.dp + systemBarBottomPadding + 32.dp + bannerHeight),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         val progressFraction = if (state.xpForNextLevel > 0) state.xpIntoLevel.toFloat() / state.xpForNextLevel.toFloat() else 0f

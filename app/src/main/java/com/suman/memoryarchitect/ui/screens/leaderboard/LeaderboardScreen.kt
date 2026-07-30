@@ -6,6 +6,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,7 +25,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,6 +35,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -59,6 +63,10 @@ fun LeaderboardScreen(onBack: () -> Unit, viewModel: LeaderboardViewModel = hilt
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val particles = rememberParticleFieldState()
     val context = LocalContext.current
+    // The real, currently-rendered banner height (0.dp whenever nothing shows) - see
+    // AdaptiveBannerAd's own doc. Without this, the last row of a long leaderboard could scroll to
+    // a resting position still hidden underneath the banner overlay below.
+    var bannerHeight by remember { mutableStateOf(0.dp) }
 
     val selectedTab = when (val state = uiState) {
         is LeaderboardUiState.Content -> state.selectedTab
@@ -107,13 +115,22 @@ fun LeaderboardScreen(onBack: () -> Unit, viewModel: LeaderboardViewModel = hilt
                         )
                     }
                 }
-                is LeaderboardUiState.Content -> LeaderboardList(state.result.type, state.result.entries, state.result.currentPlayerRank)
+                is LeaderboardUiState.Content -> LeaderboardList(
+                    type = state.result.type,
+                    entries = state.result.entries,
+                    currentPlayerRank = state.result.currentPlayerRank,
+                    listBottomPadding = bannerHeight,
+                )
             }
         }
 
         // Bottom-anchored, same convention as every other non-gameplay screen's copy - see
         // AdaptiveBannerAd's own doc for why this renders nothing at all for a Remove Ads purchaser.
-        AdaptiveBannerAd(placement = "leaderboard", modifier = Modifier.align(Alignment.BottomCenter))
+        AdaptiveBannerAd(
+            placement = "leaderboard",
+            onHeightChanged = { bannerHeight = it },
+            modifier = Modifier.align(Alignment.BottomCenter),
+        )
     }
 }
 
@@ -187,7 +204,7 @@ private fun LeaderboardType.explainerRes(): Int = when (this) {
 }
 
 @Composable
-private fun LeaderboardList(type: LeaderboardType, entries: List<LeaderboardEntry>, currentPlayerRank: Int?) {
+private fun LeaderboardList(type: LeaderboardType, entries: List<LeaderboardEntry>, currentPlayerRank: Int?, listBottomPadding: Dp = 0.dp) {
     if (entries.isEmpty()) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text(
@@ -226,7 +243,11 @@ private fun LeaderboardList(type: LeaderboardType, entries: List<LeaderboardEntr
                 }
             }
         }
-        LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        LazyColumn(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            contentPadding = PaddingValues(bottom = listBottomPadding),
+        ) {
             items(entries, key = { it.uid }) { entry ->
                 LeaderboardRow(entry, type)
             }

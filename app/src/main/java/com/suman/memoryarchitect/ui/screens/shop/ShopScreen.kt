@@ -3,7 +3,6 @@ package com.suman.memoryarchitect.ui.screens.shop
 import android.app.Activity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -38,12 +37,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.suman.memoryarchitect.BuildConfig
 import com.suman.memoryarchitect.R
 import com.suman.memoryarchitect.core.ads.AdaptiveBannerAd
 import com.suman.memoryarchitect.core.billing.PurchaseUiState
 import com.suman.memoryarchitect.core.billing.toDisplayMessage
-import com.suman.memoryarchitect.domain.model.InventoryItemKind
 import com.suman.memoryarchitect.core.common.toDisplayMessage
 import com.suman.memoryarchitect.core.common.toDisplayName
 import com.suman.memoryarchitect.domain.model.BillingEntitlementKind
@@ -93,6 +90,11 @@ fun ShopScreenBody(viewModel: ShopViewModel = hiltViewModel()) {
     // enum/catalog/owned data at all.
     val showcaseHeader = stringResource(R.string.profile_showcase_header)
     val particles = rememberParticleFieldState(ambientCount = 0)
+    // The real, currently-rendered banner height (0.dp whenever nothing shows) - see
+    // AdaptiveBannerAd's own doc. Without this, the last row of either tab (or the Premium tab's
+    // Restore Purchases button) could scroll to a resting position still hidden/unclickable
+    // underneath the banner overlay below.
+    var bannerHeight by remember { mutableStateOf(0.dp) }
 
     fun launchPremiumPurchase(product: BillingCatalogProduct) {
         val activity = context as? Activity ?: return
@@ -132,59 +134,10 @@ fun ShopScreenBody(viewModel: ShopViewModel = hiltViewModel()) {
                     CircularProgressIndicator(color = MemoryArchitectColors.accentTerracotta)
                 }
                 is ShopUiState.Content -> {
-                    // Debug-build testing convenience only - stripped from release builds by this
-                    // BuildConfig.DEBUG check, same gate SettingsScreen already uses for its
-                    // AnalyticsDashboard entry point. See DebugTestGrantor's doc. Horizontally
-                    // scrollable since it now carries one button per Premium Shop cosmetic bundle
-                    // too, not just the original 3 coin actions.
-                    if (BuildConfig.DEBUG) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 4.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            OutlineButton(text = "DEBUG: +5000 coins", onClick = viewModel::debugGrantCoins, horizontalPadding = 10.dp)
-                            OutlineButton(text = "DEBUG: +1000 XP", onClick = viewModel::debugGrantXp, horizontalPadding = 10.dp)
-                            OutlineButton(text = "DEBUG: Unlock all", onClick = viewModel::debugUnlockAll, horizontalPadding = 10.dp)
-                            OutlineButton(text = "DEBUG: Lock all", onClick = viewModel::debugLockAll, horizontalPadding = 10.dp)
-                            OutlineButton(text = "DEBUG: Unlock all 100 levels", onClick = viewModel::debugUnlockAllLevels, horizontalPadding = 10.dp)
-                            PremiumShopCatalog.cosmeticCollectionProductIds.forEach { productId ->
-                                OutlineButton(
-                                    text = "DEBUG: Grant ${PremiumShopCatalog.requireProduct(productId).let { stringResource(it.titleRes) }}",
-                                    onClick = { viewModel.debugGrantPremiumProduct(productId) },
-                                    horizontalPadding = 10.dp,
-                                )
-                            }
-                            OutlineButton(text = "DEBUG: +5 Hint Tokens", onClick = { viewModel.debugGrantInventoryItem(InventoryItemKind.HINT_TOKEN) }, horizontalPadding = 10.dp)
-                            OutlineButton(text = "DEBUG: +5 Redo Tokens", onClick = { viewModel.debugGrantInventoryItem(InventoryItemKind.REDO_TOKEN) }, horizontalPadding = 10.dp)
-                            OutlineButton(text = "DEBUG: +5 Rewatch Tickets", onClick = { viewModel.debugGrantInventoryItem(InventoryItemKind.REWATCH_TICKET) }, horizontalPadding = 10.dp)
-                            OutlineButton(text = "DEBUG: +5 Lucky Spin Tickets", onClick = { viewModel.debugGrantInventoryItem(InventoryItemKind.LUCKY_SPIN_TICKET) }, horizontalPadding = 10.dp)
-                            OutlineButton(text = "DEBUG: +5 Mystery Chests", onClick = { viewModel.debugGrantInventoryItem(InventoryItemKind.MYSTERY_CHEST) }, horizontalPadding = 10.dp)
-                            OutlineButton(text = "DEBUG: +500 Journey Points", onClick = viewModel::debugGrantJourneyPoints, horizontalPadding = 10.dp)
-                            OutlineButton(text = "DEBUG: +1 Streak Shield", onClick = viewModel::debugGrantStreakShield, horizontalPadding = 10.dp)
-                            OutlineButton(text = "DEBUG: Reset Daily Reward", onClick = viewModel::debugResetDailyReward, horizontalPadding = 10.dp)
-                            OutlineButton(text = "DEBUG: Reset Returning Player", onClick = viewModel::debugResetReturningPlayer, horizontalPadding = 10.dp)
-                            OutlineButton(text = "DEBUG: Trigger notification", onClick = viewModel::debugTriggerNotification, horizontalPadding = 10.dp)
-                            // DebugLiveEventOverride now bypasses each template's own date window
-                            // entirely (see its own doc), so any of the 9 templates previews
-                            // correctly regardless of today's date - no longer limited to whichever
-                            // one's default window happens to cover "now".
-                            OutlineButton(text = "DEBUG: Trigger HALLOWEEN event", onClick = { viewModel.debugTriggerSeasonalEvent("HALLOWEEN") }, horizontalPadding = 10.dp)
-                            OutlineButton(text = "DEBUG: Trigger SUMMER event", onClick = { viewModel.debugTriggerSeasonalEvent("SUMMER") }, horizontalPadding = 10.dp)
-                            OutlineButton(text = "DEBUG: Clear event override", onClick = viewModel::debugClearSeasonalEventOverride, horizontalPadding = 10.dp)
-                        }
-                    }
                     if (state.errorReason != null) {
                         Text(
                             text = state.errorReason.toDisplayMessage(context),
                             color = MemoryArchitectColors.danger,
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 4.dp),
-                        )
-                    }
-                    if (state.debugMessage != null) {
-                        Text(
-                            text = state.debugMessage,
-                            color = MemoryArchitectColors.accentTerracotta,
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 4.dp),
                         )
@@ -207,7 +160,9 @@ fun ShopScreenBody(viewModel: ShopViewModel = hiltViewModel()) {
 
                     when (state.selectedTab) {
                         ShopTab.COIN -> Column(
-                            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 8.dp),
+                            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+                                .padding(horizontal = 24.dp, vertical = 8.dp)
+                                .padding(bottom = bannerHeight),
                             verticalArrangement = Arrangement.spacedBy(24.dp),
                         ) {
                             val byCategory = state.catalog.groupBy { it.category }
@@ -243,7 +198,9 @@ fun ShopScreenBody(viewModel: ShopViewModel = hiltViewModel()) {
                             }
                         }
                         ShopTab.PREMIUM -> Column(
-                            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 8.dp),
+                            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+                                .padding(horizontal = 24.dp, vertical = 8.dp)
+                                .padding(bottom = bannerHeight),
                             verticalArrangement = Arrangement.spacedBy(16.dp),
                         ) {
                             PremiumShopCatalog.products
@@ -279,7 +236,11 @@ fun ShopScreenBody(viewModel: ShopViewModel = hiltViewModel()) {
 
         // Bottom-anchored over both the Coin and Premium sub-tabs alike - see AdaptiveBannerAd's
         // own doc for why this renders nothing at all for a Remove Ads purchaser.
-        AdaptiveBannerAd(placement = "shop", modifier = Modifier.align(Alignment.BottomCenter))
+        AdaptiveBannerAd(
+            placement = "shop",
+            onHeightChanged = { bannerHeight = it },
+            modifier = Modifier.align(Alignment.BottomCenter),
+        )
 
         val preview = previewDefinition
         if (preview != null) {

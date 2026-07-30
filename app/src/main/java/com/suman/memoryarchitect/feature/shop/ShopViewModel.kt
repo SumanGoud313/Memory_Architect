@@ -8,12 +8,10 @@ import com.suman.memoryarchitect.core.analytics.logProductViewed
 import com.suman.memoryarchitect.core.analytics.logShopViewed
 import com.suman.memoryarchitect.core.billing.BillingManager
 import com.suman.memoryarchitect.core.billing.PurchaseUiState
-import com.suman.memoryarchitect.core.debug.DebugTestGrantor
 import com.suman.memoryarchitect.domain.model.CosmeticId
 import com.suman.memoryarchitect.domain.model.InventoryItemKind
 import com.suman.memoryarchitect.domain.model.MissionEvent
 import com.suman.memoryarchitect.domain.model.Outcome
-import com.suman.memoryarchitect.domain.progression.PremiumShopCatalog
 import com.suman.memoryarchitect.domain.usecase.GetInventoryUseCase
 import com.suman.memoryarchitect.domain.usecase.GetOwnedCosmeticsUseCase
 import com.suman.memoryarchitect.domain.usecase.GetPlayerProfileUseCase
@@ -36,7 +34,6 @@ class ShopViewModel @Inject constructor(
     private val getInventory: GetInventoryUseCase,
     private val purchaseCosmetic: PurchaseCosmeticUseCase,
     private val recordMissionEvent: RecordMissionEventUseCase,
-    private val debugTestGrantor: DebugTestGrantor,
     private val billingManager: BillingManager,
     private val analytics: AnalyticsLogger,
 ) : ViewModel() {
@@ -91,20 +88,6 @@ class ShopViewModel @Inject constructor(
      * `true` - see [BillingManager.retryLoadProductDetails]'s doc. */
     fun retryBillingPriceLoad() = billingManager.retryLoadProductDetails()
 
-    /** Developer Test Mode entry point for one Premium Shop product - see [DebugTestGrantor]'s doc.
-     * `BuildConfig.DEBUG`-gated at the [ui.screens.shop.ShopScreen] call site, same convention as
-     * [debugGrantCoins]/[debugUnlockAll] below. */
-    fun debugGrantPremiumProduct(productId: String) {
-        viewModelScope.launch {
-            debugTestGrantor.debugGrantPremiumProduct(productId)
-                .onSuccess {
-                    val grantedIds = PremiumShopCatalog.requireProduct(productId).grantedCosmeticIds
-                    updateContent { it.copy(ownedIds = it.ownedIds + grantedIds, errorReason = null) }
-                }
-                .onFailure { updateContent { it.copy(errorReason = ShopFailureReason.GENERIC) } }
-        }
-    }
-
     private fun load() {
         _uiState.value = ShopUiState.Loading
         viewModelScope.launch {
@@ -147,106 +130,4 @@ class ShopViewModel @Inject constructor(
         }
     }
 
-    /** Debug-build testing convenience only - see [DebugTestGrantor]'s doc. Never called from any
-     * release-build UI (the call site in [ui.screens.shop.ShopScreen] is `BuildConfig.DEBUG`-gated).
-     * Surfaces a failure via the same [ShopUiState.Content.errorReason] path a real purchase
-     * failure uses - the first version of this silently swallowed failures, which is exactly what
-     * made a broken Firestore write look like "the button does nothing." */
-    fun debugGrantCoins() {
-        viewModelScope.launch {
-            val current = _uiState.value as? ShopUiState.Content ?: return@launch
-            debugTestGrantor.grantTestCoins(10_000L)
-                .onSuccess { newBalance ->
-                    val latest = _uiState.value as? ShopUiState.Content ?: return@onSuccess
-                    _uiState.value = latest.copy(coins = newBalance, errorReason = null)
-                }
-                .onFailure {
-                    _uiState.value = current.copy(errorReason = ShopFailureReason.GENERIC)
-                }
-        }
-    }
-
-    fun debugUnlockAll() {
-        viewModelScope.launch {
-            val current = _uiState.value as? ShopUiState.Content ?: return@launch
-            debugTestGrantor.unlockAllCosmeticsForTesting()
-                .onSuccess {
-                    val latest = _uiState.value as? ShopUiState.Content ?: return@onSuccess
-                    _uiState.value = latest.copy(ownedIds = CosmeticId.entries.toSet(), errorReason = null)
-                }
-                .onFailure {
-                    _uiState.value = current.copy(errorReason = ShopFailureReason.GENERIC)
-                }
-        }
-    }
-
-    /** Unlike [debugUnlockAll]/[debugLockAll] (Shop cosmetics), this unlocks the Classic *level*
-     * campaign - see [DebugTestGrantor.unlockAllLevelsForTesting]. Success is only visible on Level
-     * Select, not this screen, so it needs the same explicit [debugMessage] confirmation
-     * [debugTriggerSeasonalEvent] already documents needing. */
-    fun debugUnlockAllLevels() {
-        viewModelScope.launch {
-            val current = _uiState.value as? ShopUiState.Content ?: return@launch
-            debugTestGrantor.unlockAllLevelsForTesting()
-                .onSuccess { _uiState.value = current.copy(errorReason = null, debugMessage = "All 100 levels unlocked - open Level Select to see it") }
-                .onFailure { _uiState.value = current.copy(errorReason = ShopFailureReason.GENERIC, debugMessage = null) }
-        }
-    }
-
-    /** The inverse of [debugUnlockAll] - see [DebugTestGrantor.lockAllCosmeticsForTesting]. */
-    fun debugLockAll() {
-        viewModelScope.launch {
-            val current = _uiState.value as? ShopUiState.Content ?: return@launch
-            debugTestGrantor.lockAllCosmeticsForTesting()
-                .onSuccess {
-                    val latest = _uiState.value as? ShopUiState.Content ?: return@onSuccess
-                    _uiState.value = latest.copy(ownedIds = emptySet(), errorReason = null)
-                }
-                .onFailure {
-                    _uiState.value = current.copy(errorReason = ShopFailureReason.GENERIC)
-                }
-        }
-    }
-
-    /** Debug-build testing convenience only, see [DebugTestGrantor]'s doc - a thin wrapper per
-     * grant category, all following the same "fire the grant, surface only a failure" shape as
-     * [debugGrantCoins] above. None of these have a dedicated display field on [ShopUiState.Content]
-     * the way `coins` does, so a successful grant is verified by visiting the screen it actually
-     * shows up on (Profile, Inventory, Missions, Notifications) - same as any other debug tool,
-     * not a defect in this wiring. */
-    fun debugGrantXp() = runDebugGrant { debugTestGrantor.grantTestXp(1_000L) }
-    fun debugGrantJourneyPoints() = runDebugGrant { debugTestGrantor.grantTestJourneyPoints() }
-    fun debugGrantStreakShield() = runDebugGrant { debugTestGrantor.grantTestStreakShield() }
-    fun debugGrantInventoryItem(kind: InventoryItemKind) = runDebugGrant { debugTestGrantor.grantInventoryItem(kind) }
-    fun debugResetDailyReward() = runDebugGrant { debugTestGrantor.debugResetDailyReward() }
-    fun debugResetReturningPlayer() = runDebugGrant { debugTestGrantor.debugResetReturningPlayer() }
-    fun debugTriggerNotification() = runDebugGrant { debugTestGrantor.debugTriggerNotification() }
-    /** Unlike every other debug button, success here is otherwise invisible - the override this
-     * sets is only checked by the Missions screen elsewhere, so without an explicit confirmation
-     * this looks identical to the button doing nothing (the exact confusion that prompted
-     * [com.suman.memoryarchitect.core.debug.DebugLiveEventOverride] to exist in the first place). */
-    fun debugTriggerSeasonalEvent(eventId: String) {
-        viewModelScope.launch {
-            val current = _uiState.value as? ShopUiState.Content ?: return@launch
-            debugTestGrantor.debugTriggerSeasonalEvent(eventId)
-                .onSuccess { _uiState.value = current.copy(errorReason = null, debugMessage = "$eventId event is now active - open Missions to see it") }
-                .onFailure { _uiState.value = current.copy(errorReason = ShopFailureReason.GENERIC, debugMessage = null) }
-        }
-    }
-
-    fun debugClearSeasonalEventOverride() {
-        viewModelScope.launch {
-            val current = _uiState.value as? ShopUiState.Content ?: return@launch
-            debugTestGrantor.debugClearSeasonalEventOverride()
-                .onSuccess { _uiState.value = current.copy(errorReason = null, debugMessage = "Event override cleared") }
-                .onFailure { _uiState.value = current.copy(errorReason = ShopFailureReason.GENERIC, debugMessage = null) }
-        }
-    }
-
-    private fun runDebugGrant(grant: suspend () -> Result<*>) {
-        viewModelScope.launch {
-            val current = _uiState.value as? ShopUiState.Content ?: return@launch
-            grant().onFailure { _uiState.value = current.copy(errorReason = ShopFailureReason.GENERIC) }
-        }
-    }
 }

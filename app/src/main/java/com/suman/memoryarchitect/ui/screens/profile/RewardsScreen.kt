@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -26,7 +27,7 @@ import com.suman.memoryarchitect.ui.theme.MemoryArchitectColors
  * [com.suman.memoryarchitect.ui.screens.shop.CollectionsScreenBody] - keeps its own
  * [hiltViewModel] so switching tabs and back never refetches. */
 @Composable
-fun UnlocksBody(viewModel: RewardsViewModel = hiltViewModel()) {
+fun UnlocksBody(bannerHeight: Dp = 0.dp, viewModel: RewardsViewModel = hiltViewModel()) {
     val unlockedIds by viewModel.unlockedIds.collectAsStateWithLifecycle()
     val ids = unlockedIds
     if (ids == null) {
@@ -35,7 +36,9 @@ fun UnlocksBody(viewModel: RewardsViewModel = hiltViewModel()) {
         }
     } else {
         Column(
-            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 8.dp),
+            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp, vertical = 8.dp)
+                .padding(bottom = bannerHeight),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             RewardCatalog.timeline.forEachIndexed { index, definition ->

@@ -25,6 +25,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -50,6 +51,7 @@ import com.suman.memoryarchitect.domain.model.SpinRewardKind
 import com.suman.memoryarchitect.domain.progression.LuckySpinOddsDisclosure
 import com.suman.memoryarchitect.domain.progression.MysteryChestAdRules
 import com.suman.memoryarchitect.domain.progression.ShopCatalog
+import com.suman.memoryarchitect.domain.progression.SpinRules
 import com.suman.memoryarchitect.domain.repository.SpinSource
 import com.suman.memoryarchitect.feature.shop.LuckySpinUiState
 import com.suman.memoryarchitect.feature.shop.LuckySpinViewModel
@@ -64,6 +66,8 @@ import com.suman.memoryarchitect.ui.components.ScreenHeader
 import com.suman.memoryarchitect.ui.components.rememberParticleFieldState
 import com.suman.memoryarchitect.ui.components.staggeredReveal
 import com.suman.memoryarchitect.ui.theme.MemoryArchitectColors
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 
 /** Cosmetic-and-coins gacha spin - reached via its own icon on
  * [com.suman.memoryarchitect.ui.screens.modeselect.ModeSelectScreen]. One free spin per day, one
@@ -161,6 +165,11 @@ fun LuckySpinScreenBody(
     val feedback = rememberFeedback()
     val celebration = rememberParticleFieldState(ambientCount = 0)
     var celebrationWidth by remember { mutableStateOf(0f) }
+    // The real, currently-rendered banner height (0.dp whenever nothing shows) - see
+    // AdaptiveBannerAd's own doc. Without this, the Spin button (this screen's centered content has
+    // no scroll of its own) could end up resting right where the banner overlay below it renders,
+    // especially once the reward card pushes everything taller on a shorter viewport.
+    var bannerHeight by remember { mutableStateOf(0.dp) }
     var revealed by remember {
         val content = uiState as? LuckySpinUiState.Content
         mutableStateOf(content != null && content.lastResult != null && !content.isSpinning)
@@ -175,7 +184,7 @@ fun LuckySpinScreenBody(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
+        Column(modifier = Modifier.fillMaxSize().padding(24.dp).padding(bottom = bannerHeight)) {
             when (val state = uiState) {
                 is LuckySpinUiState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = MemoryArchitectColors.accentTerracotta)
@@ -246,6 +255,7 @@ fun LuckySpinScreenBody(
                         onSpinFree = { viewModel.spin(SpinSource.FREE) },
                         onWatchAd = { activity?.let(viewModel::watchRewardedAd) },
                         onSpinTicket = { viewModel.spin(SpinSource.TICKET) },
+                        onFreeSpinResetReached = viewModel::onFreeSpinResetReached,
                         modifier = Modifier.padding(top = 28.dp).staggeredReveal(3),
                     )
                 }
@@ -263,7 +273,11 @@ fun LuckySpinScreenBody(
         // for why this renders nothing at all for a Remove Ads purchaser regardless.
         val content = uiState as? LuckySpinUiState.Content
         if (content != null && !content.isSpinning) {
-            AdaptiveBannerAd(placement = "lucky_spin", modifier = Modifier.align(Alignment.BottomCenter))
+            AdaptiveBannerAd(
+                placement = "lucky_spin",
+                onHeightChanged = { bannerHeight = it },
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
             MysteryChestAdTile(
                 state = content,
                 isAdLoading = mysteryChestRewardedAdState is RewardedAdUiState.Loading,
@@ -364,6 +378,7 @@ private fun SpinActionButton(
     onSpinFree: () -> Unit,
     onWatchAd: () -> Unit,
     onSpinTicket: () -> Unit,
+    onFreeSpinResetReached: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val label = when {
@@ -373,18 +388,83 @@ private fun SpinActionButton(
         state.ticketCount > 0 -> stringResource(R.string.lucky_spin_use_ticket_action, state.ticketCount)
         else -> stringResource(R.string.lucky_spin_come_back_tomorrow)
     }
-    PrimaryButton(
-        text = label,
-        onClick = {
-            when {
-                state.canSpinFree -> onSpinFree()
-                state.canSpinAd -> onWatchAd()
-                state.ticketCount > 0 -> onSpinTicket()
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = modifier) {
+        // The baseline allowance every player should understand at a glance, regardless of which
+        // state (available/ad/ticket/exhausted) the button below is currently in.
+        Text(
+            text = stringResource(R.string.lucky_spin_daily_allowance),
+            style = MaterialTheme.typography.labelSmall,
+            color = MemoryArchitectColors.textTertiary,
+            modifier = Modifier.padding(bottom = 8.dp),
+        )
+        PrimaryButton(
+            text = label,
+            onClick = {
+                when {
+                    state.canSpinFree -> onSpinFree()
+                    state.canSpinAd -> onWatchAd()
+                    state.ticketCount > 0 -> onSpinTicket()
+                }
+            },
+            enabled = !state.isSpinning && !isAdLoading && state.canSpin,
+        )
+        // Only relevant once the free spin itself is used up - mirrors MysteryChestAdTile's own
+        // "X/N used today" readout, so the ad-gated allowance is just as visible up front as the
+        // Mystery Chest one already is, never a surprise only discovered after hitting the cap.
+        if (!state.canSpinFree && state.canSpinAd) {
+            Text(
+                text = stringResource(R.string.lucky_spin_ad_spins_remaining, state.adSpinsRemaining, SpinRules.Default.maxAdSpinsPerDay),
+                style = MaterialTheme.typography.labelSmall,
+                color = MemoryArchitectColors.textTertiary,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+        }
+        // Only shown once every option (free/ad/ticket) is actually exhausted - while an ad spin or
+        // ticket is still usable, "wait until tomorrow" isn't the relevant message, the button above
+        // already offers something to do right now.
+        if (!state.canSpin && state.nextFreeSpinAtEpochSecond != null) {
+            FreeSpinResetCountdown(
+                targetEpochSecond = state.nextFreeSpinAtEpochSecond,
+                onReached = onFreeSpinResetReached,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+        }
+    }
+}
+
+/** "Next free spin in Xh Ym" (or Xm), ticking once a minute - mirrors
+ * [com.suman.memoryarchitect.ui.screens.missions.MissionCountdown]'s own shape (this app has no
+ * shared countdown primitive - each screen keeps its own small copy). Calls [onReached] exactly
+ * once, the instant the countdown reaches zero, so [LuckySpinViewModel.onFreeSpinResetReached] can
+ * flip the button back to "Free Spin" immediately instead of waiting for the player to leave and
+ * re-enter this screen. */
+@Composable
+private fun FreeSpinResetCountdown(targetEpochSecond: Long, onReached: () -> Unit, modifier: Modifier = Modifier) {
+    var remainingSeconds by remember(targetEpochSecond) {
+        mutableLongStateOf((targetEpochSecond - System.currentTimeMillis() / 1000L).coerceAtLeast(0L))
+    }
+
+    LaunchedEffect(targetEpochSecond) {
+        while (isActive) {
+            remainingSeconds = (targetEpochSecond - System.currentTimeMillis() / 1000L).coerceAtLeast(0L)
+            if (remainingSeconds <= 0L) {
+                onReached()
+                break
             }
-        },
-        enabled = !state.isSpinning && !isAdLoading && state.canSpin,
-        modifier = modifier,
-    )
+            delay(60_000L)
+        }
+    }
+
+    val context = LocalContext.current
+    val hours = remainingSeconds / 3_600L
+    val minutes = (remainingSeconds % 3_600L) / 60L
+    val text = if (hours > 0) {
+        context.getString(R.string.lucky_spin_next_free_spin_hours_minutes, hours, minutes)
+    } else {
+        context.getString(R.string.lucky_spin_next_free_spin_minutes, minutes.coerceAtLeast(1L))
+    }
+
+    Text(text = text, style = MaterialTheme.typography.labelMedium, color = MemoryArchitectColors.textSecondary, modifier = modifier)
 }
 
 @Composable

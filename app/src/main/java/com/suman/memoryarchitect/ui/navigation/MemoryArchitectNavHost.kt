@@ -17,12 +17,10 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
-import com.suman.memoryarchitect.BuildConfig
 import com.suman.memoryarchitect.core.cosmetics.RootCosmeticsViewModel
 import com.suman.memoryarchitect.core.feedback.audio.MusicTrack
 import com.suman.memoryarchitect.core.feedback.ui.rememberFeedback
 import com.suman.memoryarchitect.ui.components.LocalEquippedCosmetics
-import com.suman.memoryarchitect.ui.screens.analyticsdashboard.AnalyticsDashboardScreen
 import com.suman.memoryarchitect.domain.model.DifficultyTier
 import com.suman.memoryarchitect.domain.model.GameMode
 import com.suman.memoryarchitect.feature.ads.InterstitialGateViewModel
@@ -143,7 +141,6 @@ fun MemoryArchitectNavHost(
             TrackScreenView("settings", MusicTrack.HOME)
             SettingsScreen(
                 onBack = { navController.popBackStack() },
-                onOpenAnalyticsDashboard = { navController.navigate(Route.AnalyticsDashboard) },
                 onOpenPrivacyPolicy = { navController.navigate(Route.Legal(LegalDocument.PRIVACY_POLICY.name)) },
                 onOpenTerms = { navController.navigate(Route.Legal(LegalDocument.TERMS_AND_CONDITIONS.name)) },
             )
@@ -178,12 +175,6 @@ fun MemoryArchitectNavHost(
         composable<Route.Inventory>(enterTransition = NavAnimations.fadeEnter, exitTransition = NavAnimations.fadeExit) {
             TrackScreenView("inventory", MusicTrack.HOME)
             InventoryScreen(onBack = { navController.popBackStack() })
-        }
-        if (BuildConfig.DEBUG) {
-            composable<Route.AnalyticsDashboard>(enterTransition = NavAnimations.fadeEnter, exitTransition = NavAnimations.fadeExit) {
-                TrackScreenView("analytics_dashboard", MusicTrack.UNCHANGED)
-                AnalyticsDashboardScreen(onBack = { navController.popBackStack() })
-            }
         }
         composable<Route.Gameplay>(
             enterTransition = NavAnimations.gameplayEnter,

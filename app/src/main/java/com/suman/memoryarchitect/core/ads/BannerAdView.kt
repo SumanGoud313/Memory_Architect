@@ -4,12 +4,17 @@ import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
@@ -44,16 +49,31 @@ import com.suman.memoryarchitect.feature.ads.BannerAdViewModel
  * [LocalLifecycleOwner] via [DisposableEffect], not left to get garbage-collected - the same
  * "no leaked ad surface across navigation" requirement [InterstitialAdControllerImpl]'s
  * dead-Activity check satisfies for full-screen formats.
+ *
+ * [onHeightChanged] reports this banner's real, currently-rendered height (`0.dp` whenever nothing
+ * is actually shown - not shown, no activity, or not yet loaded) so a caller with bottom-anchored
+ * content of its own (a `Snackbar`, a scrollable list's last row, a fixed action button) can reserve
+ * exactly that much space rather than risk the banner overlapping and hiding it - see
+ * `InventoryScreen.kt`'s own call site for why this matters (a Mystery Chest's "you got N coins"
+ * Snackbar was rendering directly underneath the banner, invisible, before this existed).
  */
 @Composable
-fun AdaptiveBannerAd(placement: String, modifier: Modifier = Modifier, viewModel: BannerAdViewModel = hiltViewModel()) {
+fun AdaptiveBannerAd(
+    placement: String,
+    modifier: Modifier = Modifier,
+    onHeightChanged: (Dp) -> Unit = {},
+    viewModel: BannerAdViewModel = hiltViewModel(),
+) {
     val shouldShow by viewModel.shouldShowBanner.collectAsStateWithLifecycle()
-    if (!shouldShow) return
+    val activity = LocalActivity.current
     // No activity (a rare host-less preview/test context) means nowhere safe to attach a banner -
     // same "nothing to show" outcome as shouldShow being false, never a crash.
-    LocalActivity.current ?: return
+    val visible = shouldShow && activity != null
+    LaunchedEffect(visible) { if (!visible) onHeightChanged(0.dp) }
+    if (!visible) return
 
     val context = LocalContext.current
+    val density = LocalDensity.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val screenWidthDp = LocalConfiguration.current.screenWidthDp
 
@@ -73,11 +93,14 @@ fun AdaptiveBannerAd(placement: String, modifier: Modifier = Modifier, viewModel
                 lifecycleOwner.lifecycle.removeObserver(observer)
                 adViewHolder.adView?.destroy()
                 adViewHolder.adView = null
+                onHeightChanged(0.dp)
             }
         }
 
         AndroidView(
-            modifier = modifier.fillMaxWidth(),
+            modifier = modifier.fillMaxWidth().onSizeChanged { size ->
+                onHeightChanged(with(density) { size.height.toDp() })
+            },
             factory = { factoryContext ->
                 val loadStartedAtMs = System.currentTimeMillis()
                 AdView(factoryContext).apply {
