@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -50,7 +51,10 @@ fun MemoryJourneyScreen(onBack: () -> Unit, viewModel: MemoryJourneyViewModel = 
                 }
             } else {
                 Column(
-                    modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 8.dp),
+                    // navigationBarsPadding() before the existing flat padding - no banner ad on
+                    // this screen reserving bottom clearance, so without it the last tier row could
+                    // scroll to a resting position right against a 2/3-button nav bar.
+                    modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).navigationBarsPadding().padding(horizontal = 24.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     // The single biggest source of "why doesn't tapping this do anything" -

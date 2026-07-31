@@ -82,6 +82,14 @@
     <string name="settings_reset_progress_subtitle">உள்ளூர் நிலைகள், புள்ளிவிவரங்கள் மற்றும் சாதனைகளை அழிக்கிறது</string>
     <string name="settings_reset_progress_dialog_title">அனைத்து முன்னேற்றத்தையும் மீட்டமைக்கவா?</string>
     <string name="settings_reset_progress_dialog_message">இது உங்கள் உள்ளூர் நிலைகள், சிறந்த நேரங்கள், நட்சத்திரங்கள், புள்ளிவிவரங்கள் மற்றும் சாதனைகளை அழிக்கும். இந்த செயலை மாற்ற முடியாது.</string>
+    <string name="settings_privacy_policy">தனியுரிமைக் கொள்கை</string>
+    <string name="settings_terms_and_conditions">விதிமுறைகள் மற்றும் நிபந்தனைகள்</string>
+    <string name="settings_delete_account">கணக்கை நீக்கு</string>
+    <string name="settings_delete_account_subtitle">உங்கள் கணக்கு மற்றும் அனைத்து தரவையும் நிரந்தரமாக நீக்குகிறது</string>
+    <string name="settings_delete_account_dialog_title">கணக்கை நீக்கவா?</string>
+    <string name="settings_delete_account_dialog_message">இது உங்கள் கணக்கு, XP/நாணயங்கள்/ஸ்ட்ரீக், வாங்குதல்கள், சொந்தமான கவின்பொருட்கள் மற்றும் தரவரிசை வரலாற்றை நிரந்தரமாக நீக்கும். இதை மீட்டெடுக்க முடியாது.</string>
+    <string name="settings_delete_account_error_title">கணக்கை நீக்க முடியவில்லை</string>
+    <string name="settings_delete_account_error_message">உங்கள் இணைப்பைச் சரிபார்த்து மீண்டும் முயற்சிக்கவும்.</string>
     <string name="settings_version">பதிப்பு %1$s</string>
 
     <string name="mode_classic_title">கிளாசிக்</string>
@@ -554,6 +562,15 @@
     <string name="lucky_spin_go_to_collections">அதை அணிய கடை → தொகுப்புக்குச் செல்லுங்கள்!</string>
     <string name="lucky_spin_go_to_shop_action">கடைக்குச் செல்</string>
     <string name="lucky_spin_ad_unavailable">தற்போது விளம்பரங்கள் எதுவும் இல்லை - விரைவில் மீண்டும் முயற்சிக்கவும்.</string>
+    <string name="lucky_spin_daily_allowance">ஒவ்வொரு நாளும் 1 இலவச சுழற்சி</string>
+    <string name="lucky_spin_ad_spins_remaining">இன்று %2$d இல் %1$d போனஸ் விளம்பர சுழற்சிகள் மீதம்</string>
+    <string name="lucky_spin_next_free_spin_hours_minutes">அடுத்த இலவச சுழற்சி %1$dம %2$dநி இல்</string>
+    <string name="lucky_spin_next_free_spin_minutes">அடுத்த இலவச சுழற்சி %1$dநி இல்</string>
+    <string name="lucky_spin_odds_action">வாய்ப்புகளைக் காண்க</string>
+    <string name="lucky_spin_odds_title">சுழற்சி வாய்ப்புகள்</string>
+    <string name="lucky_spin_odds_intro">எந்த சுழற்சியிலும் ஒவ்வொரு விளைவின் வாய்ப்பு:</string>
+    <string name="lucky_spin_odds_coins_row">%1$d நாணயங்கள்</string>
+    <string name="lucky_spin_odds_cosmetic_row">கவின் பொருள்: %1$s</string>
     <string name="mystery_chest_box_title">மர்மப் பெட்டி பாக்ஸ்</string>
     <string name="mystery_chest_watch_ad_description">1 மர்மப் பெட்டியைப் பெற விளம்பரத்தைப் பாருங்கள்</string>
     <string name="mystery_chest_watch_ad_action">விளம்பரத்தைப் பார்க்கவும்</string>

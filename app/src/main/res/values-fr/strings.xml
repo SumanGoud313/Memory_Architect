@@ -82,6 +82,14 @@
     <string name="settings_reset_progress_subtitle">Efface les niveaux, statistiques et succès locaux</string>
     <string name="settings_reset_progress_dialog_title">Réinitialiser toute la progression ?</string>
     <string name="settings_reset_progress_dialog_message">Cela efface vos niveaux locaux, meilleurs temps, étoiles, statistiques et succès. Cette action est irréversible.</string>
+    <string name="settings_privacy_policy">Politique de confidentialité</string>
+    <string name="settings_terms_and_conditions">Conditions d\'utilisation</string>
+    <string name="settings_delete_account">Supprimer le compte</string>
+    <string name="settings_delete_account_subtitle">Supprime définitivement votre compte et toutes vos données</string>
+    <string name="settings_delete_account_dialog_title">Supprimer le compte ?</string>
+    <string name="settings_delete_account_dialog_message">Cela supprime définitivement votre compte, XP/pièces/séries, achats, cosmétiques possédés et historique du classement. Cette action est irréversible.</string>
+    <string name="settings_delete_account_error_title">Impossible de supprimer le compte</string>
+    <string name="settings_delete_account_error_message">Veuillez vérifier votre connexion et réessayer.</string>
     <string name="settings_version">Version %1$s</string>
 
     <string name="mode_classic_title">Classique</string>
@@ -554,6 +562,15 @@
     <string name="lucky_spin_go_to_collections">Allez dans Boutique → Collections pour l\'équiper !</string>
     <string name="lucky_spin_go_to_shop_action">Aller à la boutique</string>
     <string name="lucky_spin_ad_unavailable">Aucune pub disponible pour le moment - réessayez bientôt.</string>
+    <string name="lucky_spin_daily_allowance">1 tour gratuit chaque jour</string>
+    <string name="lucky_spin_ad_spins_remaining">%1$d sur %2$d tours bonus pub restants aujourd\'hui</string>
+    <string name="lucky_spin_next_free_spin_hours_minutes">Prochain tour gratuit dans %1$dh %2$dmin</string>
+    <string name="lucky_spin_next_free_spin_minutes">Prochain tour gratuit dans %1$dmin</string>
+    <string name="lucky_spin_odds_action">Voir les probabilités</string>
+    <string name="lucky_spin_odds_title">Probabilités de la roue</string>
+    <string name="lucky_spin_odds_intro">La probabilité de chaque résultat à chaque tour :</string>
+    <string name="lucky_spin_odds_coins_row">%1$d pièces</string>
+    <string name="lucky_spin_odds_cosmetic_row">Objet cosmétique : %1$s</string>
     <string name="mystery_chest_box_title">Coffre Mystère</string>
     <string name="mystery_chest_watch_ad_description">Regardez une pub pour obtenir 1 coffre mystère</string>
     <string name="mystery_chest_watch_ad_action">Regarder une pub</string>

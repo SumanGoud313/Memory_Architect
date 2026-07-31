@@ -57,8 +57,14 @@ class StarRatingCalculatorTest {
 
     @Test
     fun `a weak but passing attempt earns one star`() {
-        val stars = StarRatingCalculator.calculate(result(sceneAccuracy = 0.6f), objectCount)
+        val stars = StarRatingCalculator.calculate(result(sceneAccuracy = 0.75f), objectCount)
         assertEquals(1, stars)
+    }
+
+    @Test
+    fun `an accuracy below the pass threshold earns zero stars`() {
+        val stars = StarRatingCalculator.calculate(result(sceneAccuracy = 0.6f), objectCount)
+        assertEquals(0, stars)
     }
 
     @Test

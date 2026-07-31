@@ -236,10 +236,13 @@ fun ModeSelectScreen(
             // already reserves its own bottom padding) - a non-gameplay screen, exactly the
             // placement this ad format is meant for. Renders nothing at all for a Remove Ads
             // purchaser or if Remote Config has banners off - see AdaptiveBannerAd's own doc.
+            // AdaptiveBannerAd already reserves its own nav-bar clearance internally, so this call
+            // site doesn't need to add systemBarPadding's bottom value itself - doing so as well
+            // would double it up.
             AdaptiveBannerAd(
                 placement = "mode_select",
                 onHeightChanged = { bannerHeight = it },
-                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = systemBarPadding.calculateBottomPadding()),
+                modifier = Modifier.align(Alignment.BottomCenter),
             )
         }
     }

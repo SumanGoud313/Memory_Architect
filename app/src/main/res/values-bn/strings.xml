@@ -82,6 +82,14 @@
     <string name="settings_reset_progress_subtitle">স্থানীয় লেভেল, পরিসংখ্যান এবং কৃতিত্ব মুছে দেয়</string>
     <string name="settings_reset_progress_dialog_title">সব অগ্রগতি রিসেট করবেন?</string>
     <string name="settings_reset_progress_dialog_message">এটি আপনার স্থানীয় লেভেল, সেরা সময়, তারা, পরিসংখ্যান এবং কৃতিত্ব মুছে ফেলবে। এই কাজটি পূর্বাবস্থায় ফেরানো যাবে না।</string>
+    <string name="settings_privacy_policy">গোপনীয়তা নীতি</string>
+    <string name="settings_terms_and_conditions">শর্তাবলী</string>
+    <string name="settings_delete_account">অ্যাকাউন্ট মুছুন</string>
+    <string name="settings_delete_account_subtitle">আপনার অ্যাকাউন্ট এবং সমস্ত ডেটা স্থায়ীভাবে মুছে দেয়</string>
+    <string name="settings_delete_account_dialog_title">অ্যাকাউন্ট মুছবেন?</string>
+    <string name="settings_delete_account_dialog_message">এটি আপনার অ্যাকাউন্ট, XP/কয়েন/স্ট্রিক, ক্রয়, মালিকানাধীন কসমেটিক্স এবং লিডারবোর্ড ইতিহাস স্থায়ীভাবে মুছে দেবে। এটি পূর্বাবস্থায় ফেরানো যাবে না।</string>
+    <string name="settings_delete_account_error_title">অ্যাকাউন্ট মুছতে ব্যর্থ হয়েছে</string>
+    <string name="settings_delete_account_error_message">অনুগ্রহ করে আপনার সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।</string>
     <string name="settings_version">সংস্করণ %1$s</string>
 
     <string name="mode_classic_title">ক্লাসিক</string>
@@ -554,6 +562,15 @@
     <string name="lucky_spin_go_to_collections">এটি পরতে দোকান → সংগ্রহে যান!</string>
     <string name="lucky_spin_go_to_shop_action">দোকানে যান</string>
     <string name="lucky_spin_ad_unavailable">এই মুহূর্তে কোনো বিজ্ঞাপন উপলব্ধ নেই - শীঘ্রই আবার চেষ্টা করুন।</string>
+    <string name="lucky_spin_daily_allowance">প্রতিদিন ১টি ফ্রি স্পিন</string>
+    <string name="lucky_spin_ad_spins_remaining">আজ %2$d এর মধ্যে %1$d বোনাস বিজ্ঞাপন স্পিন বাকি</string>
+    <string name="lucky_spin_next_free_spin_hours_minutes">পরবর্তী ফ্রি স্পিন %1$dঘ %2$dমি পরে</string>
+    <string name="lucky_spin_next_free_spin_minutes">পরবর্তী ফ্রি স্পিন %1$dমি পরে</string>
+    <string name="lucky_spin_odds_action">সম্ভাবনা দেখুন</string>
+    <string name="lucky_spin_odds_title">স্পিন সম্ভাবনা</string>
+    <string name="lucky_spin_odds_intro">যেকোনো স্পিনে প্রতিটি ফলাফলের সম্ভাবনা:</string>
+    <string name="lucky_spin_odds_coins_row">%1$d কয়েন</string>
+    <string name="lucky_spin_odds_cosmetic_row">কসমেটিক আইটেম: %1$s</string>
     <string name="mystery_chest_box_title">মিস্ট্রি চেস্ট বক্স</string>
     <string name="mystery_chest_watch_ad_description">১টি মিস্ট্রি বক্স পেতে বিজ্ঞাপন দেখুন</string>
     <string name="mystery_chest_watch_ad_action">বিজ্ঞাপন দেখুন</string>

@@ -21,7 +21,13 @@ data class ScoringRules(
     val threeStarTimeBonusRatio: Float = 0.6f,
     val twoStarAccuracy: Float = 0.85f,
     val twoStarTimeBonusRatio: Float = 0.3f,
-    val oneStarAccuracy: Float = 0.5f,
+    // Matches ProgressionRules.challengeWinAccuracyThreshold/LevelCampaignRules.passAccuracyThreshold
+    // (both 0.7) rather than a lower number of its own - a "1 star" result has to actually be a
+    // pass/win. It used to be 0.5, so a 0.5-0.69 accuracy round showed a positive "Good Try, star"
+    // results screen (and, for Daily/Weekly Challenge specifically, no "failed" text anywhere on
+    // that screen at all) while genuinely earning zero XP/coins underneath it - a real completion
+    // looked exactly like a denied one.
+    val oneStarAccuracy: Float = 0.7f,
     /** Points per object in the streak once a combo reaches [comboBonusMinStreak]. */
     val comboBonusPerStreakObject: Int = 15,
     val comboBonusMinStreak: Int = 2,

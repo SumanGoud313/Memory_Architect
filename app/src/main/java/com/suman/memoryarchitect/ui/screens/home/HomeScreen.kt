@@ -8,7 +8,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
@@ -61,7 +63,10 @@ fun HomeScreen(
 
     AmbientBackground(nearParticles = particles) {
         AnimatedVisibility(visible = !isExiting, exit = fadeOut(tween(280))) {
-            Box(modifier = Modifier.fillMaxWidth().padding(24.dp)) {
+            // statusBarsPadding() first (outside the existing flat 24dp) - additive clearance from
+            // the real status bar/cutout, not instead of the existing margin, matching the same
+            // fix applied to ScreenHeader for every other screen's own header.
+            Box(modifier = Modifier.statusBarsPadding().fillMaxWidth().padding(24.dp)) {
                 IconGlassButton(
                     icon = Icons.Filled.Person,
                     contentDescription = stringResource(R.string.home_profile),
@@ -95,7 +100,10 @@ fun HomeScreen(
             modifier = Modifier.fillMaxSize(),
         ) {
             Column(
-                modifier = Modifier.fillMaxSize().padding(32.dp),
+                // navigationBarsPadding() before the existing flat 32dp - this Column's content is
+                // bottom-anchored (Arrangement.Bottom), so without it the title/tagline could end
+                // up sitting right against, or partly behind, a 2/3-button navigation bar.
+                modifier = Modifier.fillMaxSize().navigationBarsPadding().padding(32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Bottom,
             ) {

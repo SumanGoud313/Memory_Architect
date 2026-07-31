@@ -66,7 +66,17 @@ class HapticsManagerImpl @Inject constructor(
         val effect = effectFor(pattern, intensityScale.coerceIn(0.2f, 1f))
         val attributes = vibrationAttributes
         runCatching {
-            if (attributes != null) device.vibrate(effect, attributes) else device.vibrate(effect)
+            // The `attributes != null` half is what Kotlin's null-safety actually needs to smart-cast
+            // `attributes` to non-null below; the `SDK_INT >= 33` half is redundant with it at
+            // runtime (attributes is only ever non-null on 33+ per the lazy property above) but is
+            // what lint's own NewApi check needs to see, right at this call site, to verify the
+            // `device.vibrate(effect, attributes)` overload (API 33+) is actually guarded - it
+            // doesn't trace a null-check here back to the SDK_INT branch in a different property.
+            if (Build.VERSION.SDK_INT >= 33 && attributes != null) {
+                device.vibrate(effect, attributes)
+            } else {
+                device.vibrate(effect)
+            }
         }
     }
 

@@ -385,6 +385,11 @@ fun GameplayScreen(
     AmbientBackground(
         nearParticles = ambientParticles,
         modifier = Modifier.onGloballyPositioned { rootCoordinates = it },
+        // The room/tray/toolbar (and the results screen's own hit-testing coordinates, captured via
+        // rootCoordinates above) all assume they're measuring against the real device width - a
+        // capped-width column here would shrink the actual play surface on a tablet instead of
+        // letting it use the extra space, exactly backwards from what the cap is for elsewhere.
+        constrainContentWidth = false,
     ) {
         // Fades between Loading/Error/InProgress/Finished (a real phase-category change) without
         // ever fading on every InProgress mutation (timer ticks, drag state, placements) — keyed

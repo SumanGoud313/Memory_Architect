@@ -82,6 +82,14 @@
     <string name="settings_reset_progress_subtitle">ローカルのレベル、統計、実績を消去します</string>
     <string name="settings_reset_progress_dialog_title">すべての進行状況をリセットしますか？</string>
     <string name="settings_reset_progress_dialog_message">これにより、ローカルのレベル、ベストタイム、星、統計、実績が消去されます。この操作は元に戻せません。</string>
+    <string name="settings_privacy_policy">プライバシーポリシー</string>
+    <string name="settings_terms_and_conditions">利用規約</string>
+    <string name="settings_delete_account">アカウントを削除</string>
+    <string name="settings_delete_account_subtitle">アカウントとすべてのデータを完全に削除します</string>
+    <string name="settings_delete_account_dialog_title">アカウントを削除しますか？</string>
+    <string name="settings_delete_account_dialog_message">アカウント、XP/コイン/連続記録、購入履歴、所持しているコスメティック、リーダーボードの履歴が完全に削除されます。この操作は元に戻せません。</string>
+    <string name="settings_delete_account_error_title">アカウントを削除できませんでした</string>
+    <string name="settings_delete_account_error_message">接続を確認してもう一度お試しください。</string>
     <string name="settings_version">バージョン %1$s</string>
 
     <string name="mode_classic_title">クラシック</string>
@@ -548,6 +556,15 @@
     <string name="lucky_spin_go_to_collections">ショップ → コレクションで装備しましょう！</string>
     <string name="lucky_spin_go_to_shop_action">ショップへ移動</string>
     <string name="lucky_spin_ad_unavailable">現在利用できる広告がありません — またすぐにお試しください。</string>
+    <string name="lucky_spin_daily_allowance">毎日1回無料スピン</string>
+    <string name="lucky_spin_ad_spins_remaining">本日のボーナス広告スピン残り %1$d/%2$d 回</string>
+    <string name="lucky_spin_next_free_spin_hours_minutes">次の無料スピンまで %1$d時間%2$d分</string>
+    <string name="lucky_spin_next_free_spin_minutes">次の無料スピンまで %1$d分</string>
+    <string name="lucky_spin_odds_action">確率を見る</string>
+    <string name="lucky_spin_odds_title">スピン確率</string>
+    <string name="lucky_spin_odds_intro">スピンごとの各結果の確率:</string>
+    <string name="lucky_spin_odds_coins_row">%1$dコイン</string>
+    <string name="lucky_spin_odds_cosmetic_row">コスメティックアイテム: %1$s</string>
     <string name="mystery_chest_box_title">ミステリーチェストボックス</string>
     <string name="mystery_chest_watch_ad_description">広告を見てミステリーボックスを1個獲得しよう</string>
     <string name="mystery_chest_watch_ad_action">広告を見る</string>

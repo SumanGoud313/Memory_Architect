@@ -82,6 +82,14 @@
     <string name="settings_reset_progress_subtitle">Удаляет локальные уровни, статистику и достижения</string>
     <string name="settings_reset_progress_dialog_title">Сбросить весь прогресс?</string>
     <string name="settings_reset_progress_dialog_message">Это удалит ваши локальные уровни, лучшее время, звёзды, статистику и достижения. Это действие нельзя отменить.</string>
+    <string name="settings_privacy_policy">Политика конфиденциальности</string>
+    <string name="settings_terms_and_conditions">Условия использования</string>
+    <string name="settings_delete_account">Удалить аккаунт</string>
+    <string name="settings_delete_account_subtitle">Навсегда удаляет ваш аккаунт и все данные</string>
+    <string name="settings_delete_account_dialog_title">Удалить аккаунт?</string>
+    <string name="settings_delete_account_dialog_message">Это навсегда удалит ваш аккаунт, опыт/монеты/серии побед, покупки, приобретённые косметические предметы и историю таблицы лидеров. Это действие нельзя отменить.</string>
+    <string name="settings_delete_account_error_title">Не удалось удалить аккаунт</string>
+    <string name="settings_delete_account_error_message">Проверьте подключение и попробуйте снова.</string>
     <string name="settings_version">Версия %1$s</string>
 
     <string name="mode_classic_title">Классика</string>
@@ -566,6 +574,15 @@
     <string name="lucky_spin_go_to_collections">Перейдите в Магазин → Коллекции, чтобы надеть!</string>
     <string name="lucky_spin_go_to_shop_action">Перейти в магазин</string>
     <string name="lucky_spin_ad_unavailable">Сейчас реклама недоступна - попробуйте немного позже.</string>
+    <string name="lucky_spin_daily_allowance">1 бесплатное вращение каждый день</string>
+    <string name="lucky_spin_ad_spins_remaining">Осталось %1$d из %2$d бонусных вращений за рекламу сегодня</string>
+    <string name="lucky_spin_next_free_spin_hours_minutes">Следующее бесплатное вращение через %1$dч %2$dм</string>
+    <string name="lucky_spin_next_free_spin_minutes">Следующее бесплатное вращение через %1$dм</string>
+    <string name="lucky_spin_odds_action">Посмотреть шансы</string>
+    <string name="lucky_spin_odds_title">Шансы вращения</string>
+    <string name="lucky_spin_odds_intro">Шанс каждого исхода при любом вращении:</string>
+    <string name="lucky_spin_odds_coins_row">%1$d монет</string>
+    <string name="lucky_spin_odds_cosmetic_row">Косметический предмет: %1$s</string>
     <string name="mystery_chest_box_title">Таинственный сундук</string>
     <string name="mystery_chest_watch_ad_description">Смотрите рекламу, чтобы получить 1 таинственный сундук</string>
     <string name="mystery_chest_watch_ad_action">Смотреть рекламу</string>

@@ -82,6 +82,14 @@
     <string name="settings_reset_progress_subtitle">స్థానిక లెవెల్స్, గణాంకాలు మరియు విజయాలను తొలగిస్తుంది</string>
     <string name="settings_reset_progress_dialog_title">అన్ని పురోగతిని రీసెట్ చేయాలా?</string>
     <string name="settings_reset_progress_dialog_message">ఇది మీ స్థానిక లెవెల్స్, ఉత్తమ సమయాలు, నక్షత్రాలు, గణాంకాలు మరియు విజయాలను తొలగిస్తుంది. ఈ చర్యను రద్దు చేయలేరు.</string>
+    <string name="settings_privacy_policy">గోప్యతా విధానం</string>
+    <string name="settings_terms_and_conditions">నిబంధనలు మరియు షరతులు</string>
+    <string name="settings_delete_account">ఖాతాను తొలగించండి</string>
+    <string name="settings_delete_account_subtitle">మీ ఖాతా మరియు మొత్తం డేటాను శాశ్వతంగా తొలగిస్తుంది</string>
+    <string name="settings_delete_account_dialog_title">ఖాతాను తొలగించాలా?</string>
+    <string name="settings_delete_account_dialog_message">ఇది మీ ఖాతా, XP/నాణేలు/స్ట్రీక్‌లు, కొనుగోళ్లు, స్వంతమైన కాస్మెటిక్స్ మరియు లీడర్‌బోర్డ్ చరిత్రను శాశ్వతంగా తొలగిస్తుంది. దీన్ని రద్దు చేయలేరు.</string>
+    <string name="settings_delete_account_error_title">ఖాతాను తొలగించడం సాధ్యం కాలేదు</string>
+    <string name="settings_delete_account_error_message">దయచేసి మీ కనెక్షన్‌ని తనిఖీ చేసి మళ్లీ ప్రయత్నించండి.</string>
     <string name="settings_version">వెర్షన్ %1$s</string>
 
     <string name="mode_classic_title">క్లాసిక్</string>
@@ -554,6 +562,15 @@
     <string name="lucky_spin_go_to_collections">దీన్ని ధరించడానికి షాప్ → సేకరణకు వెళ్లండి!</string>
     <string name="lucky_spin_go_to_shop_action">షాప్‌కు వెళ్ళండి</string>
     <string name="lucky_spin_ad_unavailable">ప్రస్తుతం ప్రకటనలు అందుబాటులో లేవు - త్వరలో మళ్లీ ప్రయత్నించండి.</string>
+    <string name="lucky_spin_daily_allowance">ప్రతిరోజూ 1 ఉచిత స్పిన్</string>
+    <string name="lucky_spin_ad_spins_remaining">ఈరోజు %2$dలో %1$d బోనస్ ప్రకటన స్పిన్‌లు మిగిలి ఉన్నాయి</string>
+    <string name="lucky_spin_next_free_spin_hours_minutes">తదుపరి ఉచిత స్పిన్ %1$dగం %2$dని లో</string>
+    <string name="lucky_spin_next_free_spin_minutes">తదుపరి ఉచిత స్పిన్ %1$dని లో</string>
+    <string name="lucky_spin_odds_action">అవకాశాలను చూడండి</string>
+    <string name="lucky_spin_odds_title">స్పిన్ అవకాశాలు</string>
+    <string name="lucky_spin_odds_intro">ఏదైనా స్పిన్‌లో ప్రతి ఫలితం వచ్చే అవకాశం:</string>
+    <string name="lucky_spin_odds_coins_row">%1$d నాణేలు</string>
+    <string name="lucky_spin_odds_cosmetic_row">కాస్మెటిక్ ఐటమ్: %1$s</string>
     <string name="mystery_chest_box_title">మిస్టరీ చెస్ట్ బాక్స్</string>
     <string name="mystery_chest_watch_ad_description">1 మిస్టరీ బాక్స్ పొందడానికి ప్రకటన చూడండి</string>
     <string name="mystery_chest_watch_ad_action">ప్రకటన చూడండి</string>

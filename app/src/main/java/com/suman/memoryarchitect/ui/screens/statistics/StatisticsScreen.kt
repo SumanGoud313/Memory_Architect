@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -92,7 +93,10 @@ fun StatisticsScreen(onBack: () -> Unit, viewModel: StatisticsViewModel = hiltVi
 private fun StatisticsContent(state: StatisticsUiState.Content) {
     val context = LocalContext.current
     Column(
-        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 8.dp),
+        // navigationBarsPadding() before the existing flat padding - this content has no banner ad
+        // of its own reserving bottom clearance the way most other screens do, so without it the
+        // last stat card could scroll to a resting position right against a 2/3-button nav bar.
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).navigationBarsPadding().padding(horizontal = 24.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         RankHero(rank = state.rankStanding.current, modifier = Modifier.padding(top = 8.dp).staggeredReveal(0))

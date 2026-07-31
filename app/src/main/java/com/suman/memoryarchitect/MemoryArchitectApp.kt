@@ -90,9 +90,20 @@ class MemoryArchitectApp : Application(), ComponentCallbacks2, WorkConfiguration
         analytics.logMemoryWarning(trimMemoryLevelName(level))
     }
 
-    override fun onConfigurationChanged(newConfig: AndroidConfiguration) = Unit
+    // Both call super (fixing a real gap, not stylistic) - Application's own base implementation
+    // fans these out to every ComponentCallbacks2 any library registered (Coil's ImageLoader is
+    // exactly this kind of registrant - it trims/invalidates its bitmap memory cache on a config
+    // change or a low-memory signal). Skipping super here silently cut every library-level
+    // registrant off from both signals - a real risk for stale cached bitmaps after a runtime
+    // density/font-scale change, or the app failing to release memory it otherwise could under
+    // memory pressure on a lower-RAM device.
+    override fun onConfigurationChanged(newConfig: AndroidConfiguration) {
+        super.onConfigurationChanged(newConfig)
+    }
 
-    override fun onLowMemory() = Unit
+    override fun onLowMemory() {
+        super.onLowMemory()
+    }
 
     private fun trimMemoryLevelName(level: Int): String = when (level) {
         ComponentCallbacks2.TRIM_MEMORY_RUNNING_MODERATE -> "RUNNING_MODERATE"

@@ -2,6 +2,7 @@ package com.suman.memoryarchitect.core.ads
 
 import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -56,6 +57,16 @@ import com.suman.memoryarchitect.feature.ads.BannerAdViewModel
  * exactly that much space rather than risk the banner overlapping and hiding it - see
  * `InventoryScreen.kt`'s own call site for why this matters (a Mystery Chest's "you got N coins"
  * Snackbar was rendering directly underneath the banner, invisible, before this existed).
+ *
+ * [Modifier.navigationBarsPadding] is applied internally, once, rather than in every caller - every
+ * call site except `ModeSelectScreen`'s own bottom-anchored copy placed this banner flush against
+ * the very bottom of an edge-to-edge window with no clearance at all, so on any 2/3-button
+ * navigation-bar device (not just gesture nav, where the inset is usually negligible) the ad's
+ * bottom portion rendered partly or fully behind the nav bar. [onHeightChanged] still reports only
+ * the ad's own rendered height, not this padding - it's measured before the padding is applied, so
+ * a caller reserving space *above* this banner (Inventory's Snackbar, a scrollable list's bottom
+ * padding) is unaffected; the padding only adds clearance *below* the ad, between it and the real
+ * screen edge.
  */
 @Composable
 fun AdaptiveBannerAd(
@@ -98,7 +109,10 @@ fun AdaptiveBannerAd(
         }
 
         AndroidView(
-            modifier = modifier.fillMaxWidth().onSizeChanged { size ->
+            // navigationBarsPadding() before onSizeChanged (not after) so the reported height
+            // stays just the ad's own rendered size - the padding it adds becomes an outer wrapper
+            // around the measurement point below, invisible to it, rather than inflating it.
+            modifier = modifier.fillMaxWidth().navigationBarsPadding().onSizeChanged { size ->
                 onHeightChanged(with(density) { size.height.toDp() })
             },
             factory = { factoryContext ->

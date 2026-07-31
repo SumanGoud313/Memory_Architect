@@ -82,6 +82,14 @@
     <string name="settings_reset_progress_subtitle">Apaga níveis, estatísticas e conquistas locais</string>
     <string name="settings_reset_progress_dialog_title">Redefinir todo o progresso?</string>
     <string name="settings_reset_progress_dialog_message">Isso apaga seus níveis locais, melhores tempos, estrelas, estatísticas e conquistas. Esta ação não pode ser desfeita.</string>
+    <string name="settings_privacy_policy">Política de Privacidade</string>
+    <string name="settings_terms_and_conditions">Termos e Condições</string>
+    <string name="settings_delete_account">Excluir Conta</string>
+    <string name="settings_delete_account_subtitle">Exclui permanentemente sua conta e todos os dados</string>
+    <string name="settings_delete_account_dialog_title">Excluir conta?</string>
+    <string name="settings_delete_account_dialog_message">Isso exclui permanentemente sua conta, XP/moedas/sequências, compras, cosméticos possuídos e histórico do ranking. Esta ação não pode ser desfeita.</string>
+    <string name="settings_delete_account_error_title">Não foi possível excluir a conta</string>
+    <string name="settings_delete_account_error_message">Verifique sua conexão e tente novamente.</string>
     <string name="settings_version">Versão %1$s</string>
 
     <string name="mode_classic_title">Clássico</string>
@@ -554,6 +562,15 @@
     <string name="lucky_spin_go_to_collections">Vá para Loja → Coleções para equipá-lo!</string>
     <string name="lucky_spin_go_to_shop_action">Ir para a loja</string>
     <string name="lucky_spin_ad_unavailable">Nenhum anúncio disponível agora - tente novamente em breve.</string>
+    <string name="lucky_spin_daily_allowance">1 giro grátis por dia</string>
+    <string name="lucky_spin_ad_spins_remaining">%1$d de %2$d giros bônus por anúncio restantes hoje</string>
+    <string name="lucky_spin_next_free_spin_hours_minutes">Próximo giro grátis em %1$dh %2$dmin</string>
+    <string name="lucky_spin_next_free_spin_minutes">Próximo giro grátis em %1$dmin</string>
+    <string name="lucky_spin_odds_action">Ver probabilidades</string>
+    <string name="lucky_spin_odds_title">Probabilidades do giro</string>
+    <string name="lucky_spin_odds_intro">A chance de cada resultado em qualquer giro:</string>
+    <string name="lucky_spin_odds_coins_row">%1$d moedas</string>
+    <string name="lucky_spin_odds_cosmetic_row">Item cosmético: %1$s</string>
     <string name="mystery_chest_box_title">Baú Misterioso</string>
     <string name="mystery_chest_watch_ad_description">Assista a um anúncio para ganhar 1 Baú Misterioso</string>
     <string name="mystery_chest_watch_ad_action">Assistir Anúncio</string>

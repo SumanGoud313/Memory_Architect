@@ -82,6 +82,14 @@
     <string name="settings_reset_progress_subtitle">ಸ್ಥಳೀಯ ಲೆವೆಲ್‌ಗಳು, ಅಂಕಿಅಂಶಗಳು ಮತ್ತು ಸಾಧನೆಗಳನ್ನು ಅಳಿಸುತ್ತದೆ</string>
     <string name="settings_reset_progress_dialog_title">ಎಲ್ಲಾ ಪ್ರಗತಿಯನ್ನು ಮರುಹೊಂದಿಸಬೇಕೆ?</string>
     <string name="settings_reset_progress_dialog_message">ಇದು ನಿಮ್ಮ ಸ್ಥಳೀಯ ಲೆವೆಲ್‌ಗಳು, ಉತ್ತಮ ಸಮಯಗಳು, ನಕ್ಷತ್ರಗಳು, ಅಂಕಿಅಂಶಗಳು ಮತ್ತು ಸಾಧನೆಗಳನ್ನು ಅಳಿಸುತ್ತದೆ. ಈ ಕ್ರಿಯೆಯನ್ನು ರದ್ದುಗೊಳಿಸಲಾಗುವುದಿಲ್ಲ.</string>
+    <string name="settings_privacy_policy">ಗೌಪ್ಯತಾ ನೀತಿ</string>
+    <string name="settings_terms_and_conditions">ನಿಯಮಗಳು ಮತ್ತು ಷರತ್ತುಗಳು</string>
+    <string name="settings_delete_account">ಖಾತೆಯನ್ನು ಅಳಿಸಿ</string>
+    <string name="settings_delete_account_subtitle">ನಿಮ್ಮ ಖಾತೆ ಮತ್ತು ಎಲ್ಲಾ ಡೇಟಾವನ್ನು ಶಾಶ್ವತವಾಗಿ ಅಳಿಸುತ್ತದೆ</string>
+    <string name="settings_delete_account_dialog_title">ಖಾತೆಯನ್ನು ಅಳಿಸುವುದೇ?</string>
+    <string name="settings_delete_account_dialog_message">ಇದು ನಿಮ್ಮ ಖಾತೆ, XP/ನಾಣ್ಯಗಳು/ಸ್ಟ್ರೀಕ್‌ಗಳು, ಖರೀದಿಗಳು, ಸ್ವಂತ ಕಾಸ್ಮೆಟಿಕ್‌ಗಳು ಮತ್ತು ಲೀಡರ್‌ಬೋರ್ಡ್ ಇತಿಹಾಸವನ್ನು ಶಾಶ್ವತವಾಗಿ ಅಳಿಸುತ್ತದೆ. ಇದನ್ನು ರದ್ದುಗೊಳಿಸಲಾಗುವುದಿಲ್ಲ.</string>
+    <string name="settings_delete_account_error_title">ಖಾತೆಯನ್ನು ಅಳಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ</string>
+    <string name="settings_delete_account_error_message">ದಯವಿಟ್ಟು ನಿಮ್ಮ ಸಂಪರ್ಕವನ್ನು ಪರಿಶೀಲಿಸಿ ಮತ್ತು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.</string>
     <string name="settings_version">ಆವೃತ್ತಿ %1$s</string>
 
     <string name="mode_classic_title">ಕ್ಲಾಸಿಕ್</string>
@@ -554,6 +562,15 @@
     <string name="lucky_spin_go_to_collections">ಅದನ್ನು ಧರಿಸಲು ಅಂಗಡಿ → ಸಂಗ್ರಹಕ್ಕೆ ಹೋಗಿ!</string>
     <string name="lucky_spin_go_to_shop_action">ಅಂಗಡಿಗೆ ಹೋಗಿ</string>
     <string name="lucky_spin_ad_unavailable">ಪ್ರಸ್ತುತ ಯಾವುದೇ ಜಾಹೀರಾತುಗಳಿಲ್ಲ - ಶೀಘ್ರದಲ್ಲೇ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.</string>
+    <string name="lucky_spin_daily_allowance">ಪ್ರತಿದಿನ 1 ಉಚಿತ ಸ್ಪಿನ್</string>
+    <string name="lucky_spin_ad_spins_remaining">ಇಂದು %2$d ರಲ್ಲಿ %1$d ಬೋನಸ್ ಜಾಹೀರಾತು ಸ್ಪಿನ್‌ಗಳು ಉಳಿದಿವೆ</string>
+    <string name="lucky_spin_next_free_spin_hours_minutes">ಮುಂದಿನ ಉಚಿತ ಸ್ಪಿನ್ %1$dಗಂ %2$dನಿ ನಲ್ಲಿ</string>
+    <string name="lucky_spin_next_free_spin_minutes">ಮುಂದಿನ ಉಚಿತ ಸ್ಪಿನ್ %1$dನಿ ನಲ್ಲಿ</string>
+    <string name="lucky_spin_odds_action">ಸಾಧ್ಯತೆಗಳನ್ನು ವೀಕ್ಷಿಸಿ</string>
+    <string name="lucky_spin_odds_title">ಸ್ಪಿನ್ ಸಾಧ್ಯತೆಗಳು</string>
+    <string name="lucky_spin_odds_intro">ಯಾವುದೇ ಸ್ಪಿನ್‌ನಲ್ಲಿ ಪ್ರತಿ ಫಲಿತಾಂಶದ ಸಾಧ್ಯತೆ:</string>
+    <string name="lucky_spin_odds_coins_row">%1$d ನಾಣ್ಯಗಳು</string>
+    <string name="lucky_spin_odds_cosmetic_row">ಕಾಸ್ಮೆಟಿಕ್ ಐಟಂ: %1$s</string>
     <string name="mystery_chest_box_title">ಮಿಸ್ಟರಿ ಚೆಸ್ಟ್ ಬಾಕ್ಸ್</string>
     <string name="mystery_chest_watch_ad_description">1 ಮಿಸ್ಟರಿ ಬಾಕ್ಸ್ ಪಡೆಯಲು ಜಾಹೀರಾತು ನೋಡಿ</string>
     <string name="mystery_chest_watch_ad_action">ಜಾಹೀರಾತು ನೋಡಿ</string>

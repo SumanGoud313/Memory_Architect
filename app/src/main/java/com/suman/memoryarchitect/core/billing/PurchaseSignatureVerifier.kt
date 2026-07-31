@@ -26,13 +26,10 @@ import java.util.Base64
  */
 object PurchaseSignatureVerifier {
 
-    // TODO(play-console): paste the Base64-encoded RSA public key from
-    // Play Console > [app] > Monetize > Monetization setup > Licensing, before any production
-    // release. Deliberately blank in source control - this is a per-developer-account value only
-    // available from the app owner's own Play Console, not something derivable from this codebase.
-    // The ":app:checkBillingPublicKeyConfigured" Gradle task (wired into assembleRelease) fails a
-    // release build outright while this stays blank, so this can never silently ship unverified.
-    private const val BASE64_PUBLIC_KEY = ""
+    // Play Console > [app] > Monetize > Monetization setup > Licensing public key - verified as a
+    // complete, valid RSA-2048 SubjectPublicKeyInfo (294-byte DER, standard 65537 exponent) before
+    // being pasted in here, not just copied in blind.
+    private const val BASE64_PUBLIC_KEY = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxTGdmsuoR76HOL3+mUJU8ORyVqMXiVhCvBXQxpobopMO9dAzPb07duDGj2Yin6bIyuUZp0uFH8i8yyOVta75g7pwqNkoihLUFu4owpG2NuWOSZEbVeKmCEA51+cTdcpQtwIJKCXR1LJIX9KIbH0v9iVQA3rjWbKsyWgSA2grdfqey+3mEbwBhNgS4Vkcbxn4Y+38WtWMk5UxZHL7blbb2e09lou6q2x/h0zR2i3AX+zTdeWRlWG9azmAmstRkNkvxy6S5c0LQczqs8Uxmi1D0eamX+xNVYYOU0bSLDk+I6v0fMOB3ya7n/sSeHd8ADBo/BYgN1dtiKl3Etmio2R68QIDAQAB"
 
     sealed interface Result {
         data object Valid : Result

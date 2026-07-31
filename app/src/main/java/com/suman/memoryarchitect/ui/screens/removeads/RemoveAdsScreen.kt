@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -66,7 +67,10 @@ fun RemoveAdsScreen(onBack: () -> Unit, viewModel: RemoveAdsViewModel = hiltView
                 modifier = Modifier.fillMaxWidth().padding(24.dp).staggeredReveal(0),
             )
             Column(
-                modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 8.dp),
+                // navigationBarsPadding() before the existing flat padding - no banner ad on this
+                // screen reserving bottom clearance, so without it the last card could scroll to a
+                // resting position right against a 2/3-button nav bar.
+                modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).navigationBarsPadding().padding(horizontal = 24.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 if (hasRemovedAds) {

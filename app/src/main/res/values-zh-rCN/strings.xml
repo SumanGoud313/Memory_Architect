@@ -82,6 +82,14 @@
     <string name="settings_reset_progress_subtitle">清除本地关卡、统计数据和成就</string>
     <string name="settings_reset_progress_dialog_title">重置所有进度？</string>
     <string name="settings_reset_progress_dialog_message">这将清除你的本地关卡、最佳用时、星级、统计数据和成就。此操作无法撤销。</string>
+    <string name="settings_privacy_policy">隐私政策</string>
+    <string name="settings_terms_and_conditions">条款与条件</string>
+    <string name="settings_delete_account">删除账户</string>
+    <string name="settings_delete_account_subtitle">永久删除您的账户和所有数据</string>
+    <string name="settings_delete_account_dialog_title">删除账户？</string>
+    <string name="settings_delete_account_dialog_message">这将永久删除您的账户、经验值/金币/连胜、购买记录、已拥有的装饰品和排行榜历史记录。此操作无法撤销。</string>
+    <string name="settings_delete_account_error_title">无法删除账户</string>
+    <string name="settings_delete_account_error_message">请检查您的网络连接并重试。</string>
     <string name="settings_version">版本 %1$s</string>
 
     <string name="mode_classic_title">经典模式</string>
@@ -548,6 +556,15 @@
     <string name="lucky_spin_go_to_collections">前往商店 → 收藏进行装备！</string>
     <string name="lucky_spin_go_to_shop_action">前往商店</string>
     <string name="lucky_spin_ad_unavailable">暂时没有可用广告 — 请稍后再试。</string>
+    <string name="lucky_spin_daily_allowance">每天1次免费转盘</string>
+    <string name="lucky_spin_ad_spins_remaining">今天还剩 %1$d/%2$d 次广告奖励转盘</string>
+    <string name="lucky_spin_next_free_spin_hours_minutes">下次免费转盘将在 %1$d小时%2$d分钟后</string>
+    <string name="lucky_spin_next_free_spin_minutes">下次免费转盘将在 %1$d分钟后</string>
+    <string name="lucky_spin_odds_action">查看概率</string>
+    <string name="lucky_spin_odds_title">转盘概率</string>
+    <string name="lucky_spin_odds_intro">每次转盘各结果的概率：</string>
+    <string name="lucky_spin_odds_coins_row">%1$d 金币</string>
+    <string name="lucky_spin_odds_cosmetic_row">装饰品：%1$s</string>
     <string name="mystery_chest_box_title">神秘宝箱</string>
     <string name="mystery_chest_watch_ad_description">观看广告获得 1 个神秘宝箱</string>
     <string name="mystery_chest_watch_ad_action">观看广告</string>

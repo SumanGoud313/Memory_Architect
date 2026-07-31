@@ -82,6 +82,14 @@
     <string name="settings_reset_progress_subtitle">स्थानिक लेव्हल, आकडेवारी आणि यश मिटवते</string>
     <string name="settings_reset_progress_dialog_title">सर्व प्रगती रीसेट करायची?</string>
     <string name="settings_reset_progress_dialog_message">यामुळे तुमचे स्थानिक लेव्हल, सर्वोत्तम वेळा, तारे, आकडेवारी आणि यश मिटतील. ही क्रिया पूर्ववत करता येणार नाही.</string>
+    <string name="settings_privacy_policy">गोपनीयता धोरण</string>
+    <string name="settings_terms_and_conditions">अटी व शर्ती</string>
+    <string name="settings_delete_account">खाते हटवा</string>
+    <string name="settings_delete_account_subtitle">तुमचे खाते आणि सर्व डेटा कायमचा हटवतो</string>
+    <string name="settings_delete_account_dialog_title">खाते हटवायचे?</string>
+    <string name="settings_delete_account_dialog_message">हे तुमचे खाते, XP/नाणी/स्ट्रीक्स, खरेदी, मालकीचे कॉस्मेटिक्स आणि लीडरबोर्ड इतिहास कायमचा हटवते. हे पूर्ववत करता येणार नाही.</string>
+    <string name="settings_delete_account_error_title">खाते हटवता आले नाही</string>
+    <string name="settings_delete_account_error_message">कृपया तुमचे कनेक्शन तपासा आणि पुन्हा प्रयत्न करा.</string>
     <string name="settings_version">आवृत्ती %1$s</string>
 
     <string name="mode_classic_title">क्लासिक</string>
@@ -554,6 +562,15 @@
     <string name="lucky_spin_go_to_collections">ते परिधान करण्यासाठी दुकान → संग्रहाकडे जा!</string>
     <string name="lucky_spin_go_to_shop_action">दुकानाकडे जा</string>
     <string name="lucky_spin_ad_unavailable">सध्या कोणत्याही जाहिराती उपलब्ध नाहीत - लवकरच पुन्हा प्रयत्न करा.</string>
+    <string name="lucky_spin_daily_allowance">दररोज 1 मोफत स्पिन</string>
+    <string name="lucky_spin_ad_spins_remaining">आज %2$d पैकी %1$d बोनस जाहिरात स्पिन शिल्लक</string>
+    <string name="lucky_spin_next_free_spin_hours_minutes">पुढील मोफत स्पिन %1$dता %2$dमि मध्ये</string>
+    <string name="lucky_spin_next_free_spin_minutes">पुढील मोफत स्पिन %1$dमि मध्ये</string>
+    <string name="lucky_spin_odds_action">शक्यता पहा</string>
+    <string name="lucky_spin_odds_title">स्पिन शक्यता</string>
+    <string name="lucky_spin_odds_intro">कोणत्याही स्पिनवर प्रत्येक निकालाची शक्यता:</string>
+    <string name="lucky_spin_odds_coins_row">%1$d नाणी</string>
+    <string name="lucky_spin_odds_cosmetic_row">कॉस्मेटिक आयटम: %1$s</string>
     <string name="mystery_chest_box_title">मिस्ट्री चेस्ट बॉक्स</string>
     <string name="mystery_chest_watch_ad_description">1 मिस्ट्री बॉक्स मिळवण्यासाठी जाहिरात पहा</string>
     <string name="mystery_chest_watch_ad_action">जाहिरात पहा</string>

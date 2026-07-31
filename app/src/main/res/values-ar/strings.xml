@@ -82,6 +82,14 @@
     <string name="settings_reset_progress_subtitle">يمسح المستويات والإحصاءات والإنجازات المحلية</string>
     <string name="settings_reset_progress_dialog_title">إعادة تعيين كل التقدم؟</string>
     <string name="settings_reset_progress_dialog_message">سيؤدي هذا إلى مسح مستوياتك المحلية وأفضل أوقاتك ونجومك وإحصاءاتك وإنجازاتك. لا يمكن التراجع عن هذا الإجراء.</string>
+    <string name="settings_privacy_policy">سياسة الخصوصية</string>
+    <string name="settings_terms_and_conditions">الشروط والأحكام</string>
+    <string name="settings_delete_account">حذف الحساب</string>
+    <string name="settings_delete_account_subtitle">يحذف حسابك وجميع بياناتك نهائيًا</string>
+    <string name="settings_delete_account_dialog_title">حذف الحساب؟</string>
+    <string name="settings_delete_account_dialog_message">سيؤدي هذا إلى حذف حسابك ونقاط الخبرة/العملات/السلاسل والمشتريات ومستحضرات التجميل المملوكة وسجل لوحة المتصدرين نهائيًا. لا يمكن التراجع عن هذا الإجراء.</string>
+    <string name="settings_delete_account_error_title">تعذر حذف الحساب</string>
+    <string name="settings_delete_account_error_message">يرجى التحقق من اتصالك والمحاولة مرة أخرى.</string>
     <string name="settings_version">الإصدار %1$s</string>
 
     <string name="mode_classic_title">كلاسيكي</string>
@@ -578,6 +586,15 @@
     <string name="lucky_spin_go_to_collections">اذهب إلى المتجر ← المجموعات لتجهيزه!</string>
     <string name="lucky_spin_go_to_shop_action">الذهاب إلى المتجر</string>
     <string name="lucky_spin_ad_unavailable">لا توجد إعلانات متاحة الآن - حاول مرة أخرى قريبًا.</string>
+    <string name="lucky_spin_daily_allowance">دورة مجانية واحدة كل يوم</string>
+    <string name="lucky_spin_ad_spins_remaining">تبقّى %1$d من %2$d دورات إعلانية إضافية اليوم</string>
+    <string name="lucky_spin_next_free_spin_hours_minutes">الدورة المجانية التالية خلال %1$dس %2$dد</string>
+    <string name="lucky_spin_next_free_spin_minutes">الدورة المجانية التالية خلال %1$dد</string>
+    <string name="lucky_spin_odds_action">عرض الاحتمالات</string>
+    <string name="lucky_spin_odds_title">احتمالات الدورة</string>
+    <string name="lucky_spin_odds_intro">احتمال كل نتيجة في أي دورة:</string>
+    <string name="lucky_spin_odds_coins_row">%1$d عملة</string>
+    <string name="lucky_spin_odds_cosmetic_row">عنصر تجميلي: %1$s</string>
     <string name="mystery_chest_box_title">صندوق الكنز الغامض</string>
     <string name="mystery_chest_watch_ad_description">شاهد إعلانًا للحصول على صندوق غامض واحد</string>
     <string name="mystery_chest_watch_ad_action">مشاهدة إعلان</string>

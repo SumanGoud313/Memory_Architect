@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -118,7 +119,10 @@ fun SettingsScreen(
     }
 
     AmbientBackground(nearParticles = particles, modifier = Modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
+        // statusBarsPadding() before the existing flat 24dp - additive clearance from the real
+        // status bar/cutout, same fix as ScreenHeader (this screen predates that shared component
+        // and still keeps its own near-identical SettingsHeader below).
+        Column(modifier = Modifier.fillMaxSize().statusBarsPadding().padding(24.dp)) {
             SettingsHeader(onBack = onBack, modifier = Modifier.staggeredReveal(0))
 
             Column(

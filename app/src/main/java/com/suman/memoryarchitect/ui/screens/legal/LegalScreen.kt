@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -42,11 +43,14 @@ fun LegalScreen(document: LegalDocument, onBack: () -> Unit) {
                 modifier = Modifier.fillMaxWidth().padding(24.dp).staggeredReveal(0),
             )
             Column(
-                modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 8.dp),
+                // navigationBarsPadding() before the existing flat padding - no banner ad on this
+                // screen reserving bottom clearance, so without it the trailing Spacer/last
+                // paragraph could scroll to a resting position right against a 2/3-button nav bar.
+                modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).navigationBarsPadding().padding(horizontal = 24.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 Text(
-                    text = "Last updated: 2026-07-31",
+                    text = "Last updated: 2026-08-01",
                     style = MaterialTheme.typography.labelMedium,
                     color = MemoryArchitectColors.textTertiary,
                 )
@@ -116,9 +120,11 @@ private fun PrivacyPolicyBody() {
     )
     LegalHeading("Analytics & crash reporting")
     LegalBody(
-        "We use Firebase Analytics (feature usage, to understand what's working) and Firebase " +
-            "Crashlytics (crash/error reports, to fix bugs) - both Google services, both operating on " +
-            "device/usage data, never on the contents of your Google account.",
+        "We use Firebase Analytics (feature usage, to understand what's working), Firebase " +
+            "Crashlytics (crash/error reports, to fix bugs), and Firebase Performance Monitoring " +
+            "(app speed/responsiveness metrics, to find and fix slow spots) - all Google services, " +
+            "all operating on device/usage/performance data, never on the contents of your Google " +
+            "account.",
     )
     LegalHeading("Optional data you choose to provide")
     LegalBody(
@@ -142,9 +148,9 @@ private fun PrivacyPolicyBody() {
     )
     LegalHeading("Third parties this app relies on")
     LegalBody(
-        "Google Firebase (Authentication, Firestore, Storage, Analytics, Crashlytics, Remote Config), " +
-            "Google AdMob, and Google Play Billing. Each operates under Google's own privacy policy in " +
-            "addition to this one.",
+        "Google Firebase (Authentication, Firestore, Storage, Analytics, Crashlytics, Performance " +
+            "Monitoring, Remote Config), Google AdMob, and Google Play Billing. Each operates under " +
+            "Google's own privacy policy in addition to this one.",
     )
     LegalHeading("Contact")
     LegalBody("Questions about this policy or your data: sumangoud.ekkurthi99@gmail.com")

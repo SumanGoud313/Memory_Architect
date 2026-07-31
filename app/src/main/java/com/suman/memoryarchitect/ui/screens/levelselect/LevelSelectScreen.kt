@@ -3,8 +3,12 @@ package com.suman.memoryarchitect.ui.screens.levelselect
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -50,7 +54,9 @@ fun LevelSelectScreen(
 
     AmbientBackground(nearParticles = particles) {
         Column(modifier = Modifier.fillMaxSize()) {
-            Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 24.dp)) {
+            // statusBarsPadding() before the existing flat 24dp - additive clearance from the real
+            // status bar/cutout, matching the same fix applied to ScreenHeader/HomeScreen.
+            Column(modifier = Modifier.statusBarsPadding().padding(horizontal = 24.dp, vertical = 24.dp)) {
                 Text(
                     text = stringResource(R.string.level_select_title),
                     style = MaterialTheme.typography.headlineMedium,
@@ -79,9 +85,14 @@ fun LevelSelectScreen(
 
             val state = uiState
             if (state is LevelSelectUiState.Loaded) {
+                // 16dp plus the real navigation-bar inset on the bottom edge only - without it,
+                // the grid's last row could scroll to a resting position still hidden/unclickable
+                // underneath a 2/3-button navigation bar, same fix as every other bottom-anchored
+                // scrollable content in this app.
+                val navBarBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(3),
-                    contentPadding = PaddingValues(16.dp),
+                    contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp + navBarBottomPadding),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.fillMaxSize(),

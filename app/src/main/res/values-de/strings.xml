@@ -82,6 +82,14 @@
     <string name="settings_reset_progress_subtitle">Löscht lokale Level, Statistiken und Erfolge</string>
     <string name="settings_reset_progress_dialog_title">Gesamten Fortschritt zurücksetzen?</string>
     <string name="settings_reset_progress_dialog_message">Dies löscht deine lokalen Level, Bestzeiten, Sterne, Statistiken und Erfolge. Dies kann nicht rückgängig gemacht werden.</string>
+    <string name="settings_privacy_policy">Datenschutzerklärung</string>
+    <string name="settings_terms_and_conditions">Nutzungsbedingungen</string>
+    <string name="settings_delete_account">Konto löschen</string>
+    <string name="settings_delete_account_subtitle">Löscht dein Konto und alle Daten dauerhaft</string>
+    <string name="settings_delete_account_dialog_title">Konto löschen?</string>
+    <string name="settings_delete_account_dialog_message">Dies löscht dauerhaft dein Konto, XP/Münzen/Serien, Käufe, besessene Kosmetika und den Bestenlisten-Verlauf. Dies kann nicht rückgängig gemacht werden.</string>
+    <string name="settings_delete_account_error_title">Konto konnte nicht gelöscht werden</string>
+    <string name="settings_delete_account_error_message">Bitte überprüfe deine Verbindung und versuche es erneut.</string>
     <string name="settings_version">Version %1$s</string>
 
     <string name="mode_classic_title">Klassisch</string>
@@ -554,6 +562,15 @@
     <string name="lucky_spin_go_to_collections">Geh zu Shop → Sammlungen, um es auszurüsten!</string>
     <string name="lucky_spin_go_to_shop_action">Zum Shop</string>
     <string name="lucky_spin_ad_unavailable">Derzeit keine Werbung verfügbar - versuch es in Kürze erneut.</string>
+    <string name="lucky_spin_daily_allowance">1 kostenloser Dreh pro Tag</string>
+    <string name="lucky_spin_ad_spins_remaining">%1$d von %2$d Bonus-Werbe-Drehs heute übrig</string>
+    <string name="lucky_spin_next_free_spin_hours_minutes">Nächster kostenloser Dreh in %1$dh %2$dm</string>
+    <string name="lucky_spin_next_free_spin_minutes">Nächster kostenloser Dreh in %1$dm</string>
+    <string name="lucky_spin_odds_action">Gewinnchancen anzeigen</string>
+    <string name="lucky_spin_odds_title">Dreh-Gewinnchancen</string>
+    <string name="lucky_spin_odds_intro">Die Chance für jedes Ergebnis bei einem Dreh:</string>
+    <string name="lucky_spin_odds_coins_row">%1$d Münzen</string>
+    <string name="lucky_spin_odds_cosmetic_row">Kosmetik-Item: %1$s</string>
     <string name="mystery_chest_box_title">Mystery-Truhe</string>
     <string name="mystery_chest_watch_ad_description">Werbung ansehen, um 1 Mystery-Truhe zu erhalten</string>
     <string name="mystery_chest_watch_ad_action">Werbung ansehen</string>

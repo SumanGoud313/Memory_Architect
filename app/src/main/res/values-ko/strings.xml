@@ -82,6 +82,14 @@
     <string name="settings_reset_progress_subtitle">로컬 레벨, 통계, 업적을 지웁니다</string>
     <string name="settings_reset_progress_dialog_title">모든 진행 상황을 초기화하시겠습니까?</string>
     <string name="settings_reset_progress_dialog_message">이렇게 하면 로컬 레벨, 최고 기록, 별, 통계, 업적이 모두 삭제됩니다. 이 작업은 취소할 수 없습니다.</string>
+    <string name="settings_privacy_policy">개인정보 처리방침</string>
+    <string name="settings_terms_and_conditions">이용 약관</string>
+    <string name="settings_delete_account">계정 삭제</string>
+    <string name="settings_delete_account_subtitle">계정과 모든 데이터를 영구적으로 삭제합니다</string>
+    <string name="settings_delete_account_dialog_title">계정을 삭제하시겠습니까?</string>
+    <string name="settings_delete_account_dialog_message">계정, XP/코인/스트릭, 구매 내역, 보유한 코스메틱, 리더보드 기록이 영구적으로 삭제됩니다. 이 작업은 되돌릴 수 없습니다.</string>
+    <string name="settings_delete_account_error_title">계정을 삭제할 수 없습니다</string>
+    <string name="settings_delete_account_error_message">연결 상태를 확인한 후 다시 시도해 주세요.</string>
     <string name="settings_version">버전 %1$s</string>
 
     <string name="mode_classic_title">클래식</string>
@@ -548,6 +556,15 @@
     <string name="lucky_spin_go_to_collections">상점 → 컬렉션으로 이동하여 장착하세요!</string>
     <string name="lucky_spin_go_to_shop_action">상점으로 이동</string>
     <string name="lucky_spin_ad_unavailable">지금은 이용 가능한 광고가 없습니다 - 잠시 후 다시 시도하세요.</string>
+    <string name="lucky_spin_daily_allowance">매일 무료 스핀 1회</string>
+    <string name="lucky_spin_ad_spins_remaining">오늘 보너스 광고 스핀 %2$d회 중 %1$d회 남음</string>
+    <string name="lucky_spin_next_free_spin_hours_minutes">다음 무료 스핀까지 %1$d시간 %2$d분</string>
+    <string name="lucky_spin_next_free_spin_minutes">다음 무료 스핀까지 %1$d분</string>
+    <string name="lucky_spin_odds_action">확률 보기</string>
+    <string name="lucky_spin_odds_title">스핀 확률</string>
+    <string name="lucky_spin_odds_intro">각 스핀에서 나올 수 있는 결과 확률:</string>
+    <string name="lucky_spin_odds_coins_row">코인 %1$d개</string>
+    <string name="lucky_spin_odds_cosmetic_row">코스메틱 아이템: %1$s</string>
     <string name="mystery_chest_box_title">미스터리 상자</string>
     <string name="mystery_chest_watch_ad_description">광고를 보고 미스터리 상자 1개 받기</string>
     <string name="mystery_chest_watch_ad_action">광고 시청</string>
