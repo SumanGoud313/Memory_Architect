@@ -31,6 +31,16 @@ npm-debug.log*
 *.apk
 *.aab
 
+# Signing keys - never committed, regardless of extension (the release/upload keystore in
+# keystore/ has none). A leaked signing key on a public repo is a permanent, unrevokable
+# compromise, not a rotate-and-move-on fix.
+keystore/
+*.jks
+*.keystore
+*.p12
+key.properties
+keystore.properties
+
 # Local device-pulled test artifacts (not source)
 *.log
 

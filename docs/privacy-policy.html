@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Privacy Policy — Memory Architect</title>
+<meta name="description" content="The Memory Architect Android app's Privacy Policy." />
+<style>
+  :root {
+    --bg: #f6f5fa;
+    --bg-elevated: #ffffff;
+    --text: #16141f;
+    --text-muted: #5b586b;
+    --border: #e3e1ec;
+    --accent: #5b3fe0;
+    --accent-soft: #efecfc;
+    --gold: #9c7420;
+    --rule: #d8d5e4;
+    --focus: #5b3fe0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b0c14;
+      --bg-elevated: #14131f;
+      --text: #edebf5;
+      --text-muted: #9c98b5;
+      --border: #262436;
+      --accent: #9b82ff;
+      --accent-soft: #211d3a;
+      --gold: #e0b767;
+      --rule: #2c2a3d;
+      --focus: #b6a4ff;
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+    margin: 0;
+  }
+
+  a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  a:focus-visible, button:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+
+  .page {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 28px 96px;
+  }
+
+  header.masthead {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 56px 28px 40px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .wordmark {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "Consolas", monospace;
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .wordmark .mark {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    background: var(--accent);
+    transform: rotate(45deg);
+    flex: none;
+  }
+
+  h1.doc-title {
+    font-family: "Iowan Old Style", "Palatino Linotype", "URW Palladio", Georgia, serif;
+    font-weight: 500;
+    font-size: clamp(2.1rem, 4vw, 2.85rem);
+    line-height: 1.12;
+    letter-spacing: -0.01em;
+    margin: 18px 0 10px;
+    text-wrap: balance;
+  }
+
+  .doc-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    align-items: baseline;
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "Consolas", monospace;
+    font-size: 12.5px;
+    color: var(--text-muted);
+    letter-spacing: 0.02em;
+  }
+  .doc-meta strong { color: var(--gold); font-weight: 600; }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 680px);
+    gap: 64px;
+    padding-top: 48px;
+    justify-content: center;
+  }
+
+  nav.index {
+    position: sticky;
+    top: 32px;
+    align-self: start;
+  }
+  nav.index .index-label {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "Consolas", monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 14px;
+    display: block;
+  }
+  nav.index ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-left: 1px solid var(--rule);
+  }
+  nav.index li { margin: 0; }
+  nav.index a {
+    display: flex;
+    gap: 10px;
+    padding: 7px 0 7px 16px;
+    margin-left: -1px;
+    border-left: 1px solid transparent;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 13.5px;
+    line-height: 1.35;
+  }
+  nav.index a:hover { color: var(--text); border-left-color: var(--rule); }
+  nav.index a .num {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "Consolas", monospace;
+    font-size: 11px;
+    color: var(--accent);
+    flex: none;
+    padding-top: 1px;
+  }
+
+  main { min-width: 0; }
+
+  .lede {
+    font-size: 1.05rem;
+    color: var(--text-muted);
+    max-width: 62ch;
+    margin: 0 0 48px;
+  }
+  .lede strong { color: var(--text); font-weight: 600; }
+
+  section.clause {
+    padding: 36px 0;
+    border-top: 1px solid var(--rule);
+    scroll-margin-top: 32px;
+  }
+  section.clause:first-of-type { border-top: none; padding-top: 0; }
+
+  .clause-head {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+  .clause-num {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "Consolas", monospace;
+    font-size: 12px;
+    color: var(--accent);
+    background: var(--accent-soft);
+    padding: 2px 7px;
+    border-radius: 4px;
+    flex: none;
+  }
+  h2.clause-title {
+    font-family: "Iowan Old Style", "Palatino Linotype", "URW Palladio", Georgia, serif;
+    font-weight: 500;
+    font-size: 1.4rem;
+    letter-spacing: -0.005em;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .clause p {
+    max-width: 66ch;
+    color: var(--text);
+    margin: 0;
+  }
+  .clause p + p { margin-top: 12px; }
+
+  footer.closing {
+    margin-top: 56px;
+    padding-top: 36px;
+    border-top: 1px solid var(--rule);
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 24px;
+  }
+  .contact-block h2.clause-title { font-size: 1.15rem; }
+  .contact-block a.email {
+    display: inline-block;
+    margin-top: 8px;
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "Consolas", monospace;
+    font-size: 14px;
+  }
+  .in-app-note {
+    max-width: 30ch;
+    font-size: 12.5px;
+    color: var(--text-muted);
+    line-height: 1.55;
+  }
+
+  @media (max-width: 880px) {
+    .layout { grid-template-columns: 1fr; gap: 8px; }
+    nav.index { display: none; }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    section.clause, .lede, header.masthead { animation: rise 480ms ease-out both; }
+    section.clause:nth-of-type(1) { animation-delay: 20ms; }
+    section.clause:nth-of-type(2) { animation-delay: 40ms; }
+    section.clause:nth-of-type(3) { animation-delay: 60ms; }
+  }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <span class="wordmark"><span class="mark"></span> Memory Architect</span>
+  <h1 class="doc-title">Privacy Policy</h1>
+  <div class="doc-meta">
+    <span>Last updated <strong>August 1, 2026</strong></span>
+    <span>Applies to the Memory Architect Android app</span>
+  </div>
+</header>
+
+<div class="page">
+  <div class="layout">
+    <nav class="index" aria-label="Sections">
+      <span class="index-label">On this page</span>
+      <ol>
+        <li><a href="#account"><span class="num">01</span>Account &amp; sign-in</span></a></li>
+        <li><a href="#gameplay"><span class="num">02</span>Gameplay data</span></a></li>
+        <li><a href="#purchases"><span class="num">03</span>Purchases</span></a></li>
+        <li><a href="#advertising"><span class="num">04</span>Advertising</span></a></li>
+        <li><a href="#notifications"><span class="num">05</span>Notifications</span></a></li>
+        <li><a href="#analytics"><span class="num">06</span>Analytics &amp; crash reports</span></a></li>
+        <li><a href="#optional"><span class="num">07</span>Optional data</span></a></li>
+        <li><a href="#retention"><span class="num">08</span>Retention &amp; deletion</span></a></li>
+        <li><a href="#children"><span class="num">09</span>Children's privacy</span></a></li>
+        <li><a href="#thirdparties"><span class="num">10</span>Third parties</span></a></li>
+      </ol>
+    </nav>
+
+    <main>
+      <p class="lede">
+        <strong>Memory Architect</strong> is a single/multiplayer-competitive memory puzzle game.
+        This policy explains what information the app collects, why, and how you can delete it.
+      </p>
+
+      <section class="clause" id="account">
+        <div class="clause-head"><span class="clause-num">01</span><h2 class="clause-title">Account &amp; sign-in</h2></div>
+        <p>The app requires signing in with your Google account before you can play. We receive your Google
+        display name and profile photo URL from this sign-in, shown on your Profile and on public leaderboards
+        alongside your gameplay stats. We never receive or store your Google password, and we never ask for it.</p>
+      </section>
+
+      <section class="clause" id="gameplay">
+        <div class="clause-head"><span class="clause-num">02</span><h2 class="clause-title">Gameplay &amp; progression data</h2></div>
+        <p>Your XP, coins, streaks, achievements, mission progress, owned cosmetics, and leaderboard scores are
+        stored in Firebase Firestore (a Google Cloud database), tied to your account. Global/Daily/Weekly/Monthly
+        leaderboards are public and show your display name, chosen avatar, optional self-reported country, and
+        competitive stats to other players.</p>
+      </section>
+
+      <section class="clause" id="purchases">
+        <div class="clause-head"><span class="clause-num">03</span><h2 class="clause-title">Purchases</h2></div>
+        <p>In-app purchases (Remove Ads, cosmetic bundles) are processed entirely by Google Play Billing. We never
+        see or store your payment card details — only a purchase confirmation token, used to grant what you
+        bought and prevent the same purchase being redeemed twice.</p>
+      </section>
+
+      <section class="clause" id="advertising">
+        <div class="clause-head"><span class="clause-num">04</span><h2 class="clause-title">Advertising</h2></div>
+        <p>The app shows ads via Google AdMob (banner, interstitial, and optional rewarded ads for bonus in-game
+        rewards) unless you've purchased Remove Ads. AdMob may use device/advertising identifiers to serve and
+        measure ads. Where required by law (e.g. the EEA, UK, and Switzerland), you'll be asked for consent to
+        personalized advertising the first time the app is used, and can change that choice at any time from
+        Settings.</p>
+      </section>
+
+      <section class="clause" id="notifications">
+        <div class="clause-head"><span class="clause-num">05</span><h2 class="clause-title">Notifications</h2></div>
+        <p>With your permission, the app schedules local reminder notifications (e.g. a streak about to lapse, or
+        a new Daily Challenge available) directly on your device. These are generated on-device from your own
+        gameplay data — nothing is sent to a server to produce them, and no separate notification/device token is
+        collected. You can turn reminders off at any time from Settings, or by revoking the notification
+        permission in your device's system settings.</p>
+      </section>
+
+      <section class="clause" id="analytics">
+        <div class="clause-head"><span class="clause-num">06</span><h2 class="clause-title">Analytics &amp; crash reporting</h2></div>
+        <p>We use Firebase Analytics (feature usage, to understand what's working), Firebase Crashlytics
+        (crash/error reports, to fix bugs), and Firebase Performance Monitoring (app speed/responsiveness
+        metrics, to find and fix slow spots) — all Google services, all operating on device/usage/performance
+        data, never on the contents of your Google account.</p>
+      </section>
+
+      <section class="clause" id="optional">
+        <div class="clause-head"><span class="clause-num">07</span><h2 class="clause-title">Optional data you choose to provide</h2></div>
+        <p>A custom profile photo (stored in Firebase Storage) and your country (shown on public leaderboards)
+        are both entirely optional and can be changed or cleared at any time from Profile → Account.</p>
+      </section>
+
+      <section class="clause" id="retention">
+        <div class="clause-head"><span class="clause-num">08</span><h2 class="clause-title">Data retention &amp; deletion</h2></div>
+        <p>Your data is kept for as long as your account exists. You can permanently delete your account and
+        every piece of data described above at any time, from within the app, at Settings → Delete Account. This
+        removes your Firestore data, your Firebase Auth account, and all locally-cached data on your device. A
+        small number of already-closed competitive leaderboard periods (e.g. a past month you competed in) may
+        retain an anonymized historical entry, the same way a completed sports season's standings aren't
+        rewritten after the fact.</p>
+      </section>
+
+      <section class="clause" id="children">
+        <div class="clause-head"><span class="clause-num">09</span><h2 class="clause-title">Children's privacy</h2></div>
+        <p>This app is not directed at children under 13 and we do not knowingly collect personal information
+        from children under 13. Sign-in with a Google account is required to play.</p>
+      </section>
+
+      <section class="clause" id="thirdparties">
+        <div class="clause-head"><span class="clause-num">10</span><h2 class="clause-title">Third parties this app relies on</h2></div>
+        <p>Google Firebase (Authentication, Firestore, Storage, Analytics, Crashlytics, Performance Monitoring,
+        Remote Config), Google AdMob, and Google Play Billing. Each operates under Google's own privacy policy in
+        addition to this one.</p>
+      </section>
+
+      <footer class="closing">
+        <div class="contact-block">
+          <h2 class="clause-title">Contact</h2>
+          <p>Questions about this policy or your data:</p>
+          <a class="email" href="mailto:sumangoud.ekkurthi99@gmail.com">sumangoud.ekkurthi99@gmail.com</a>
+        </div>
+        <p class="in-app-note">This text mirrors the Privacy Policy shown in-app under Settings → Privacy
+        Policy. If the two ever differ, the in-app version reflects the build currently installed.</p>
+      </footer>
+    </main>
+  </div>
+</div>
+</body>
+</html>
