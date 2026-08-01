@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Delete Your Account — Memory Architect</title>
+<meta name="description" content="How to permanently delete your Memory Architect account and data." />
+<style>
+  :root {
+    --bg: #f6f5fa;
+    --bg-elevated: #ffffff;
+    --text: #16141f;
+    --text-muted: #5b586b;
+    --border: #e3e1ec;
+    --accent: #5b3fe0;
+    --accent-soft: #efecfc;
+    --gold: #9c7420;
+    --rule: #d8d5e4;
+    --focus: #5b3fe0;
+    --danger: #b3261e;
+    --danger-soft: #fbeceb;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b0c14;
+      --bg-elevated: #14131f;
+      --text: #edebf5;
+      --text-muted: #9c98b5;
+      --border: #262436;
+      --accent: #9b82ff;
+      --accent-soft: #211d3a;
+      --gold: #e0b767;
+      --rule: #2c2a3d;
+      --focus: #b6a4ff;
+      --danger: #ff8983;
+      --danger-soft: #2a1518;
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+    margin: 0;
+  }
+
+  a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  a:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; border-radius: 2px; }
+
+  .wordmark {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "Consolas", monospace;
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .wordmark .mark { width: 8px; height: 8px; border-radius: 2px; background: var(--accent); transform: rotate(45deg); flex: none; }
+
+  header.masthead {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 56px 28px 40px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  h1.doc-title {
+    font-family: "Iowan Old Style", "Palatino Linotype", "URW Palladio", Georgia, serif;
+    font-weight: 500;
+    font-size: clamp(2rem, 4vw, 2.7rem);
+    line-height: 1.14;
+    letter-spacing: -0.01em;
+    margin: 18px 0 12px;
+    text-wrap: balance;
+  }
+  header.masthead p.dek {
+    color: var(--text-muted);
+    max-width: 56ch;
+    font-size: 1.02rem;
+    margin: 0;
+  }
+
+  main.page {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 48px 28px 96px;
+  }
+
+  section.block { padding: 34px 0; border-top: 1px solid var(--rule); scroll-margin-top: 32px; }
+  section.block:first-of-type { border-top: none; padding-top: 0; }
+
+  .block-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 16px; }
+  .block-num {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "Consolas", monospace;
+    font-size: 12px; color: var(--accent); background: var(--accent-soft);
+    padding: 2px 7px; border-radius: 4px; flex: none;
+  }
+  h2.block-title {
+    font-family: "Iowan Old Style", "Palatino Linotype", "URW Palladio", Georgia, serif;
+    font-weight: 500; font-size: 1.4rem; letter-spacing: -0.005em; margin: 0; text-wrap: balance;
+  }
+
+  .steps { list-style: none; margin: 0; padding: 0; counter-reset: step; }
+  .steps li {
+    counter-increment: step;
+    display: grid;
+    grid-template-columns: 28px 1fr;
+    gap: 14px;
+    padding: 12px 0;
+  }
+  .steps li:not(:last-child) { border-bottom: 1px dashed var(--rule); }
+  .steps li::before {
+    content: counter(step);
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "Consolas", monospace;
+    font-size: 13px;
+    color: var(--accent);
+    background: var(--accent-soft);
+    width: 26px; height: 26px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+  }
+  .steps li span.label { padding-top: 3px; }
+  .steps code {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "Consolas", monospace;
+    background: var(--accent-soft);
+    color: var(--accent);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 0.92em;
+  }
+
+  .callout {
+    border: 1px solid var(--danger);
+    background: var(--danger-soft);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-top: 20px;
+    font-size: 0.94rem;
+    color: var(--text);
+  }
+  .callout strong { color: var(--danger); }
+
+  ul.data-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  ul.data-list li {
+    display: flex; gap: 10px; align-items: flex-start;
+    max-width: 62ch;
+  }
+  ul.data-list li::before {
+    content: "";
+    width: 6px; height: 6px; border-radius: 1px;
+    background: var(--accent);
+    transform: rotate(45deg);
+    margin-top: 8px;
+    flex: none;
+  }
+
+  .retained-note {
+    margin-top: 18px;
+    padding: 14px 16px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.92rem;
+    color: var(--text-muted);
+    max-width: 62ch;
+  }
+
+  .contact-card {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 22px 24px;
+  }
+  .contact-card p { max-width: 60ch; margin: 0 0 10px; }
+  .contact-card a.email {
+    display: inline-block;
+    margin-top: 4px;
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "Consolas", monospace;
+    font-size: 15px;
+    font-weight: 600;
+  }
+  .turnaround {
+    margin-top: 14px;
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "Consolas", monospace;
+    font-size: 12.5px;
+    letter-spacing: 0.02em;
+    color: var(--text-muted);
+  }
+  .turnaround strong { color: var(--gold); }
+
+  footer.closing {
+    margin-top: 48px;
+    padding-top: 28px;
+    border-top: 1px solid var(--rule);
+    font-size: 12.5px;
+    color: var(--text-muted);
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  footer.closing a { color: var(--text-muted); }
+
+  @media (prefers-reduced-motion: no-preference) {
+    section.block, header.masthead { animation: rise 480ms ease-out both; }
+  }
+  @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <span class="wordmark"><span class="mark"></span> Memory Architect</span>
+  <h1 class="doc-title">Delete your account</h1>
+  <p class="dek">Two ways to permanently delete your Memory Architect account and data — from
+  inside the app (instant), or by request if you no longer have access to it.</p>
+</header>
+
+<main class="page">
+
+  <section class="block" id="in-app">
+    <div class="block-head"><span class="block-num">01</span><h2 class="block-title">Delete from inside the app</h2></div>
+    <p style="max-width:62ch; color:var(--text-muted); margin:0 0 18px;">This is the fastest way — it takes effect immediately, no waiting.</p>
+    <ol class="steps">
+      <li><span class="label">Open <strong>Memory Architect</strong> and sign in if you aren't already.</span></li>
+      <li><span class="label">Go to <code>Settings</code>.</span></li>
+      <li><span class="label">Scroll to <code>Delete Account</code> and tap it.</span></li>
+      <li><span class="label">Confirm in the dialog that appears. This can't be undone.</span></li>
+    </ol>
+    <div class="callout"><strong>This is permanent.</strong> Once confirmed, your account and everything tied to it are deleted right away — there's no recovery window.</div>
+  </section>
+
+  <section class="block" id="what-is-deleted">
+    <div class="block-head"><span class="block-num">02</span><h2 class="block-title">What gets deleted</h2></div>
+    <ul class="data-list">
+      <li>Your account and its Google sign-in link</li>
+      <li>XP, coins, streaks, and achievements</li>
+      <li>Mission, Lucky Spin, and Mystery Chest progress</li>
+      <li>Owned and equipped cosmetics, and your consumables inventory</li>
+      <li>Your current Daily, Weekly, and Monthly leaderboard entries</li>
+      <li>All data cached locally on your device</li>
+    </ul>
+    <div class="retained-note">
+      One narrow exception: leaderboard periods that already closed before you deleted your
+      account (a past day/week/month you competed in) may retain an anonymized historical entry —
+      the same way a completed sports season's standings aren't rewritten after the fact. It's no
+      longer linked to your account, sign-in, or any personal identifier.
+    </div>
+  </section>
+
+  <section class="block" id="no-app-access">
+    <div class="block-head"><span class="block-num">03</span><h2 class="block-title">Can't access the app anymore?</h2></div>
+    <p style="max-width:62ch; margin:0 0 18px;">
+      If you've uninstalled the app, lost access to your Google account, or otherwise can't reach
+      Settings → Delete Account, email a deletion request and it'll be handled manually.
+    </p>
+    <div class="contact-card">
+      <p>Email your request from the Google account you used to sign in, or include the display
+      name shown on your Profile/leaderboards so the account can be identified:</p>
+      <a class="email" href="mailto:sumangoud.ekkurthi99@gmail.com?subject=Memory%20Architect%20-%20Account%20Deletion%20Request">sumangoud.ekkurthi99@gmail.com</a>
+      <div class="turnaround">Requests are processed within <strong>30 days</strong> — same data removed as the in-app path.</div>
+    </div>
+  </section>
+
+  <footer class="closing">
+    <span>Memory Architect — Android app</span>
+    <a href="privacy-policy.html">Privacy Policy</a>
+  </footer>
+</main>
+</body>
+</html>
