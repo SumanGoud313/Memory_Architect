@@ -1,6 +1,7 @@
 {
   "project_info": {
     "project_number": "955650453441",
+    "firebase_url": "https://memory-architect-8a127-default-rtdb.asia-southeast1.firebasedatabase.app",
     "project_id": "memory-architect-8a127",
     "storage_bucket": "memory-architect-8a127.firebasestorage.app"
   },
@@ -14,11 +15,27 @@
       },
       "oauth_client": [
         {
+          "client_id": "955650453441-0im4iv7tbpblo9lsp7t9da8s1qdala6j.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.suman.memoryarchitect",
+            "certificate_hash": "e9ec33a37b8d129a9de36821206505e436579fbc"
+          }
+        },
+        {
           "client_id": "955650453441-2bq9l9tc9tkmak4t95061nih4d5d3l5k.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.suman.memoryarchitect",
             "certificate_hash": "90cc1e70d2994d1201c3dec221e4015189032a2e"
+          }
+        },
+        {
+          "client_id": "955650453441-rbatoqm4sq2n7u20an5vslg4dti1sgmf.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.suman.memoryarchitect",
+            "certificate_hash": "a9aeebd06d88ba5f812cc357ee91514aa15a09f2"
           }
         },
         {

@@ -10,6 +10,7 @@ import androidx.credentials.exceptions.NoCredentialException
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.suman.memoryarchitect.BuildConfig
+import kotlinx.coroutines.CancellationException
 
 /** Launches Credential Manager's Google ID flow and reports the outcome via exactly one of
  * [onIdToken]/[onFailure] - never neither, which is what made the sign-in button read as "just
@@ -41,6 +42,18 @@ suspend fun signInWithGoogle(context: Context, onIdToken: (String) -> Unit, onFa
         onFailure(GoogleLinkError.NO_GOOGLE_ACCOUNT)
     } catch (other: GetCredentialException) {
         Log.w(TAG, "Google Sign-In failed", other)
+        onFailure(GoogleLinkError.UNKNOWN)
+    } catch (cancellation: CancellationException) {
+        // Structured concurrency's own cancellation (e.g. this screen was navigated away from
+        // mid-flow) - must always propagate, never get swallowed as a sign-in failure.
+        throw cancellation
+    } catch (other: Exception) {
+        // GoogleIdTokenCredential.createFrom throws its own CreateFromException - a distinct type,
+        // not a GetCredentialException subtype - if the returned credential data doesn't parse as
+        // a Google ID token. Left uncaught, this (or any other unexpected failure in this chain)
+        // crashed the coroutine silently: no error shown, no retry state reset, tapping the button
+        // just appeared to do nothing. Every real failure now reaches onFailure.
+        Log.w(TAG, "Google Sign-In failed unexpectedly", other)
         onFailure(GoogleLinkError.UNKNOWN)
     }
 }
