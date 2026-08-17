@@ -6,16 +6,21 @@ import com.suman.memoryarchitect.core.analytics.AnalyticsLogger
 import com.suman.memoryarchitect.core.analytics.logModeSelected
 import com.suman.memoryarchitect.core.analytics.setPreferredGameModeProperty
 import com.suman.memoryarchitect.core.billing.BillingManager
+import com.suman.memoryarchitect.core.billing.premiumStoreEnabled
 import com.suman.memoryarchitect.core.common.challengeLockDurationSeconds
 import com.suman.memoryarchitect.core.datastore.UserPreferencesDataStore
 import com.suman.memoryarchitect.domain.model.GameMode
 import com.suman.memoryarchitect.domain.model.Outcome
 import com.suman.memoryarchitect.domain.model.PlayerProfile
+import com.suman.memoryarchitect.domain.repository.RemoteConfigRepository
 import com.suman.memoryarchitect.domain.usecase.GetPlayerProfileUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -31,17 +36,36 @@ class ModeSelectViewModel @Inject constructor(
     private val analytics: AnalyticsLogger,
     private val preferences: UserPreferencesDataStore,
     billingManager: BillingManager,
+    remoteConfigRepository: RemoteConfigRepository,
 ) : ViewModel() {
 
     private val _progress = MutableStateFlow(toProgressUiState(PlayerProfile.EMPTY))
     val progress: StateFlow<ModeSelectProgressUiState> = _progress.asStateFlow()
 
-    /** Drives the Remove Ads promo card at the bottom of this screen - hidden entirely once
-     * `true` rather than showing a "Purchased" status here (unlike the equivalent Settings row
-     * this replaced), since Mode Select is a high-frequency action screen, not a status screen -
-     * nagging an already-paying player every single time they pick a mode would be the opposite
-     * of what this purchase is supposed to buy them. */
-    val hasRemovedAds: StateFlow<Boolean> = billingManager.hasRemovedAds
+    // Optimistic `true` default, same "a slow/failed fetch should never hide a real purchase
+    // surface" reasoning BannerAdViewModel's own _remoteConfigBannerEnabled already documents -
+    // only a console-set `false`, once actually fetched, should ever hide this.
+    private val _premiumStoreEnabled = MutableStateFlow(true)
+
+    init {
+        viewModelScope.launch {
+            val remoteConfig = (remoteConfigRepository.getRemoteConfig() as? Outcome.Success)?.data
+            if (remoteConfig != null) _premiumStoreEnabled.value = remoteConfig.premiumStoreEnabled()
+        }
+    }
+
+    /** Drives the Remove Ads promo card at the bottom of this screen - hidden whenever the player
+     * already owns it (unlike the equivalent Settings row this replaced, since Mode Select is a
+     * high-frequency action screen, not a status screen - nagging an already-paying player every
+     * single time they pick a mode would be the opposite of what this purchase is supposed to buy
+     * them) or whenever Remote Config's `premium_store_enabled` is off (see
+     * [com.suman.memoryarchitect.core.billing.premiumStoreEnabled]'s doc - the same instant,
+     * no-release kill switch [com.suman.memoryarchitect.feature.ads.BannerAdViewModel.shouldShowBanner]
+     * already uses this pattern for). */
+    val showRemoveAdsButton: StateFlow<Boolean> =
+        combine(billingManager.hasRemovedAds, _premiumStoreEnabled) { hasRemovedAds, storeEnabled ->
+            !hasRemovedAds && storeEnabled
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
 
     /** Called from a screen-level `LaunchedEffect(Unit)` (never from `init`) — Gameplay returns
      * here via `popBackStack()`, which reuses this same ViewModel instance rather than creating a

@@ -160,6 +160,14 @@ class GameplayViewModel @Inject constructor(
         ?: DifficultyTier.MEDIUM
     private val levelNumber = savedStateHandle.get<Int>(ARG_LEVEL_NUMBER) ?: 1
 
+    // Classic never reads [difficultyTier] for generation (its own per-level-number curve drives
+    // that instead, via campaignEngine.tierFor - see loadLevel) - this is the single place that
+    // resolves whichever tier actually applied to *this* attempt, for analytics only, so
+    // level_started/level_completed can report a real difficulty value for every mode instead of
+    // only Practice/Daily/Weekly.
+    private val analyticsDifficultyTier: DifficultyTier
+        get() = if (mode == GameMode.CLASSIC) campaignEngine.tierFor(levelNumber) else difficultyTier
+
     private val _uiState = MutableStateFlow<GameplayUiState>(GameplayUiState.Loading)
     val uiState: StateFlow<GameplayUiState> = _uiState.asStateFlow()
 
@@ -806,6 +814,7 @@ class GameplayViewModel @Inject constructor(
             mode = mode,
             levelNumber = levelNumber,
             level = level,
+            difficultyTier = analyticsDifficultyTier,
             stars = stars,
             accuracy = result.sceneAccuracy,
             passed = if (mode == GameMode.CLASSIC) passedThisLevel else null,
@@ -1311,8 +1320,8 @@ class GameplayViewModel @Inject constructor(
         timer.start(level.memorizeDurationMs) { onMemorizeFinished(level) }
         feedback.onTimerPhaseStarted()
         feedback.setMusicTrack(mode.gameplayMusicTrack())
-        analytics.logLevelStarted(mode, levelNumber, level)
-        analytics.logMemorizeStarted(mode, levelNumber, level)
+        analytics.logLevelStarted(mode, levelNumber, level, analyticsDifficultyTier)
+        analytics.logMemorizeStarted(mode, levelNumber, level, analyticsDifficultyTier)
         val startCount = frustrationTracker.recordLevelStart(levelNumber)
         if (startCount > 1) {
             analytics.logLevelRestarted(mode, levelNumber, attemptNumber = startCount)

@@ -8,10 +8,12 @@ import com.suman.memoryarchitect.core.analytics.logProductViewed
 import com.suman.memoryarchitect.core.analytics.logShopViewed
 import com.suman.memoryarchitect.core.billing.BillingManager
 import com.suman.memoryarchitect.core.billing.PurchaseUiState
+import com.suman.memoryarchitect.core.billing.premiumStoreEnabled
 import com.suman.memoryarchitect.domain.model.CosmeticId
 import com.suman.memoryarchitect.domain.model.InventoryItemKind
 import com.suman.memoryarchitect.domain.model.MissionEvent
 import com.suman.memoryarchitect.domain.model.Outcome
+import com.suman.memoryarchitect.domain.repository.RemoteConfigRepository
 import com.suman.memoryarchitect.domain.usecase.GetInventoryUseCase
 import com.suman.memoryarchitect.domain.usecase.GetOwnedCosmeticsUseCase
 import com.suman.memoryarchitect.domain.usecase.GetPlayerProfileUseCase
@@ -35,6 +37,7 @@ class ShopViewModel @Inject constructor(
     private val purchaseCosmetic: PurchaseCosmeticUseCase,
     private val recordMissionEvent: RecordMissionEventUseCase,
     private val billingManager: BillingManager,
+    private val remoteConfigRepository: RemoteConfigRepository,
     private val analytics: AnalyticsLogger,
 ) : ViewModel() {
 
@@ -97,7 +100,17 @@ class ShopViewModel @Inject constructor(
                     is Outcome.Error -> 0L
                 }
                 val owned = getOwnedCosmetics()
-                _uiState.value = ShopUiState.Content(coins = coins, catalog = getCatalog(), ownedIds = owned)
+                // Optimistic `true` default (same reasoning as ModeSelectViewModel's Remove Ads
+                // button) - a slow/failed Remote Config fetch should never hide a real purchase
+                // surface, only a console-set `false`, once actually fetched, should.
+                val premiumEnabled = (remoteConfigRepository.getRemoteConfig() as? Outcome.Success)
+                    ?.data?.premiumStoreEnabled() ?: true
+                _uiState.value = ShopUiState.Content(
+                    coins = coins,
+                    catalog = getCatalog(),
+                    ownedIds = owned,
+                    premiumStoreEnabled = premiumEnabled,
+                )
             }
         }
     }

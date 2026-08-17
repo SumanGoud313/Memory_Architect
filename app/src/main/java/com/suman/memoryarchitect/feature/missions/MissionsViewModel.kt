@@ -3,6 +3,7 @@ package com.suman.memoryarchitect.feature.missions
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.suman.memoryarchitect.core.analytics.AnalyticsLogger
+import com.suman.memoryarchitect.core.analytics.MissionAnalyticsBaseline
 import com.suman.memoryarchitect.core.analytics.logEventStartedClientView
 import com.suman.memoryarchitect.core.analytics.logInventoryItemGranted
 import com.suman.memoryarchitect.core.analytics.logMemoryJourneyPointsEarned
@@ -53,6 +54,7 @@ class MissionsViewModel @Inject constructor(
     private val claimMissionCategoryBonus: ClaimMissionCategoryBonusUseCase,
     private val unlockAllMissionsEarly: UnlockAllMissionsEarlyUseCase,
     private val analyticsLogger: AnalyticsLogger,
+    private val missionAnalyticsBaseline: MissionAnalyticsBaseline,
     private val clock: Clock,
 ) : ViewModel() {
 
@@ -140,18 +142,34 @@ class MissionsViewModel @Inject constructor(
 
     /** Keyed by (missionId, periodKey) so a mission rotating back into a *new* period reads as a
      * fresh assignment, exactly matching [com.suman.memoryarchitect.data.repository.MissionRepositoryImpl.currentProgress]'s
-     * own "stale periodKey means fresh, not stale progress" rule. */
+     * own "stale periodKey means fresh, not stale progress" rule.
+     *
+     * [previous] is only this *ViewModel instance's* last-seen snapshot - empty on every fresh
+     * instance, which happens on every navigation to this screen (a new `NavBackStackEntry`, not
+     * just the first-ever visit). Diffing `mission_assigned`/`mission_completed` against that alone
+     * would re-fire both for every already-assigned/already-complete mission on every single
+     * re-visit within a session - [missionAnalyticsBaseline] is what actually makes those two
+     * events "first time only," independent of how many `MissionsViewModel` instances this session
+     * creates. `mission_progressed` doesn't need the same guard: it only fires when this instance
+     * itself observes an increase between two of its own consecutive refreshes, which is already a
+     * real, single occurrence rather than an artifact of instance recreation. */
     private fun logMissionDiff(previous: List<ActiveMission>, current: List<ActiveMission>) {
         val previousByKey = previous.associateBy { it.definition.id to it.periodKey }
         current.forEach { mission ->
             val prior = previousByKey[mission.definition.id to mission.periodKey]
             val period = mission.definition.period.name
             when {
-                prior == null -> analyticsLogger.logMissionAssigned(mission.definition.id.name, period)
+                prior == null -> {
+                    if (missionAnalyticsBaseline.markAssignedIfNew(mission.definition.id, mission.periodKey)) {
+                        analyticsLogger.logMissionAssigned(mission.definition.id.name, period)
+                    }
+                }
                 mission.currentCount > prior.currentCount ->
                     analyticsLogger.logMissionProgressed(mission.definition.id.name, period, mission.currentCount, mission.definition.targetCount)
             }
-            if (mission.isComplete && prior?.isComplete != true) {
+            if (mission.isComplete && prior?.isComplete != true &&
+                missionAnalyticsBaseline.markCompletedIfNew(mission.definition.id, mission.periodKey)
+            ) {
                 analyticsLogger.logMissionCompleted(mission.definition.id.name, period)
                 if (mission.definition.period == MissionPeriod.MONTHLY) {
                     analyticsLogger.logMonthlyGoalCompleted(mission.definition.id.name)

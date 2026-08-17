@@ -23,6 +23,10 @@ import javax.inject.Singleton
  * only ever falls back to these when a value hasn't been fetched yet at all (never overwritten by
  * a real fetch, even an empty one), so a cold install with no connectivity still resolves a sane,
  * inert (no event active) state instead of throwing or reading empty strings.
+ *
+ * `premium_store_enabled` is the newest key read this way - see
+ * [com.suman.memoryarchitect.core.billing.premiumStoreEnabled]'s doc for what it gates (Mode
+ * Select's Remove Ads button and the Shop's Premium tab) and why it defaults to `"true"`.
  */
 @Singleton
 class FirebaseRemoteConfigSource @Inject constructor() : RemoteConfigRemoteSource {
@@ -54,6 +58,7 @@ class FirebaseRemoteConfigSource @Inject constructor() : RemoteConfigRemoteSourc
             "event_active_id" to "",
             "event_start_epoch" to "0",
             "event_end_epoch" to "0",
+            "premium_store_enabled" to "true",
         )
     }
 }

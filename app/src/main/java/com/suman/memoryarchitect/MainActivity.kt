@@ -25,8 +25,17 @@ class MainActivity : AppCompatActivity() {
         // already rendering underneath by the time this fires (see ConnectivityGate.kt). This exit
         // is only bridging the native cold-start splash into that Compose splash, not performing
         // its own competing animation of the same logo.
+        //
+        // Animates the whole SplashScreenViewProvider.view, never .iconView: the platform only
+        // guarantees the icon sub-view while its own icon animation is still in flight (it can be
+        // absent/torn down by the time this exit listener actually runs - e.g. no icon animation
+        // configured, an icon fetch timeout, or a fast cold start), so
+        // SplashScreenViewProvider.getIconView() is a real, observed NullPointerException source
+        // here in production (Crashlytics). .view is the top-level splash root and is documented
+        // non-null for the listener's full lifetime, so fading it produces the same short fade with
+        // no dependency on icon-specific platform state.
         splashScreen.setOnExitAnimationListener { splashScreenViewProvider ->
-            splashScreenViewProvider.iconView.animate()
+            splashScreenViewProvider.view.animate()
                 .alpha(0f)
                 .setDuration(SPLASH_EXIT_DURATION_MS)
                 .withEndAction { splashScreenViewProvider.remove() }

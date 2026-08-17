@@ -152,13 +152,20 @@ fun ShopScreenBody(viewModel: ShopViewModel = hiltViewModel()) {
                         )
                     }
 
-                    ShopTabRow(
-                        selected = state.selectedTab,
-                        onSelect = viewModel::selectTab,
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp).staggeredReveal(2),
-                    )
+                    if (state.premiumStoreEnabled) {
+                        ShopTabRow(
+                            selected = state.selectedTab,
+                            onSelect = viewModel::selectTab,
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp).staggeredReveal(2),
+                        )
+                    }
 
-                    when (state.selectedTab) {
+                    // Falls back to the Coin tab's content whenever Remote Config's
+                    // `premium_store_enabled` is off, even if `selectedTab` is still stale
+                    // `PREMIUM` from before the flag flipped (e.g. mid-session) - the tab chip
+                    // above is gone either way, so there'd be no way back to Coin otherwise.
+                    val effectiveTab = if (state.premiumStoreEnabled) state.selectedTab else ShopTab.COIN
+                    when (effectiveTab) {
                         ShopTab.COIN -> Column(
                             modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
                                 .padding(horizontal = 24.dp, vertical = 8.dp)

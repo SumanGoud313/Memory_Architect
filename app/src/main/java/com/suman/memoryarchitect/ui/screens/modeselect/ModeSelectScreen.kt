@@ -88,7 +88,7 @@ fun ModeSelectScreen(
     val particles = rememberParticleFieldState()
     val scope = rememberCoroutineScope()
     val progress by viewModel.progress.collectAsStateWithLifecycle()
-    val hasRemovedAds by viewModel.hasRemovedAds.collectAsStateWithLifecycle()
+    val showRemoveAdsButton by viewModel.showRemoveAdsButton.collectAsStateWithLifecycle()
     val layoutDirection = LocalLayoutDirection.current
     // The real, currently-rendered banner height (0.dp whenever nothing shows) - see
     // AdaptiveBannerAd's own doc. BottomExtraPadding alone (a fixed 24dp) isn't enough clearance
@@ -221,7 +221,7 @@ fun ModeSelectScreen(
                     modifier = Modifier.staggeredReveal(0),
                 )
 
-                if (!hasRemovedAds) {
+                if (showRemoveAdsButton) {
                     IconGlassButton(
                         icon = Icons.Filled.Block,
                         contentDescription = stringResource(R.string.settings_remove_ads),

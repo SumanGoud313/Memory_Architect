@@ -2,10 +2,10 @@ package com.suman.memoryarchitect.core.feedback.haptics
 
 import android.content.Context
 import android.os.Build
-import android.os.VibrationAttributes
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import androidx.annotation.RequiresApi
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -21,7 +21,7 @@ import javax.inject.Singleton
  * system-level haptics toggle (if the user disabled vibration device-wide) is honored for free -
  * the platform simply no-ops [Vibrator.vibrate] in that case, nothing to check here.
  *
- * [device.vibrate] is called with an explicit [VibrationAttributes] usage of
+ * [device.vibrate] is called with an explicit `VibrationAttributes` usage of
  * `USAGE_PHYSICAL_EMULATION` (API 33+; older versions fall back to the plain untagged call, before
  * this per-category system existed) rather than leaving the usage unspecified. Confirmed via a
  * real device (`dumpsys vibrator_manager`'s `VibrationIntensities`) that an untagged vibrate() call
@@ -31,6 +31,14 @@ import javax.inject.Singleton
  * simulate physical hardware reactions") is the correct semantic category for object pickup/
  * rotate/place and every other pattern here anyway, and - critically - is a category most users
  * never think to separately disable, unlike generic touch feedback.
+ *
+ * `VibrationAttributes` (API 33+) is deliberately never a property/parameter/return type
+ * anywhere on this class - see [PhysicalEmulationVibration]'s doc for why. This class used to
+ * hold a `private val vibrationAttributes: VibrationAttributes? by lazy { ... }` property, which
+ * crashed with `NoClassDefFoundError: Landroid/os/VibrationAttributes` on real Android 9 devices
+ * (Crashlytics) even though its own `if (SDK_INT >= 33)` guard was correct - a `SDK_INT` check
+ * inside a member's body doesn't stop ART from needing to resolve that member's own *declared
+ * type* to verify/call it, independent of which branch runs.
  *
  * Every pattern's peak amplitude is anchored to its [HapticPattern.strength] tier
  * ([TIER_AMPLITUDE]) - only the waveform *shape* (single pulse vs. a short multi-pulse flourish)
@@ -52,28 +60,13 @@ class HapticsManagerImpl @Inject constructor(
         }
     }
 
-    private val vibrationAttributes: VibrationAttributes? by lazy {
-        if (Build.VERSION.SDK_INT >= 33) {
-            VibrationAttributes.Builder().setUsage(VibrationAttributes.USAGE_PHYSICAL_EMULATION).build()
-        } else {
-            null
-        }
-    }
-
     override fun play(pattern: HapticPattern, intensityScale: Float) {
         val device = vibrator ?: return
         if (!device.hasVibrator()) return
         val effect = effectFor(pattern, intensityScale.coerceIn(0.2f, 1f))
-        val attributes = vibrationAttributes
         runCatching {
-            // The `attributes != null` half is what Kotlin's null-safety actually needs to smart-cast
-            // `attributes` to non-null below; the `SDK_INT >= 33` half is redundant with it at
-            // runtime (attributes is only ever non-null on 33+ per the lazy property above) but is
-            // what lint's own NewApi check needs to see, right at this call site, to verify the
-            // `device.vibrate(effect, attributes)` overload (API 33+) is actually guarded - it
-            // doesn't trace a null-check here back to the SDK_INT branch in a different property.
-            if (Build.VERSION.SDK_INT >= 33 && attributes != null) {
-                device.vibrate(effect, attributes)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                PhysicalEmulationVibration.vibrate(device, effect)
             } else {
                 device.vibrate(effect)
             }
@@ -116,5 +109,30 @@ class HapticsManagerImpl @Inject constructor(
             HapticStrength.MEDIUM to 195,
             HapticStrength.STRONG to 235,
         )
+    }
+}
+
+/**
+ * The only place in this app allowed to mention [android.os.VibrationAttributes] (API 33+) -
+ * deliberately kept out of every [HapticsManagerImpl] property/parameter/return type. ART
+ * verifies a class member's *declared type* the moment that member is loaded/called, regardless
+ * of any `SDK_INT` check inside its body and regardless of which runtime branch actually runs -
+ * so a `VibrationAttributes`-typed property on [HapticsManagerImpl] (a class instantiated via
+ * Hilt on every device, including API < 33) fails class resolution on any device below API 33.
+ * That was the real Android 9 `NoClassDefFoundError: Landroid/os/VibrationAttributes` bug.
+ * Isolating it in its own separate class here means Android only ever loads/verifies *this*
+ * class on the API 33+ path that actually calls [vibrate] - never as a side effect of loading
+ * [HapticsManagerImpl] itself on older devices.
+ */
+@RequiresApi(Build.VERSION_CODES.TIRAMISU)
+private object PhysicalEmulationVibration {
+    private val attributes: android.os.VibrationAttributes by lazy {
+        android.os.VibrationAttributes.Builder()
+            .setUsage(android.os.VibrationAttributes.USAGE_PHYSICAL_EMULATION)
+            .build()
+    }
+
+    fun vibrate(vibrator: Vibrator, effect: VibrationEffect) {
+        vibrator.vibrate(effect, attributes)
     }
 }

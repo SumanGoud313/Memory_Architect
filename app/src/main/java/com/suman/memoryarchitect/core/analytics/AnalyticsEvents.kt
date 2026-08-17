@@ -1,6 +1,7 @@
 package com.suman.memoryarchitect.core.analytics
 
 import com.suman.memoryarchitect.domain.generation.GenerationRules
+import com.suman.memoryarchitect.domain.model.DifficultyTier
 import com.suman.memoryarchitect.domain.model.GameMode
 import com.suman.memoryarchitect.domain.model.LevelSpec
 import com.google.firebase.analytics.FirebaseAnalytics
@@ -52,8 +53,8 @@ fun AnalyticsLogger.logScreenView(screenName: String) =
 fun AnalyticsLogger.logModeSelected(mode: GameMode) =
     logEvent("mode_selected", mapOf("mode" to mode.name))
 
-fun AnalyticsLogger.logLevelStarted(mode: GameMode, levelNumber: Int, level: LevelSpec) =
-    logEvent("level_started", levelContextParams(mode, levelNumber, level))
+fun AnalyticsLogger.logLevelStarted(mode: GameMode, levelNumber: Int, level: LevelSpec, difficultyTier: DifficultyTier) =
+    logEvent("level_started", levelContextParams(mode, levelNumber, level, difficultyTier))
 
 /** [attemptNumber] is how many times (including this one) the player has started this exact level
  * number in this app install (see `FrustrationTracker.recordLevelStart`) - the explicit "retry
@@ -61,8 +62,8 @@ fun AnalyticsLogger.logLevelStarted(mode: GameMode, levelNumber: Int, level: Lev
 fun AnalyticsLogger.logLevelRestarted(mode: GameMode, levelNumber: Int, attemptNumber: Int) =
     logEvent("level_restarted", mapOf("mode" to mode.name, "level_number" to levelNumber, "attempt_number" to attemptNumber))
 
-fun AnalyticsLogger.logMemorizeStarted(mode: GameMode, levelNumber: Int, level: LevelSpec) =
-    logEvent("memorize_started", levelContextParams(mode, levelNumber, level))
+fun AnalyticsLogger.logMemorizeStarted(mode: GameMode, levelNumber: Int, level: LevelSpec, difficultyTier: DifficultyTier) =
+    logEvent("memorize_started", levelContextParams(mode, levelNumber, level, difficultyTier))
 
 /** Only fires when Memorize runs to its natural end - a player who backs out mid-Memorize
  * produces [logLevelQuitMidway] instead, never this. */
@@ -90,6 +91,7 @@ fun AnalyticsLogger.logLevelCompleted(
     mode: GameMode,
     levelNumber: Int,
     level: LevelSpec,
+    difficultyTier: DifficultyTier,
     stars: Int,
     accuracy: Float,
     passed: Boolean?,
@@ -102,7 +104,7 @@ fun AnalyticsLogger.logLevelCompleted(
     coinsAwarded: Long?,
 ) = logEvent(
     "level_completed",
-    levelContextParams(mode, levelNumber, level) + mapOf(
+    levelContextParams(mode, levelNumber, level, difficultyTier) + mapOf(
         "stars" to stars,
         "accuracy" to accuracy,
         "passed" to passed,
@@ -124,11 +126,12 @@ fun AnalyticsLogger.logLevelCompleted(
 fun AnalyticsLogger.logLevelQuitMidway(mode: GameMode, levelNumber: Int, phase: String, elapsedMs: Long) =
     logEvent("level_quit_midway", mapOf("mode" to mode.name, "level_number" to levelNumber, "phase" to phase, "elapsed_ms" to elapsedMs))
 
-private fun levelContextParams(mode: GameMode, levelNumber: Int, level: LevelSpec): Map<String, Any?> {
+private fun levelContextParams(mode: GameMode, levelNumber: Int, level: LevelSpec, difficultyTier: DifficultyTier): Map<String, Any?> {
     val slotCount = GenerationRules.Default.roomSlotCountByScene[level.sceneType]
     return mapOf(
         "mode" to mode.name,
         "level_number" to levelNumber,
+        "difficulty" to difficultyTier.name,
         "room_theme" to level.sceneType,
         "object_count" to level.objects.size,
         "object_density" to slotCount?.let { level.objects.size.toFloat() / it },

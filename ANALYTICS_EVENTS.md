@@ -66,6 +66,7 @@ Logged from `GameplayViewModel.startMemorizePhase` — the moment a level attemp
 |---|---|---|
 | `mode` | string | |
 | `level_number` | int | |
+| `difficulty` | string | `DifficultyTier` name. For Classic (which drives difficulty from `level_number` via `LevelCampaignEngine`, not a selectable tier), this is that level's *resolved* tier, not a player choice |
 | `room_theme` | string | Scene type (`kitchen`, `bedroom`, …) |
 | `object_count` | int | Targets + distractors shown |
 | `object_density` | float | `object_count` / that room's total slot capacity |
@@ -118,7 +119,7 @@ resolved attempt: immediately for Practice (no server round-trip to wait on), or
 submission resolves for scored modes (so `xp_awarded`/`coins_awarded` are real, not always-null).
 | Param | Type | Notes |
 |---|---|---|
-| `mode`, `level_number`, `room_theme`, `object_count`, `object_density`, `rotation_enabled`, `order_mode_enabled`, `memorize_timer_ms` | — | Same as `level_started` |
+| `mode`, `level_number`, `difficulty`, `room_theme`, `object_count`, `object_density`, `rotation_enabled`, `order_mode_enabled`, `memorize_timer_ms` | — | Same as `level_started` |
 | `stars` | int | |
 | `accuracy` | float | Scene accuracy 0–1 |
 | `passed` | bool? | Only meaningful for Classic; null everywhere else |

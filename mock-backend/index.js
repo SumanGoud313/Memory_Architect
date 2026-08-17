@@ -36,6 +36,9 @@ let remoteConfig = {
   interstitial_cooldown_after_rewarded_seconds: '60',
   reward_multiplier_enabled: 'false',
   reward_multiplier_value: '2.0',
+  // Mirrors FirebaseRemoteConfigSource.kt's DEFAULTS - see BillingRemoteConfig.kt's doc for what
+  // this gates (Remove Ads button + Shop's Premium tab) and why it defaults to enabled.
+  premium_store_enabled: 'true',
 };
 
 let playerProfile = {

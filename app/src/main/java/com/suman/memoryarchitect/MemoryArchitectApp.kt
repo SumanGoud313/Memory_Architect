@@ -87,6 +87,15 @@ class MemoryArchitectApp : Application(), ComponentCallbacks2, WorkConfiguration
 
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
+        // TRIM_MEMORY_UI_HIDDEN fires every single time this app's UI simply stops being visible -
+        // switching apps, locking the screen, a rewarded ad covering the screen - completely
+        // independent of whether the device is actually short on memory. Logging it as
+        // "memory_warning" was the real bug behind the high daily event volume: it fires dozens of
+        // times a day per player from ordinary navigation alone, none of it real memory pressure.
+        // Every other level here - RUNNING_MODERATE/LOW/CRITICAL while this app is foregrounded, and
+        // BACKGROUND/MODERATE/COMPLETE while it's cached - is the system genuinely asking this
+        // process to free memory, so those still log exactly as before.
+        if (level == ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN) return
         analytics.logMemoryWarning(trimMemoryLevelName(level))
     }
 

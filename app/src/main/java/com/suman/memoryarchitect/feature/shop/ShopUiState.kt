@@ -24,5 +24,10 @@ sealed interface ShopUiState {
         val billingProductStates: Map<String, BillingProductUiState> = emptyMap(),
         val billingProductsLoadFailed: Boolean = false,
         val purchaseState: PurchaseUiState = PurchaseUiState.Idle,
+        // Remote Config's `premium_store_enabled` kill switch (see
+        // core.billing.premiumStoreEnabled's doc) - hides the 💎 Premium tab chip entirely when
+        // `false`, same instant no-release toggle Mode Select's Remove Ads button already uses.
+        // Optimistic `true` default so a slow/failed fetch never hides a real purchase surface.
+        val premiumStoreEnabled: Boolean = true,
     ) : ShopUiState
 }
