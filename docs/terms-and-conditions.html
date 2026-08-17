@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Terms &amp; Conditions — Memory Architect</title>
+<meta name="description" content="The Memory Architect Android app's Terms &amp; Conditions." />
+<style>
+  :root {
+    --bg: #f6f5fa;
+    --bg-elevated: #ffffff;
+    --text: #16141f;
+    --text-muted: #5b586b;
+    --border: #e3e1ec;
+    --accent: #5b3fe0;
+    --accent-soft: #efecfc;
+    --gold: #9c7420;
+    --rule: #d8d5e4;
+    --focus: #5b3fe0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b0c14;
+      --bg-elevated: #14131f;
+      --text: #edebf5;
+      --text-muted: #9c98b5;
+      --border: #262436;
+      --accent: #9b82ff;
+      --accent-soft: #211d3a;
+      --gold: #e0b767;
+      --rule: #2c2a3d;
+      --focus: #b6a4ff;
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+    margin: 0;
+  }
+
+  a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  a:focus-visible, button:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+
+  .page {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 28px 96px;
+  }
+
+  header.masthead {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 56px 28px 40px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .wordmark {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "Consolas", monospace;
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .wordmark .mark {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    background: var(--accent);
+    transform: rotate(45deg);
+    flex: none;
+  }
+
+  h1.doc-title {
+    font-family: "Iowan Old Style", "Palatino Linotype", "URW Palladio", Georgia, serif;
+    font-weight: 500;
+    font-size: clamp(2.1rem, 4vw, 2.85rem);
+    line-height: 1.12;
+    letter-spacing: -0.01em;
+    margin: 18px 0 10px;
+    text-wrap: balance;
+  }
+
+  .doc-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    align-items: baseline;
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "Consolas", monospace;
+    font-size: 12.5px;
+    color: var(--text-muted);
+    letter-spacing: 0.02em;
+  }
+  .doc-meta strong { color: var(--gold); font-weight: 600; }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 680px);
+    gap: 64px;
+    padding-top: 48px;
+    justify-content: center;
+  }
+
+  nav.index {
+    position: sticky;
+    top: 32px;
+    align-self: start;
+  }
+  nav.index .index-label {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "Consolas", monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 14px;
+    display: block;
+  }
+  nav.index ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-left: 1px solid var(--rule);
+  }
+  nav.index li { margin: 0; }
+  nav.index a {
+    display: flex;
+    gap: 10px;
+    padding: 7px 0 7px 16px;
+    margin-left: -1px;
+    border-left: 1px solid transparent;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 13.5px;
+    line-height: 1.35;
+  }
+  nav.index a:hover { color: var(--text); border-left-color: var(--rule); }
+  nav.index a .num {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "Consolas", monospace;
+    font-size: 11px;
+    color: var(--accent);
+    flex: none;
+    padding-top: 1px;
+  }
+
+  main { min-width: 0; }
+
+  .lede {
+    font-size: 1.05rem;
+    color: var(--text-muted);
+    max-width: 62ch;
+    margin: 0 0 48px;
+  }
+  .lede strong { color: var(--text); font-weight: 600; }
+
+  section.clause {
+    padding: 36px 0;
+    border-top: 1px solid var(--rule);
+    scroll-margin-top: 32px;
+  }
+  section.clause:first-of-type { border-top: none; padding-top: 0; }
+
+  .clause-head {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+  .clause-num {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "Consolas", monospace;
+    font-size: 12px;
+    color: var(--accent);
+    background: var(--accent-soft);
+    padding: 2px 7px;
+    border-radius: 4px;
+    flex: none;
+  }
+  h2.clause-title {
+    font-family: "Iowan Old Style", "Palatino Linotype", "URW Palladio", Georgia, serif;
+    font-weight: 500;
+    font-size: 1.4rem;
+    letter-spacing: -0.005em;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .clause p {
+    max-width: 66ch;
+    color: var(--text);
+    margin: 0;
+  }
+  .clause p + p { margin-top: 12px; }
+
+  footer.closing {
+    margin-top: 56px;
+    padding-top: 36px;
+    border-top: 1px solid var(--rule);
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 24px;
+  }
+  .contact-block h2.clause-title { font-size: 1.15rem; }
+  .contact-block a.email {
+    display: inline-block;
+    margin-top: 8px;
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "Consolas", monospace;
+    font-size: 14px;
+  }
+  .in-app-note {
+    max-width: 30ch;
+    font-size: 12.5px;
+    color: var(--text-muted);
+    line-height: 1.55;
+  }
+
+  @media (max-width: 880px) {
+    .layout { grid-template-columns: 1fr; gap: 8px; }
+    nav.index { display: none; }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    section.clause, .lede, header.masthead { animation: rise 480ms ease-out both; }
+    section.clause:nth-of-type(1) { animation-delay: 20ms; }
+    section.clause:nth-of-type(2) { animation-delay: 40ms; }
+    section.clause:nth-of-type(3) { animation-delay: 60ms; }
+  }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <span class="wordmark"><span class="mark"></span> Memory Architect</span>
+  <h1 class="doc-title">Terms &amp; Conditions</h1>
+  <div class="doc-meta">
+    <span>Last updated <strong>August 1, 2026</strong></span>
+    <span>Applies to the Memory Architect Android app</span>
+  </div>
+</header>
+
+<div class="page">
+  <div class="layout">
+    <nav class="index" aria-label="Sections">
+      <span class="index-label">On this page</span>
+      <ol>
+        <li><a href="#acceptance"><span class="num">01</span>Acceptance</span></a></li>
+        <li><a href="#accounts"><span class="num">02</span>Accounts</span></a></li>
+        <li><a href="#virtual-items"><span class="num">03</span>Virtual items &amp; purchases</span></a></li>
+        <li><a href="#fair-play"><span class="num">04</span>Fair play</span></a></li>
+        <li><a href="#advertising"><span class="num">05</span>Advertising</span></a></li>
+        <li><a href="#availability"><span class="num">06</span>Availability</span></a></li>
+        <li><a href="#changes"><span class="num">07</span>Changes</span></a></li>
+      </ol>
+    </nav>
+
+    <main>
+      <p class="lede">
+        By downloading, installing, or playing <strong>Memory Architect</strong>, you agree to
+        these Terms &amp; Conditions and the accompanying
+        <a href="privacy-policy.html">Privacy Policy</a>.
+      </p>
+
+      <section class="clause" id="acceptance">
+        <div class="clause-head"><span class="clause-num">01</span><h2 class="clause-title">Acceptance</h2></div>
+        <p>By downloading, installing, or playing Memory Architect ("the app"), you agree to these
+        Terms &amp; Conditions and the accompanying Privacy Policy.</p>
+      </section>
+
+      <section class="clause" id="accounts">
+        <div class="clause-head"><span class="clause-num">02</span><h2 class="clause-title">Accounts</h2></div>
+        <p>Playing requires signing in with a Google account. You're responsible for activity under
+        your account. You may delete your account and all associated data at any time from Settings
+        → Delete Account (see the <a href="delete-account.html">account deletion page</a> for both
+        the in-app path and what to do if you no longer have access to the app).</p>
+      </section>
+
+      <section class="clause" id="virtual-items">
+        <div class="clause-head"><span class="clause-num">03</span><h2 class="clause-title">Virtual items &amp; purchases</h2></div>
+        <p>Coins, cosmetics, tickets, and other in-app items have no real-world monetary value,
+        cannot be exchanged for cash, and exist solely for use within the app. Real-money purchases
+        are processed by Google Play Billing and are subject to Google Play's own refund policy.
+        Lucky Spin and Mystery Chest are randomized reward mechanics with no purchase required to
+        participate (spins/chests are earned through play, a daily allowance, or watching a rewarded
+        ad) — the exact odds of every outcome are shown in-app on the Lucky Spin screen.</p>
+      </section>
+
+      <section class="clause" id="fair-play">
+        <div class="clause-head"><span class="clause-num">04</span><h2 class="clause-title">Fair play</h2></div>
+        <p>Using modified clients, exploits, or automation to manipulate scores, leaderboards, or
+        the in-game economy is prohibited and may result in account or leaderboard action.</p>
+      </section>
+
+      <section class="clause" id="advertising">
+        <div class="clause-head"><span class="clause-num">05</span><h2 class="clause-title">Advertising</h2></div>
+        <p>The app is supported by advertising via Google AdMob unless you've purchased Remove Ads.
+        See the <a href="privacy-policy.html#advertising">Privacy Policy</a> for what that
+        involves.</p>
+      </section>
+
+      <section class="clause" id="availability">
+        <div class="clause-head"><span class="clause-num">06</span><h2 class="clause-title">Availability</h2></div>
+        <p>The app is provided "as is," without warranty of any kind. Features that depend on an
+        internet connection or a signed-in account (leaderboards, cloud-synced progress) may be
+        unavailable while offline.</p>
+      </section>
+
+      <section class="clause" id="changes">
+        <div class="clause-head"><span class="clause-num">07</span><h2 class="clause-title">Changes</h2></div>
+        <p>These terms may be updated from time to time; continued use of the app after a change
+        constitutes acceptance of the updated terms.</p>
+      </section>
+
+      <footer class="closing">
+        <div class="contact-block">
+          <h2 class="clause-title">Contact</h2>
+          <p>Questions about these terms:</p>
+          <a class="email" href="mailto:sumangoud.ekkurthi99@gmail.com">sumangoud.ekkurthi99@gmail.com</a>
+        </div>
+        <p class="in-app-note">This text mirrors the Terms &amp; Conditions shown in-app under
+        Settings → Terms &amp; Conditions. If the two ever differ, the in-app version reflects the
+        build currently installed.</p>
+      </footer>
+    </main>
+  </div>
+</div>
+</body>
+</html>
